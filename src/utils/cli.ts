@@ -16,6 +16,11 @@ export interface CleanArgs {
   yes: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PullMainArgs {
+  // 将来の拡張用 (例: --remote=origin)
+}
+
 function hasFlag(args: string[], flags: string[]): boolean {
   return flags.some((f) => args.includes(f));
 }
@@ -90,6 +95,11 @@ export function parseGoArgs(args: string[]): {
   }
 
   return { query, openCode, openCursor };
+}
+
+export function parsePullMainArgs(_args: string[]): PullMainArgs {
+  // 現在はオプションなし、将来の拡張用
+  return {};
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {

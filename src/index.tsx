@@ -9,12 +9,14 @@ import { WorktreeClean } from './components/WorktreeClean.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
+import { WorktreePullMain } from './components/WorktreePullMain.js';
 import React from 'react';
 import {
   parseAddArgs,
   parseRemoveArgs,
   parseCleanArgs,
   parseGoArgs,
+  parsePullMainArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -65,6 +67,10 @@ const App: React.FC = () => {
     case 'clean': {
       const { yes } = parseCleanArgs(args);
       return <WorktreeClean yes={yes} />;
+    }
+    case 'pull-main': {
+      parsePullMainArgs(args); // 将来の拡張用
+      return <WorktreePullMain />;
     }
     case 'config':
       return <ConfigTest />;

@@ -145,7 +145,18 @@ gwm go api-refactor --code
 gwm go bugfix/login --cursor
 ```
 
-> ℹ️ Because `gwm go` now changes the directory for you, additional shell helper functions such as `wgo` are no longer necessary.
+### `gwm pull-main`
+
+Updates the worktree for the main branch to its latest state, even when your current directory is outside of the worktree directory.
+
+```bash
+# Update the main branch
+gwm pull-main
+```
+
+**Use cases:**
+
+- Your worktree directories live in a specific folder (e.g., `~/username/git-worktree`) and you can't easily update the main branch.
 
 ## Configuration
 
