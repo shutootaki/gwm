@@ -67,9 +67,9 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
   };
 }
 
-export function parseCleanArgs(args: string[]): CleanArgs {
-  return { yes: hasFlag(args, ['-y', '--yes']) };
-}
+// export function parseCleanArgs(args: string[]): CleanArgs {
+//   return { yes: hasFlag(args, ['-y', '--yes']) };
+// }
 
 export function parseGoArgs(args: string[]): {
   query?: string;
