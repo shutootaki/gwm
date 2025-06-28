@@ -12,8 +12,8 @@ vi.mock('child_process', () => ({
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/worktrees',
-    main_branches: ['main', 'master', 'develop']
-  }))
+    main_branches: ['main', 'master', 'develop'],
+  })),
 }));
 
 // コンソール出力をモック化
@@ -21,7 +21,7 @@ const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
 const mockExecSync = vi.mocked(execSync);
 
-describe('wtm list command integration tests', () => {
+describe('gwm list command integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConsoleLog.mockClear();
@@ -54,14 +54,26 @@ locked`;
         return porcelainOutput;
       }
       // リモート追跡ブランチのチェック - feature-branchは存在、bugfix-loginは存在しない
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/feature-branch')) {
+      if (
+        command?.includes(
+          'git show-ref --verify --quiet refs/remotes/origin/feature-branch'
+        )
+      ) {
         return '';
       }
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/bugfix-login')) {
+      if (
+        command?.includes(
+          'git show-ref --verify --quiet refs/remotes/origin/bugfix-login'
+        )
+      ) {
         throw new Error('No remote tracking branch');
       }
       // マージステータスチェック - feature-branchはマージされていない
-      if (command?.includes('git merge-base --is-ancestor refs/heads/feature-branch')) {
+      if (
+        command?.includes(
+          'git merge-base --is-ancestor refs/heads/feature-branch'
+        )
+      ) {
         throw new Error('Not merged');
       }
       return '';
@@ -70,13 +82,13 @@ locked`;
     const worktrees = await getWorktreesWithStatus();
 
     expect(worktrees).toHaveLength(3);
-    
+
     // メインworktree
     expect(worktrees[0]).toMatchObject({
       path: '/Users/test/project',
       branch: 'refs/heads/main',
       status: 'NORMAL',
-      isMain: true
+      isMain: true,
     });
 
     // 通常のworktree
@@ -84,7 +96,7 @@ locked`;
       path: '/Users/test/worktrees/project/feature-branch',
       branch: 'refs/heads/feature-branch',
       status: 'NORMAL',
-      isMain: false
+      isMain: false,
     });
 
     // ロックされたworktree（リモートトラッキングなし）
@@ -92,7 +104,7 @@ locked`;
       path: '/Users/test/worktrees/project/bugfix-login',
       branch: 'refs/heads/bugfix-login',
       status: 'LOCKED',
-      isMain: false
+      isMain: false,
     });
   });
 
@@ -116,7 +128,9 @@ branch refs/heads/feature-branch`;
       if (command === 'git worktree list --porcelain') {
         return porcelainOutput;
       }
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/')) {
+      if (
+        command?.includes('git show-ref --verify --quiet refs/remotes/origin/')
+      ) {
         return '';
       }
       return '';
@@ -150,11 +164,19 @@ branch refs/heads/merged-feature`;
         return porcelainOutput;
       }
       // merged-featureはマージ済み（リモート追跡ブランチが存在しない）
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/merged-feature')) {
+      if (
+        command?.includes(
+          'git show-ref --verify --quiet refs/remotes/origin/merged-feature'
+        )
+      ) {
         throw new Error('No remote tracking branch');
       }
       // マージチェック - merged-featureはmainにマージ済み
-      if (command?.includes('git merge-base --is-ancestor refs/heads/merged-feature refs/heads/main')) {
+      if (
+        command?.includes(
+          'git merge-base --is-ancestor refs/heads/merged-feature refs/heads/main'
+        )
+      ) {
         return '';
       }
       return '';
@@ -164,7 +186,7 @@ branch refs/heads/merged-feature`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/merged-feature',
-      status: 'PRUNABLE'
+      status: 'PRUNABLE',
     });
   });
 
@@ -186,7 +208,11 @@ branch refs/heads/deleted-branch`;
         return porcelainOutput;
       }
       // deleted-branchはリモートで削除済み
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/deleted-branch')) {
+      if (
+        command?.includes(
+          'git show-ref --verify --quiet refs/remotes/origin/deleted-branch'
+        )
+      ) {
         throw new Error('No remote tracking branch');
       }
       return '';
@@ -196,7 +222,7 @@ branch refs/heads/deleted-branch`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/deleted-branch',
-      status: 'PRUNABLE'
+      status: 'PRUNABLE',
     });
   });
 
@@ -247,7 +273,7 @@ detached`;
     expect(worktrees[1]).toMatchObject({
       path: '/Users/test/worktrees/project/detached-head',
       branch: '(detached)',
-      status: 'NORMAL'
+      status: 'NORMAL',
     });
   });
 
@@ -273,7 +299,7 @@ bare`;
       path: '/Users/test/project.git',
       branch: '(bare)',
       status: 'NORMAL',
-      isMain: true
+      isMain: true,
     });
   });
 
@@ -281,7 +307,7 @@ bare`;
   it('should work with multiple main branches configuration', async () => {
     vi.mocked(loadConfig).mockReturnValue({
       worktree_base_path: '/Users/test/worktrees',
-      main_branches: ['main', 'master', 'develop']
+      main_branches: ['main', 'master', 'develop'],
     });
 
     const porcelainOutput = `worktree /Users/test/project
@@ -300,10 +326,18 @@ branch refs/heads/feature`;
         return porcelainOutput;
       }
       // featureはdevelopにマージ済み
-      if (command?.includes('git merge-base --is-ancestor refs/heads/feature refs/heads/develop')) {
+      if (
+        command?.includes(
+          'git merge-base --is-ancestor refs/heads/feature refs/heads/develop'
+        )
+      ) {
         return '';
       }
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/feature')) {
+      if (
+        command?.includes(
+          'git show-ref --verify --quiet refs/remotes/origin/feature'
+        )
+      ) {
         throw new Error('No remote tracking branch');
       }
       return '';
@@ -313,7 +347,7 @@ branch refs/heads/feature`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/feature',
-      status: 'PRUNABLE'
+      status: 'PRUNABLE',
     });
   });
 

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Box } from 'ink';
-import { MultiSelectList, SelectItem } from './MultiSelectList.js';
-import { getWorktreesWithStatus, fetchAndPrune, removeWorktree, Worktree } from '../utils/git.js';
+import { MultiSelectList } from './MultiSelectList.js';
+import { SelectItem } from '../types/common.js';
+import {
+  getWorktreesWithStatus,
+  fetchAndPrune,
+  removeWorktree,
+  Worktree,
+} from '../utils/git.js';
 
 interface WorktreeCleanProps {
   yes?: boolean;
@@ -20,21 +26,23 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     const initializeClean = async () => {
       try {
         setLoading(true);
-        
+
         // git fetch --prune origin を実行
         fetchAndPrune();
-        
+
         // worktreeのリストを取得し、PRUNABLE状態を判定
         const allWorktrees = await getWorktreesWithStatus();
-        const prunableWorktrees = allWorktrees.filter(w => w.status === 'PRUNABLE');
-        
+        const prunableWorktrees = allWorktrees.filter(
+          (w) => w.status === 'PRUNABLE'
+        );
+
         setWorktrees(prunableWorktrees);
-        
+
         // --yesオプションが指定されている場合、即座に全て削除
         if (yes && prunableWorktrees.length > 0) {
           await removeAllWorktrees(prunableWorktrees);
         }
-        
+
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -63,7 +71,7 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     if (errors.length > 0) {
       setError(errors.join('\\n'));
     }
-    
+
     if (removedPaths.length > 0) {
       setSuccess(removedPaths);
     }
@@ -77,8 +85,8 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
       return;
     }
 
-    const selectedWorktrees = worktrees.filter(w => 
-      selectedItems.some(item => item.value === w.path)
+    const selectedWorktrees = worktrees.filter((w) =>
+      selectedItems.some((item) => item.value === w.path)
     );
 
     await removeAllWorktrees(selectedWorktrees);
@@ -99,9 +107,11 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
   if (success.length > 0) {
     return (
       <Box flexDirection="column">
-        <Text color="green">✓ Successfully cleaned {success.length} worktree(s):</Text>
-        {success.map(path => (
-          <Text key={path}>  {path}</Text>
+        <Text color="green">
+          ✓ Successfully cleaned {success.length} worktree(s):
+        </Text>
+        {success.map((path) => (
+          <Text key={path}> {path}</Text>
         ))}
       </Box>
     );
@@ -140,15 +150,17 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     );
   }
 
-  const items: SelectItem[] = worktrees.map(worktree => ({
+  const items: SelectItem[] = worktrees.map((worktree) => ({
     label: `${worktree.branch.padEnd(30)} ${worktree.path}`,
-    value: worktree.path
+    value: worktree.path,
   }));
 
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
-        <Text color="yellow">Found {worktrees.length} prunable worktree(s):</Text>
+        <Text color="yellow">
+          Found {worktrees.length} prunable worktree(s):
+        </Text>
       </Box>
       <MultiSelectList
         items={items}

@@ -14,13 +14,13 @@ vi.mock('../src/utils/git.js', () => ({
 // process.platformをモック化
 Object.defineProperty(process, 'platform', {
   value: 'darwin',
-  writable: true
+  writable: true,
 });
 
 const mockExecSync = vi.mocked(execSync);
 const mockGetWorktreesWithStatus = vi.mocked(getWorktreesWithStatus);
 
-describe('wtm code command integration tests', () => {
+describe('gwm code command integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -32,18 +32,18 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/project',
         head: '1234567890abcdef',
         branch: 'refs/heads/main',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
@@ -51,11 +51,13 @@ describe('wtm code command integration tests', () => {
 
     // ユーザーが2番目のworktreeを選択したと仮定
     const selectedWorktree = mockWorktrees[1];
-    
+
     // VS Codeで開く
     mockExecSync(`code "${selectedWorktree.path}"`);
 
-    expect(mockExecSync).toHaveBeenCalledWith(`code "${selectedWorktree.path}"`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `code "${selectedWorktree.path}"`
+    );
   });
 
   // `code`コマンドの存在チェックをテスト
@@ -73,7 +75,9 @@ describe('wtm code command integration tests', () => {
 
     const codeExists = (() => {
       try {
-        mockExecSync(process.platform === 'win32' ? 'where code' : 'which code');
+        mockExecSync(
+          process.platform === 'win32' ? 'where code' : 'which code'
+        );
         return true;
       } catch {
         return false;
@@ -105,43 +109,43 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/project',
         head: '1234567890abcdef',
         branch: 'refs/heads/main',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-auth',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-auth',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/feature-ui',
         head: 'fedcba0987654321',
         branch: 'refs/heads/feature-ui',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/bugfix-login',
         head: '123456789abcdef0',
         branch: 'refs/heads/bugfix-login',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const query = 'feature';
-    
+
     // クエリ "feature" でフィルタリング
-    const filteredWorktrees = mockWorktrees.filter(w => 
-      w.branch.includes(query) || w.path.includes(query)
+    const filteredWorktrees = mockWorktrees.filter(
+      (w) => w.branch.includes(query) || w.path.includes(query)
     );
 
     expect(filteredWorktrees).toHaveLength(2);
@@ -156,27 +160,27 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/project',
         head: '1234567890abcdef',
         branch: 'refs/heads/main',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/unique-feature',
         head: 'abcdef1234567890',
         branch: 'refs/heads/unique-feature',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
     mockExecSync.mockReturnValue('');
 
     const query = 'unique';
-    
-    const matches = mockWorktrees.filter(w => 
-      w.branch.includes(query) || w.path.includes(query)
+
+    const matches = mockWorktrees.filter(
+      (w) => w.branch.includes(query) || w.path.includes(query)
     );
 
     // 1つしかマッチしない場合は自動選択
@@ -195,21 +199,23 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/My Projects/project name/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
     mockExecSync.mockReturnValue('');
 
     const selectedWorktree = mockWorktrees[0];
-    
+
     // パスを適切にクォートして実行
     mockExecSync(`code "${selectedWorktree.path}"`);
 
-    expect(mockExecSync).toHaveBeenCalledWith(`code "${selectedWorktree.path}"`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `code "${selectedWorktree.path}"`
+    );
   });
 
   // Windows環境での動作をテスト
@@ -217,7 +223,7 @@ describe('wtm code command integration tests', () => {
     // Windows環境をシミュレート
     Object.defineProperty(process, 'platform', {
       value: 'win32',
-      writable: true
+      writable: true,
     });
 
     mockExecSync.mockImplementation((command) => {
@@ -232,7 +238,9 @@ describe('wtm code command integration tests', () => {
 
     const codeExists = (() => {
       try {
-        mockExecSync(process.platform === 'win32' ? 'where code' : 'which code');
+        mockExecSync(
+          process.platform === 'win32' ? 'where code' : 'which code'
+        );
         return true;
       } catch {
         return false;
@@ -245,7 +253,7 @@ describe('wtm code command integration tests', () => {
     // プラットフォームを元に戻す
     Object.defineProperty(process, 'platform', {
       value: 'darwin',
-      writable: true
+      writable: true,
     });
   });
 
@@ -266,14 +274,14 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
-    
+
     mockExecSync.mockImplementation((command) => {
       if (command?.includes('code ')) {
         throw new Error('Failed to launch VS Code');
@@ -293,26 +301,26 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/project',
         head: '1234567890abcdef',
         branch: 'refs/heads/main',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
-        status: 'ACTIVE',
+        status: 'ACTIVE' as const,
         isActive: true,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ACTIVE状態のworktreeをマーク
-    const displayWorktrees = mockWorktrees.map(w => ({
+    const displayWorktrees = mockWorktrees.map((w) => ({
       ...w,
-      displayText: w.status === 'ACTIVE' ? `* ${w.branch}` : w.branch
+      displayText: w.status === 'ACTIVE' ? `* ${w.branch}` : w.branch,
     }));
 
     expect(displayWorktrees[0].displayText).toBe('refs/heads/main');
@@ -326,17 +334,17 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/project',
         head: '1234567890abcdef',
         branch: 'refs/heads/main',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: true
-      }
+        isMain: true,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ユーザーがESCキーでキャンセルしたと仮定
     const userCancelled = true;
-    
+
     if (userCancelled) {
       // VS Codeを起動しない
     } else {
@@ -353,18 +361,18 @@ describe('wtm code command integration tests', () => {
         path: '/Users/test/worktrees/project/feature-1',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-1',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/feature-2',
         head: 'fedcba0987654321',
         branch: 'refs/heads/feature-2',
-        status: 'NORMAL',
+        status: 'NORMAL' as const,
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
@@ -375,8 +383,14 @@ describe('wtm code command integration tests', () => {
     mockExecSync(`code "${mockWorktrees[1].path}"`);
 
     expect(mockExecSync).toHaveBeenCalledTimes(2);
-    expect(mockExecSync).toHaveBeenNthCalledWith(1, `code "${mockWorktrees[0].path}"`);
-    expect(mockExecSync).toHaveBeenNthCalledWith(2, `code "${mockWorktrees[1].path}"`);
+    expect(mockExecSync).toHaveBeenNthCalledWith(
+      1,
+      `code "${mockWorktrees[0].path}"`
+    );
+    expect(mockExecSync).toHaveBeenNthCalledWith(
+      2,
+      `code "${mockWorktrees[1].path}"`
+    );
   });
 
   // VS Code Insidersサポートをテスト
@@ -405,12 +419,14 @@ describe('wtm code command integration tests', () => {
     })();
 
     expect(codeInsidersExists).toBe(true);
-    
+
     // code-insidersで開く
     if (codeInsidersExists) {
       mockExecSync(`code-insiders "/path/to/worktree"`);
     }
 
-    expect(mockExecSync).toHaveBeenCalledWith(`code-insiders "/path/to/worktree"`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `code-insiders "/path/to/worktree"`
+    );
   });
 });

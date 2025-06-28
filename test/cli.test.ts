@@ -1,13 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { parseCreateArgs, parseRemoveArgs, parseCleanArgs, isHelpRequested } from '../src/utils/cli.js';
+import {
+  parseAddArgs,
+  parseRemoveArgs,
+  parseCleanArgs,
+  isHelpRequested,
+} from '../src/utils/cli.js';
 
-// createコマンドの引数解析をテスト
-describe('parseCreateArgs', () => {
+// addコマンドの引数解析をテスト
+describe('parseAddArgs', () => {
   // 位置引数からのブランチ名解析をテスト
   it('should parse branch name from positional arguments', () => {
-    const args = ['create', 'feature-branch'];
-    const result = parseCreateArgs(args);
-    
+    const args = ['add', 'feature-branch'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: 'feature-branch',
       isRemote: false,
@@ -17,9 +22,9 @@ describe('parseCreateArgs', () => {
 
   // -rフラグの解析をテスト
   it('should parse remote flag (-r)', () => {
-    const args = ['create', 'feature-branch', '-r'];
-    const result = parseCreateArgs(args);
-    
+    const args = ['add', 'feature-branch', '-r'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: 'feature-branch',
       isRemote: true,
@@ -29,9 +34,9 @@ describe('parseCreateArgs', () => {
 
   // --remoteフラグの解析をテスト
   it('should parse remote flag (--remote)', () => {
-    const args = ['create', 'feature-branch', '--remote'];
-    const result = parseCreateArgs(args);
-    
+    const args = ['add', 'feature-branch', '--remote'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: 'feature-branch',
       isRemote: true,
@@ -41,9 +46,9 @@ describe('parseCreateArgs', () => {
 
   // --fromフラグでのベースブランチ指定の解析をテスト
   it('should parse --from branch option', () => {
-    const args = ['create', 'feature-branch', '--from', 'develop'];
-    const result = parseCreateArgs(args);
-    
+    const args = ['add', 'feature-branch', '--from', 'develop'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: 'feature-branch',
       isRemote: false,
@@ -53,9 +58,9 @@ describe('parseCreateArgs', () => {
 
   // 複数フラグの組み合わせ解析をテスト
   it('should parse complex combination of flags', () => {
-    const args = ['create', 'feature-branch', '-r', '--from', 'develop'];
-    const result = parseCreateArgs(args);
-    
+    const args = ['add', 'feature-branch', '-r', '--from', 'develop'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: 'feature-branch',
       isRemote: true,
@@ -64,10 +69,10 @@ describe('parseCreateArgs', () => {
   });
 
   // ブランチ名なしのcreateコマンドの処理をテスト
-  it('should handle create command without branch name', () => {
-    const args = ['create'];
-    const result = parseCreateArgs(args);
-    
+  it('should handle add command without branch name', () => {
+    const args = ['add'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: undefined,
       isRemote: false,
@@ -76,10 +81,10 @@ describe('parseCreateArgs', () => {
   });
 
   // フラグのみのcreateコマンドの処理をテスト
-  it('should handle create command with only flags', () => {
-    const args = ['create', '-r'];
-    const result = parseCreateArgs(args);
-    
+  it('should handle add command with only flags', () => {
+    const args = ['add', '-r'];
+    const result = parseAddArgs(args);
+
     expect(result).toEqual({
       branchName: undefined,
       isRemote: true,
@@ -94,7 +99,7 @@ describe('parseRemoveArgs', () => {
   it('should parse query from positional arguments', () => {
     const args = ['remove', 'feature'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: 'feature',
       force: false,
@@ -105,7 +110,7 @@ describe('parseRemoveArgs', () => {
   it('should parse force flag (-f)', () => {
     const args = ['remove', 'feature', '-f'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: 'feature',
       force: true,
@@ -116,7 +121,7 @@ describe('parseRemoveArgs', () => {
   it('should parse force flag (--force)', () => {
     const args = ['remove', 'feature', '--force'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: 'feature',
       force: true,
@@ -127,7 +132,7 @@ describe('parseRemoveArgs', () => {
   it('should handle rm alias', () => {
     const args = ['rm', 'feature', '-f'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: 'feature',
       force: true,
@@ -138,7 +143,7 @@ describe('parseRemoveArgs', () => {
   it('should handle remove command without query', () => {
     const args = ['remove'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: undefined,
       force: false,
@@ -149,7 +154,7 @@ describe('parseRemoveArgs', () => {
   it('should handle remove command with only flags', () => {
     const args = ['remove', '--force'];
     const result = parseRemoveArgs(args);
-    
+
     expect(result).toEqual({
       query: undefined,
       force: true,
@@ -163,7 +168,7 @@ describe('parseCleanArgs', () => {
   it('should parse yes flag (-y)', () => {
     const args = ['clean', '-y'];
     const result = parseCleanArgs(args);
-    
+
     expect(result).toEqual({
       yes: true,
     });
@@ -173,7 +178,7 @@ describe('parseCleanArgs', () => {
   it('should parse yes flag (--yes)', () => {
     const args = ['clean', '--yes'];
     const result = parseCleanArgs(args);
-    
+
     expect(result).toEqual({
       yes: true,
     });
@@ -183,7 +188,7 @@ describe('parseCleanArgs', () => {
   it('should handle clean command without flags', () => {
     const args = ['clean'];
     const result = parseCleanArgs(args);
-    
+
     expect(result).toEqual({
       yes: false,
     });
@@ -193,7 +198,7 @@ describe('parseCleanArgs', () => {
   it('should handle multiple flags with yes flag', () => {
     const args = ['clean', '-y', '--verbose'];
     const result = parseCleanArgs(args);
-    
+
     expect(result).toEqual({
       yes: true,
     });
@@ -206,7 +211,7 @@ describe('isHelpRequested', () => {
   it('should return true when --help flag is present', () => {
     const args = ['list', '--help'];
     const result = isHelpRequested(args);
-    
+
     expect(result).toBe(true);
   });
 
@@ -214,7 +219,7 @@ describe('isHelpRequested', () => {
   it('should return true when -h flag is present', () => {
     const args = ['list', '-h'];
     const result = isHelpRequested(args);
-    
+
     expect(result).toBe(true);
   });
 
@@ -222,7 +227,7 @@ describe('isHelpRequested', () => {
   it('should return true when command is help', () => {
     const args = ['help'];
     const result = isHelpRequested(args, 'help');
-    
+
     expect(result).toBe(true);
   });
 
@@ -230,7 +235,7 @@ describe('isHelpRequested', () => {
   it('should return false when no help flags or command', () => {
     const args = ['list'];
     const result = isHelpRequested(args, 'list');
-    
+
     expect(result).toBe(false);
   });
 
@@ -238,15 +243,15 @@ describe('isHelpRequested', () => {
   it('should return true when help command is used without other args', () => {
     const args = [];
     const result = isHelpRequested(args, 'help');
-    
+
     expect(result).toBe(true);
   });
 
   // 他のコマンドと組み合わされたhelpフラグの処理をテスト
   it('should handle mixed case with help flags', () => {
-    const args = ['create', 'branch', '--help'];
-    const result = isHelpRequested(args, 'create');
-    
+    const args = ['add', 'branch', '--help'];
+    const result = isHelpRequested(args, 'add');
+
     expect(result).toBe(true);
   });
 });

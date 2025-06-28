@@ -1,25 +1,25 @@
 {
-  "name": "wtm",
+  "name": "gwm",
   "version": "1.0.0",
   "description": "Git worktree management CLI tool",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "wtm": "dist/index.js"
+    "gwm": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "test": "vitest",
+    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "prepublishOnly": "pnpm lint && pnpm build && pnpm test:publish",
+    "test:publish": "vitest run test/clean.test.ts test/git.test.ts test/error-handling.test.ts test/interactive-ui.test.ts test/code.test.ts test/cli.test.ts test/add.test.ts test/go.test.ts test/list.test.ts test/config.test.ts test/path-utils.test.ts",
+    "start": "node dist/index.js",
+    "test:coverage": "vitest run --coverage",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "prepare": "pnpm build",
-    "prepublishOnly": "pnpm lint && pnpm build"
+    "test": "vitest"
   },
   "keywords": [
     "git",
@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/wtm.git"
+    "url": "git+https://github.com/shuto-otaki/wtm.git"
   },
-  "homepage": "https://github.com/your-username/wtm#readme",
+  "homepage": "https://github.com/shuto-otaki/wtm#readme",
   "bugs": {
-    "url": "https://github.com/your-username/wtm/issues"
+    "url": "https://github.com/shuto-otaki/wtm/issues"
   },
   "engines": {
     "node": ">=16.0.0"
@@ -69,6 +69,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^16.2.0",
+    "ink-testing-library": "^4.0.0",
     "prettier": "^3.6.1",
     "vitest": "^3.2.4"
   }

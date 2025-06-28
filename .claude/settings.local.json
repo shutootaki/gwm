@@ -36,10 +36,9 @@
       "Bash(eas build:*)",
       "Bash(pnpm lint:*)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm audit:*)"
+      "Bash(pnpm audit:*)",
+      "mcp__ide__getDiagnostics"
     ],
-    "deny": [
-      "Bash(git:*)"
-    ]
+    "deny": ["Bash(git:*)"]
   }
 }

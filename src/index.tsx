@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 
-import React from 'react';
-import { render } from 'ink';
-import { Welcome } from './components/Welcome.js';
-import { WorktreeList } from './components/WorktreeList.js';
 import { ConfigTest } from './components/ConfigTest.js';
+import { render } from 'ink';
 import { SelectTest } from './components/SelectTest.js';
-import { WorktreeCreate } from './components/WorktreeCreate.js';
-import { WorktreeGo } from './components/WorktreeGo.js';
-import { WorktreeCode } from './components/WorktreeCode.js';
-import { WorktreeRemove } from './components/WorktreeRemove.js';
+import { Welcome } from './components/Welcome.js';
+import { WorktreeAdd } from './components/WorktreeAdd.js';
 import { WorktreeClean } from './components/WorktreeClean.js';
-import { parseCreateArgs, parseRemoveArgs, parseCleanArgs, isHelpRequested } from './utils/cli.js';
+import { WorktreeCode } from './components/WorktreeCode.js';
+import { WorktreeGo } from './components/WorktreeGo.js';
+import { WorktreeList } from './components/WorktreeList.js';
+import { WorktreeRemove } from './components/WorktreeRemove.js';
+import React from 'react';
+import {
+  parseAddArgs,
+  parseRemoveArgs,
+  parseCleanArgs,
+  isHelpRequested,
+} from './utils/index.js';
 
 const App: React.FC = () => {
   const args = process.argv.slice(2);
   const command = args[0];
-
 
   // ヘルプオプションのチェック
   if (isHelpRequested(args, command)) {
@@ -27,9 +31,15 @@ const App: React.FC = () => {
     case 'list':
     case 'ls':
       return <WorktreeList />;
-    case 'create': {
-      const { branchName, isRemote, fromBranch } = parseCreateArgs(args);
-      return <WorktreeCreate branchName={branchName} isRemote={isRemote} fromBranch={fromBranch} />;
+    case 'add': {
+      const { branchName, isRemote, fromBranch } = parseAddArgs(args);
+      return (
+        <WorktreeAdd
+          branchName={branchName}
+          isRemote={isRemote}
+          fromBranch={fromBranch}
+        />
+      );
     }
     case 'remove':
     case 'rm': {

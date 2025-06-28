@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Box, useInput } from 'ink';
-
-export interface SelectItem {
-  label: string;
-  value: string;
-}
+import { SelectItem } from '../types/common.js';
 
 interface MultiSelectListProps {
   items: SelectItem[];
@@ -12,27 +8,32 @@ interface MultiSelectListProps {
   onCancel: () => void;
   placeholder?: string;
   initialQuery?: string;
+  maxDisplayItems?: number;
 }
 
 export const MultiSelectList: React.FC<MultiSelectListProps> = ({
   items,
   onConfirm,
   onCancel,
-  placeholder = "Type to search, Space to select, Enter to confirm...",
-  initialQuery = "",
+  placeholder = 'Type to search, Space to select, Enter to confirm...',
+  initialQuery = '',
+  maxDisplayItems = 15,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // フィルタリングされた項目
-  const filteredItems = items.filter(item =>
+  const filteredItems = items.filter((item) =>
     item.label.toLowerCase().includes(query.toLowerCase())
   );
 
   // 選択インデックスを範囲内に調整
   useEffect(() => {
-    setSelectedIndex(Math.min(selectedIndex, filteredItems.length - 1));
+    const maxIndex = Math.max(0, filteredItems.length - 1);
+    if (selectedIndex > maxIndex) {
+      setSelectedIndex(maxIndex);
+    }
   }, [filteredItems.length, selectedIndex]);
 
   useInput((input, key) => {
@@ -42,7 +43,7 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
     }
 
     if (key.return) {
-      const selected = items.filter(item => selectedItems.has(item.value));
+      const selected = items.filter((item) => selectedItems.has(item.value));
       onConfirm(selected);
       return;
     }
@@ -91,42 +92,42 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
         <Text>{query}</Text>
         <Text color="gray">{'█'}</Text>
       </Box>
-      
+
       {filteredItems.length === 0 ? (
         <Text color="red">No matches found</Text>
       ) : (
         <Box flexDirection="column">
-          {filteredItems.slice(0, 10).map((item, index) => {
+          {filteredItems.slice(0, maxDisplayItems).map((item, index) => {
             const isSelected = selectedItems.has(item.value);
             const isCurrent = index === selectedIndex;
-            
+
             return (
               <Box key={item.value}>
-                <Text color={isCurrent ? "cyan" : "white"}>
-                  {isCurrent ? "❯ " : "  "}
-                  {isSelected ? "☑ " : "☐ "}
+                <Text color={isCurrent ? 'cyan' : 'white'}>
+                  {isCurrent ? '❯ ' : '  '}
+                  {isSelected ? '☑ ' : '☐ '}
                   {item.label}
                 </Text>
               </Box>
             );
           })}
-          {filteredItems.length > 10 && (
-            <Text color="gray">... and {filteredItems.length - 10} more</Text>
+          {filteredItems.length > maxDisplayItems && (
+            <Text color="gray">
+              ... and {filteredItems.length - maxDisplayItems} more
+            </Text>
           )}
         </Box>
       )}
-      
+
       <Box marginTop={1}>
         <Text color="gray">
           ↑/↓ to navigate, Space to select, Enter to confirm, Esc to cancel
         </Text>
       </Box>
-      
+
       {selectedItems.size > 0 && (
         <Box marginTop={1}>
-          <Text color="yellow">
-            Selected {selectedItems.size} item(s)
-          </Text>
+          <Text color="yellow">Selected {selectedItems.size} item(s)</Text>
         </Box>
       )}
     </Box>

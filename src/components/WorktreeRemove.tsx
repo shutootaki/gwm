@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Box } from 'ink';
-import { MultiSelectList, SelectItem } from './MultiSelectList.js';
-import { getWorktreesWithStatus, removeWorktree, Worktree } from '../utils/git.js';
+import { MultiSelectList } from './MultiSelectList.js';
+import { SelectItem } from '../types/index.js';
+import {
+  getWorktreesWithStatus,
+  removeWorktree,
+  Worktree,
+} from '../utils/index.js';
 
 interface WorktreeRemoveProps {
   query?: string;
@@ -9,7 +14,7 @@ interface WorktreeRemoveProps {
 }
 
 export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
-  query = "",
+  query = '',
   force = false,
 }) => {
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
@@ -22,7 +27,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
       try {
         const allWorktrees = await getWorktreesWithStatus();
         // メインworktreeを除外
-        const nonMainWorktrees = allWorktrees.filter(w => !w.isMain);
+        const nonMainWorktrees = allWorktrees.filter((w) => !w.isMain);
         setWorktrees(nonMainWorktrees);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -55,7 +60,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
     if (errors.length > 0) {
       setError(errors.join('\n'));
     }
-    
+
     if (removedPaths.length > 0) {
       setSuccess(removedPaths);
     }
@@ -70,9 +75,11 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
   if (success.length > 0) {
     return (
       <Box flexDirection="column">
-        <Text color="green">✓ Successfully removed {success.length} worktree(s):</Text>
-        {success.map(path => (
-          <Text key={path}>  {path}</Text>
+        <Text color="green">
+          ✓ Successfully removed {success.length} worktree(s):
+        </Text>
+        {success.map((path) => (
+          <Text key={path}> {path}</Text>
         ))}
       </Box>
     );
@@ -97,14 +104,16 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
   if (worktrees.length === 0) {
     return (
       <Box>
-        <Text>No removable worktrees found (main worktree cannot be removed)</Text>
+        <Text>
+          No removable worktrees found (main worktree cannot be removed)
+        </Text>
       </Box>
     );
   }
 
-  const items: SelectItem[] = worktrees.map(worktree => ({
+  const items: SelectItem[] = worktrees.map((worktree) => ({
     label: `${worktree.branch.padEnd(30)} ${worktree.path}`,
-    value: worktree.path
+    value: worktree.path,
   }));
 
   return (

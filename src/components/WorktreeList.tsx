@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Text, Box } from 'ink';
-import { getWorktreesWithStatus, Worktree } from '../utils/git.js';
+import {
+  getWorktreesWithStatus,
+  Worktree,
+  formatErrorForDisplay,
+  getOptimalColumnWidths,
+  truncateAndPad,
+} from '../utils/index.js';
 
 export const WorktreeList: React.FC = () => {
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
@@ -12,7 +18,7 @@ export const WorktreeList: React.FC = () => {
         const worktrees = await getWorktreesWithStatus();
         setWorktrees(worktrees);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(formatErrorForDisplay(err));
       }
     };
 
@@ -35,29 +41,41 @@ export const WorktreeList: React.FC = () => {
     );
   }
 
+  // 動的な列幅を計算
+  const columnWidths = getOptimalColumnWidths(
+    worktrees.map((w) => ({
+      branch: w.status === 'PRUNABLE' ? `${w.branch} (merged)` : w.branch,
+      path: w.path,
+    }))
+  );
+
   return (
     <Box flexDirection="column">
       <Box>
         <Text bold>
-          {'STATUS'.padEnd(12)} {'BRANCH'.padEnd(25)} {'PATH'.padEnd(40)} {'HEAD'.padEnd(10)}
+          {'STATUS'.padEnd(12)}{' '}
+          {truncateAndPad('BRANCH', columnWidths.branchWidth)}{' '}
+          {truncateAndPad('PATH', columnWidths.pathWidth)} {'HEAD'.padEnd(10)}
         </Text>
       </Box>
       <Box>
         <Text>
-          {'-'.repeat(12)} {'-'.repeat(25)} {'-'.repeat(40)} {'-'.repeat(10)}
+          {'-'.repeat(12)} {'-'.repeat(columnWidths.branchWidth)}{' '}
+          {'-'.repeat(columnWidths.pathWidth)} {'-'.repeat(10)}
         </Text>
       </Box>
       {worktrees.map((worktree, index) => {
-        const branchDisplay = worktree.status === 'PRUNABLE' 
-          ? `${worktree.branch} (merged)` 
-          : worktree.branch;
-        
+        const branchDisplay =
+          worktree.status === 'PRUNABLE'
+            ? `${worktree.branch} (merged)`
+            : worktree.branch;
+
         return (
           <Box key={index}>
             <Text>
-              {(worktree.isActive ? '* ' : '  ') + worktree.status.padEnd(10)} 
-              {branchDisplay.padEnd(25)} 
-              {worktree.path.padEnd(40)} 
+              {(worktree.isActive ? '* ' : '  ') + worktree.status.padEnd(10)}
+              {truncateAndPad(branchDisplay, columnWidths.branchWidth)}
+              {truncateAndPad(worktree.path, columnWidths.pathWidth)}
               {worktree.head.substring(0, 7)}
             </Text>
           </Box>

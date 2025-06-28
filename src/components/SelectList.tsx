@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Box, useInput } from 'ink';
-
-export interface SelectItem {
-  label: string;
-  value: string;
-}
+import { SelectItem } from '../types/common.js';
 
 interface SelectListProps {
   items: SelectItem[];
@@ -12,26 +8,31 @@ interface SelectListProps {
   onCancel: () => void;
   placeholder?: string;
   initialQuery?: string;
+  maxDisplayItems?: number;
 }
 
 export const SelectList: React.FC<SelectListProps> = ({
   items,
   onSelect,
   onCancel,
-  placeholder = "Type to search...",
-  initialQuery = "",
+  placeholder = 'Type to search...',
+  initialQuery = '',
+  maxDisplayItems = 15,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // フィルタリングされた項目
-  const filteredItems = items.filter(item =>
+  const filteredItems = items.filter((item) =>
     item.label.toLowerCase().includes(query.toLowerCase())
   );
 
   // 選択インデックスを範囲内に調整
   useEffect(() => {
-    setSelectedIndex(Math.min(selectedIndex, filteredItems.length - 1));
+    const maxIndex = Math.max(0, filteredItems.length - 1);
+    if (selectedIndex > maxIndex) {
+      setSelectedIndex(maxIndex);
+    }
   }, [filteredItems.length, selectedIndex]);
 
   useInput((input, key) => {
@@ -77,25 +78,27 @@ export const SelectList: React.FC<SelectListProps> = ({
         <Text>{query}</Text>
         <Text color="gray">{'█'}</Text>
       </Box>
-      
+
       {filteredItems.length === 0 ? (
         <Text color="red">No matches found</Text>
       ) : (
         <Box flexDirection="column">
-          {filteredItems.slice(0, 10).map((item, index) => (
+          {filteredItems.slice(0, maxDisplayItems).map((item, index) => (
             <Box key={item.value}>
-              <Text color={index === selectedIndex ? "cyan" : "white"}>
-                {index === selectedIndex ? "❯ " : "  "}
+              <Text color={index === selectedIndex ? 'cyan' : 'white'}>
+                {index === selectedIndex ? '❯ ' : '  '}
                 {item.label}
               </Text>
             </Box>
           ))}
-          {filteredItems.length > 10 && (
-            <Text color="gray">... and {filteredItems.length - 10} more</Text>
+          {filteredItems.length > maxDisplayItems && (
+            <Text color="gray">
+              ... and {filteredItems.length - maxDisplayItems} more
+            </Text>
           )}
         </Box>
       )}
-      
+
       <Box marginTop={1}>
         <Text color="gray">
           ↑/↓ to navigate, Enter to select, Esc to cancel

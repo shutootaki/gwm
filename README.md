@@ -1,29 +1,44 @@
-# wtm - Git Worktree Manager
+# gwm - Git Worktree Manager
 
-A modern CLI tool for efficient Git worktree management with an interactive, React-based terminal UI.
+A modern CLI tool for efficient Git worktree management with an interactive, React-based terminal UI built with Ink.
+
+## Overview
+
+`gwm` simplifies Git worktree management for developers who need to:
+
+- Review and test GitHub pull requests locally with quick context switching
+- Work on multiple features or bug fixes in parallel while maintaining clean, isolated environments
+- Automate worktree creation from remote branches and cleanup of merged branches
 
 ## Features
 
-- **Interactive UI**: fzf-like fuzzy search for all operations
-- **Intuitive Commands**: Simple, single-purpose commands for worktree management
-- **Smart Status Detection**: Automatically identifies merged and prunable worktrees
-- **Shell Integration**: Seamless navigation with shell functions
+- **Interactive UI**: fzf-like fuzzy search and multi-selection for all operations
+- **Intuitive Commands**: Simple, single-purpose commands with consistent behavior
+- **Smart Status Detection**: Automatically identifies merged, deleted, and prunable worktrees
+- **Shell Integration**: Seamless directory navigation with shell functions
 - **VS Code Integration**: Open worktrees directly in your editor
-- **Configurable**: Customize paths and behavior via TOML configuration
+- **Flexible Configuration**: Customize base paths and main branches via TOML configuration
+- **TypeScript & React**: Built with modern technologies for maintainable, extensible code
 
 ## Installation
+
+### Prerequisites
+
+- Node.js 16+
+- Git 2.25+
+- VS Code (optional, for `gwm code` command)
 
 ### From npm (Coming Soon)
 
 ```bash
-npm install -g wtm
+npm install -g gwm
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/your-username/wtm.git
-cd wtm
+git clone https://github.com/shuto-otaki/wtm.git
+cd gwm
 pnpm install
 pnpm build
 pnpm link --global
@@ -31,97 +46,106 @@ pnpm link --global
 
 ## Commands
 
-### `wtm list` (alias: `ls`)
+### `gwm list` (alias: `ls`)
 
 Display all worktrees with their status, branch, path, and commit information.
 
 ```bash
-wtm list
+gwm list
 ```
 
 **Status Indicators:**
+
 - `* ACTIVE`: Currently active worktree
 - `NORMAL`: Standard worktree
 - `PRUNABLE`: Merged or deleted branches (cleanup candidates)
 - `LOCKED`: Git-locked worktrees
 
-### `wtm create [branch]`
+### `gwm add [branch_name]`
 
-Create a new worktree from a branch. Without arguments, launches interactive branch selection.
+Add a new worktree from a branch. Without arguments, launches interactive remote branch selection.
 
 ```bash
-# Interactive mode
-wtm create
+# Interactive mode - select from remote branches
+gwm add
 
-# Create from local branch
-wtm create feature/new-ui
+# Add from local branch (or new branch if doesn't exist)
+gwm add feature/new-ui
 
-# Create from remote branch
-wtm create -r origin/feature/api-update
+# Add from remote branch
+gwm add -r feature/api-update
 
-# Create new branch from specific base
-wtm create new-feature --from main
+# Add new branch from specific base
+gwm add new-feature --from main
 ```
 
 **Options:**
-- `-r, --remote`: Create from remote branch
-- `--from <branch>`: Specify base branch for new branch creation
 
-### `wtm remove` (alias: `rm`)
+- `-r, --remote`: Treat branch_name as remote branch (fetch and track)
+- `--from <branch>`: Specify base branch for new branch creation (defaults to main)
+
+### `gwm remove` (alias: `rm`)
 
 Remove one or more worktrees with interactive multi-selection.
 
 ```bash
 # Interactive selection
-wtm remove
+gwm remove
 
 # Pre-filter with query
-wtm remove feature
+gwm remove feature
 
 # Force removal
-wtm remove -f
+gwm remove -f
 ```
 
 **Options:**
+
 - `-f, --force`: Force removal even with uncommitted changes
 
-### `wtm clean`
+### `gwm clean`
 
-Clean up merged or deleted worktrees automatically.
+Clean up merged or deleted worktrees. Identifies worktrees where branches have been merged into main branches or deleted from remote.
 
 ```bash
-# Interactive cleanup
-wtm clean
+# Interactive cleanup with multi-selection
+gwm clean
 
-# Auto-cleanup without confirmation
-wtm clean -y
+# Auto-cleanup all detected candidates
+gwm clean -y
 ```
 
-**Options:**
-- `-y, --yes`: Skip confirmation prompts
+**Detection Criteria:**
 
-### `wtm go [query]`
+- Branch is merged into one of the configured main branches
+- Remote tracking branch no longer exists
+
+**Options:**
+
+- `-y, --yes`: Skip interactive selection and remove all detected candidates
+
+### `gwm go [query]`
 
 Navigate to a worktree directory. Designed for shell integration.
 
 ```bash
 # Interactive selection
-wtm go
+gwm go
 
 # Pre-filter selection
-wtm go feature
+gwm go feature
 ```
 
-### `wtm code [query]`
+### `gwm code [query]`
 
 Open a worktree in Visual Studio Code.
 
 ```bash
 # Interactive selection
-wtm code
+gwm code
 
 # Pre-filter selection
-wtm code feature
+gwm code feature
 ```
 
 ## Shell Integration
@@ -131,7 +155,7 @@ Add this function to your `~/.zshrc` or `~/.bashrc` for seamless navigation:
 ```bash
 function wgo() {
   local path
-  path="$(wtm go "$1")"
+  path="$(gwm go "$1")"
   if [ -n "$path" ]; then
     cd "$path"
   fi
@@ -139,6 +163,7 @@ function wgo() {
 ```
 
 Usage:
+
 ```bash
 wgo feature  # Navigate to worktree matching "feature"
 wgo          # Interactive selection
@@ -146,73 +171,131 @@ wgo          # Interactive selection
 
 ## Configuration
 
-Create a configuration file at `~/.config/wtm/config.toml` or `~/.wtmrc`:
+Add a configuration file at `~/.config/gwm/config.toml`:
 
 ```toml
 # Base directory for worktrees (default: ~/worktrees)
 worktree_base_path = "/Users/myuser/dev/worktrees"
 
-# Main branches for merge detection (default: ["main", "master", "develop"])
+# Main branches for merge detection and default base (default: ["main", "master", "develop"])
 main_branches = ["main", "master", "develop"]
 ```
 
 ### Worktree Path Convention
 
-Worktrees are created at: `<worktree_base_path>/<repository-name>/<branch-name>`
+Worktrees are created following this pattern:
 
-Branch names with slashes are normalized:
-- `feature/user-auth` → `feature-user-auth`
-
-## Examples
-
-```bash
-# List all worktrees
-wtm list
-
-# Create worktree from remote branch
-wtm create -r origin/hotfix/critical-bug
-
-# Interactive worktree removal
-wtm remove
-
-# Clean up merged branches
-wtm clean
-
-# Navigate to specific worktree
-wgo api  # Using shell function
-
-# Open worktree in VS Code
-wtm code frontend
+```
+<worktree_base_path>/<repository-name>/<normalized-branch-name>
 ```
 
-## Requirements
+**Branch Name Normalization:**
 
-- Node.js 16+
-- Git 2.25+
-- VS Code (optional, for `wtm code` command)
+- Slashes are converted to hyphens for filesystem compatibility
+- Examples:
+  - `feature/user-auth` → `feature-user-auth`
+  - `hotfix/critical-bug` → `hotfix-critical-bug`
+
+**Example Paths:**
+
+```
+~/worktrees/myproject/main
+~/worktrees/myproject/feature-user-auth
+~/worktrees/myproject/hotfix-critical-bug
+```
+
+## Usage Examples
+
+### Typical Workflow
+
+```bash
+# List current worktrees
+gwm list
+
+# Add worktree for PR review
+gwm add -r feature/new-dashboard
+
+# Work on the feature...
+
+# Navigate between worktrees
+wgo main        # Switch to main branch
+wgo dashboard   # Switch back to feature
+
+# Open different worktree in VS Code
+gwm code api-refactor
+
+# Clean up when done
+gwm clean       # Interactive cleanup
+gwm remove      # Remove specific worktrees
+```
+
+### Command Examples
+
+```bash
+# Interactive branch selection for new worktree
+gwm add
+
+# Add worktree from remote branch
+gwm add -r hotfix/critical-bug
+
+# Add new feature branch from main
+gwm add new-feature --from main
+
+# Multi-select worktree removal
+gwm remove feature
+
+# Auto-cleanup merged branches
+gwm clean -y
+
+# Quick navigation with fuzzy search
+wgo dash        # Matches "feature-dashboard"
+```
 
 ## Development
 
+### Setup
+
 ```bash
-# Clone and setup
-git clone https://github.com/your-username/wtm.git
-cd wtm
+git clone https://github.com/shuto-otaki/wtm.git
+cd gwm
 pnpm install
-
-# Development mode
-pnpm dev
-
-# Build
-pnpm build
-
-# Test locally
-pnpm link --global
 ```
+
+### Available Scripts
+
+```bash
+pnpm dev                # Watch mode compilation
+pnpm build              # Compile TypeScript
+pnpm start              # Run compiled CLI
+pnpm test               # Run tests with Vitest
+pnpm test:coverage      # Generate coverage report
+pnpm test:ui            # Launch Vitest UI
+pnpm lint               # ESLint check
+pnpm lint:fix           # ESLint fix
+pnpm format             # Prettier format
+```
+
+### Testing Locally
+
+```bash
+pnpm build
+pnpm link --global
+gwm --help              # Test the CLI
+```
+
+### Architecture
+
+- **Entry Point**: `src/index.tsx` - Command routing and argument parsing
+- **Components**: `src/components/` - React components for each command's UI
+- **Utilities**: `src/utils/` - Git operations, CLI parsing, formatting helpers
+- **Types**: `src/types/` - TypeScript type definitions
+- **Config**: `src/config.ts` - Configuration file handling
+- **Tests**: `test/` - Unit tests for utilities and components
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+2. Add your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
