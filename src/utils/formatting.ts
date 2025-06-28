@@ -25,6 +25,7 @@ export function getOptimalColumnWidths(
   const minPathWidth = Math.max(20, Math.min(maxPathLength, 50));
 
   // 残りの幅を配分
+  // 画面が極端に狭い場合に負値にならないようクランプ
   const remainingWidth = terminalWidth - 30; // STATUS, HEAD, spacingのための余白
   const totalMinWidth = minBranchWidth + minPathWidth;
 

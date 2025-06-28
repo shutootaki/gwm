@@ -141,8 +141,9 @@ export function validateBranchName(branchName: string): string | null {
     return 'Branch name cannot be empty';
   }
 
-  // Git ブランチ名の制約をチェック
-  const invalidChars = /[~^:?*[\]\\]/;
+  // Git ブランチ名に使用できない文字をチェック。
+  // 文字クラス内で '[' ']' '\\' を表現するため、それぞれ \\[ \\] \\\\ とエスケープする。
+  const invalidChars = /[~^:?*\\[\]]/;
   if (invalidChars.test(branchName)) {
     return 'Branch name contains invalid characters (~^:?*[]\\)';
   }
