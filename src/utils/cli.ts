@@ -13,6 +13,11 @@ export interface CleanArgs {
   yes: boolean;
 }
 
+export interface GoArgs {
+  query?: string;
+  openCode: boolean;
+}
+
 export function parseAddArgs(args: string[]): AddArgs {
   let branchName: string | undefined;
   let isRemote = false;
@@ -70,6 +75,25 @@ export function parseCleanArgs(args: string[]): CleanArgs {
   }
 
   return { yes };
+}
+
+export function parseGoArgs(args: string[]): GoArgs {
+  let query: string | undefined;
+  let openCode = false;
+
+  for (let i = 1; i < args.length; i++) {
+    // start from 1 to skip 'go' command
+    const arg = args[i];
+
+    if (arg === '-c' || arg === '--code') {
+      openCode = true;
+    } else if (!arg.startsWith('-') && !query) {
+      // First non-flag argument is the query
+      query = arg;
+    }
+  }
+
+  return { query, openCode };
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {
