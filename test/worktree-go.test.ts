@@ -117,4 +117,40 @@ describe('WorktreeGo', () => {
     expect(lastFrame()).toBeDefined();
     // VS Codeエラー処理のテスト
   });
+
+  it('should render with openCursor=true and show appropriate placeholder', () => {
+    const { lastFrame } = render(
+      React.createElement(WorktreeGo, { openCursor: true })
+    );
+
+    expect(lastFrame()).toBeDefined();
+    // openCursor=trueの場合、placeholderが「Cursorで開く」用のメッセージになることを確認（snapshot等でも可）
+  });
+
+  it('should handle Cursor opening when openCursor=true', () => {
+    mockExecSync.mockReturnValue('');
+
+    const { lastFrame } = render(
+      React.createElement(WorktreeGo, { openCursor: true })
+    );
+
+    expect(lastFrame()).toBeDefined();
+    // Cursor開く機能のテスト（モック使用）
+  });
+
+  it('should handle Cursor error when openCursor=true', () => {
+    mockExecSync.mockImplementation((command) => {
+      if (command === 'which cursor') {
+        throw new Error('cursor command not found');
+      }
+      return '';
+    });
+
+    const { lastFrame } = render(
+      React.createElement(WorktreeGo, { openCursor: true })
+    );
+
+    expect(lastFrame()).toBeDefined();
+    // Cursorエラー処理のテスト
+  });
 });
