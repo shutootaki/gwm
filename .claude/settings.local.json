@@ -33,8 +33,13 @@
       "Bash(/bin/rm:*)",
       "Bash(rg:*)",
       "Bash(pnpm dev:*)",
-      "Bash(eas build:*)"
+      "Bash(eas build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm audit:*)"
     ],
-    "deny": ["Bash(git:*)"]
+    "deny": [
+      "Bash(git:*)"
+    ]
   }
 }
