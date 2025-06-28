@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { loadConfig } from '../config.js';
 
 export interface Worktree {
   path: string;
