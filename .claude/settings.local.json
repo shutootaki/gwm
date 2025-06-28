@@ -37,8 +37,15 @@
       "Bash(pnpm lint:*)",
       "Bash(pnpm build:*)",
       "Bash(pnpm audit:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm start:*)",
+      "Bash(timeout 5s pnpm start add)",
+      "Bash(pnpm typecheck:*)"
     ],
-    "deny": ["Bash(git:*)"]
+    "deny": [
+      "Bash(git:*)"
+    ]
   }
 }

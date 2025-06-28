@@ -37,11 +37,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shuto-otaki/wtm.git"
+    "url": "git+https://github.com/shutootaki/gwm.git"
   },
-  "homepage": "https://github.com/shuto-otaki/wtm#readme",
+  "homepage": "https://github.com/shutootaki/gwm#readme",
   "bugs": {
-    "url": "https://github.com/shuto-otaki/wtm/issues"
+    "url": "https://github.com/shutootaki/gwm/issues"
   },
   "engines": {
     "node": ">=16.0.0"

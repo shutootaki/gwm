@@ -9,7 +9,7 @@ export interface Config {
 }
 
 const DEFAULT_CONFIG: Config = {
-  worktree_base_path: join(homedir(), 'worktrees'),
+  worktree_base_path: join(homedir(), 'git-worktrees'),
   main_branches: ['main', 'master', 'develop'],
 };
 

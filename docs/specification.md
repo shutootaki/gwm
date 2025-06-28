@@ -27,10 +27,10 @@
 
 ### 2.2. Worktree の作成場所
 
-- **デフォルトパス:** 新しい worktree は `~/worktrees/<repository-name>/<branch-name>` に作成される。
+- **デフォルトパス:** 新しい worktree は `~/git-worktrees/<repository-name>/<branch-name>` に作成される。
   - `<repository-name>` は Git リポジトリのディレクトリ名。
   - `<branch-name>` は `feature/user-auth` のようなスラッシュを含むブランチの場合、`feature-user-auth` のようにハイフンに変換される。
-- **設定によるカスタマイズ:** ユーザーは設定ファイルでベースパス (`~/worktrees`) を変更できる。
+- **設定によるカスタマイズ:** ユーザーは設定ファイルでベースパス (`~/git-worktrees`) を変更できる。
 
 ### 2.3. 対話的インターフェース (Interactive UI)
 
@@ -42,7 +42,7 @@
 
 - **パス:** `~/.config/gwm/config.toml` または `~/.gwmrc`
 - **設定項目:**
-  - `worktree_base_path`: worktree を作成するベースディレクトリ (例: `"/Users/myuser/dev/worktrees"`)
+  - `worktree_base_path`: worktree を作成するベースディレクトリ (例: `"/Users/myuser/dev/git-worktrees"`)
   - `main_branches`: メインラインとなるブランチ名のリスト (例: `["main", "master", "develop"]`)。`clean`コマンドや`add`コマンドのデフォルト分岐元として使用する。
 
 ## 3\. コマンド仕様 (Command Specifications)
@@ -62,8 +62,8 @@
   STATUS      BRANCH                   PATH                                  HEAD
   ----------- ------------------------ ------------------------------------- --------
   * ACTIVE    feature/new-ui           /path/to/project                      a1b2c3d Add new button
-    PRUNABLE  fix/login-bug (merged)   ~/worktrees/project/fix-login-bug     e4f5g6h Fix typo
-    NORMAL    feature/api-cache        ~/worktrees/project/feature-api-cache c7d8e9f Implement caching
+    PRUNABLE  fix/login-bug (merged)   ~/git-worktrees/project/fix-login-bug     e4f5g6h Fix typo
+    NORMAL    feature/api-cache        ~/git-worktrees/project/feature-api-cache c7d8e9f Implement caching
   ```
   - **STATUS:**
     - `ACTIVE`: 現在のディレクトリが属する worktree。`*` を付ける。
@@ -75,26 +75,84 @@
 
 ### 3.2. `gwm add [branch_name]`
 
-- **目的:** 指定されたブランチから新しい worktree を作成する。
+- **目的:** 新しいworktreeを作成する。主に以下の2つのユースケースをサポートする：
+  1. **新規ブランチ作成** - デフォルトブランチから分岐した新しいブランチでworktreeを作成（並行開発用）
+  2. **リモートブランチ取得** - リモートブランチからworktreeを作成（PRレビュー用）
+
 - **構文:** `gwm add [branch_name] [-r | --remote] [--from <base_branch>]`
+
 - **引数:**
-  - `branch_name` (任意): 作成する worktree のブランチ名。省略した場合、対話的にリモートブランチを選択する UI を起動する。
+  - `branch_name` (任意): 作成するworktreeのブランチ名。省略した場合、対話的UIを起動する。
+
 - **オプション:**
-  - `-r, --remote`: `branch_name`をリモートブランチ (`origin/branch_name`) として扱う。
-  - `--from <base_branch>`: `branch_name`を新規作成する際の分岐元ブランチを指定する。**\<ins\>デフォルトは設定ファイル `main_branches` の最初のブランチ (例: `main`)\</ins\>。**
+  - `-r, --remote`: リモートブランチからworktreeを作成するモードに切り替える
+  - `--from <base_branch>`: 新規ブランチ作成時の分岐元ブランチを指定（デフォルト: `main_branches`の最初のブランチ）
+
+- **対話的UI（引数なしの場合）:**
+  - **デフォルトモード: 新規ブランチ入力**
+    - ブランチ名の入力フィールドが表示される
+    - リアルタイムでブランチ名の妥当性検証を行う
+    - 作成予定のworktreeパスをプレビュー表示
+    - Git のブランチ名制約に従った入力制限：
+      - 無効文字（`~^:?*[]\`）の禁止
+      - ピリオド（`.`）で開始・終了の禁止
+      - 連続ピリオド（`..`）の禁止
+      - スペースの禁止
+      - 最大50文字制限
+
+  - **キーボード操作:**
+    - `Enter`: ブランチ作成・worktree作成を実行（妥当な入力時のみ）
+    - `Tab`: リモートブランチ選択モードに切り替え
+    - `Esc`: キャンセル
+    - `Ctrl+U`: 入力内容をクリア
+
+  - **リモートブランチ選択モード:**
+    - `Tab`キーまたは`-r`オプションで起動
+    - リモートブランチ一覧をファジーサーチで選択
+    - 自動で`git fetch origin`を実行してリモート情報を更新
+    - ブランチ統計情報とプレビューを表示
+
 - **実行フロー:**
-  1.  **`branch_name`が指定されている場合:**
-      - **ローカル/新規ブランチの場合（`-r`なし）:**
-        - ローカルに`branch_name`が存在すれば、そのブランチで worktree を作成する。
-        - 存在しなければ、`--from`で指定されたブランチから`branch_name`を新規作成し、そのブランチで worktree を作成する。
-      - **リモートブランチの場合（`-r`あり）:**
-        - `git fetch origin`を実行する。
-        - リモートブランチ`origin/<branch_name>`を追跡するローカルブランチ`branch_name`を作成する。
-        - ローカルブランチ`branch_name`で worktree を作成する。
-  2.  **`branch_name`が省略された場合:**
-      - リモートブランチの一覧を取得し、対話的 UI を表示する。
-      - ユーザーが選択したリモートブランチで、上記のフロー（リモートブランチの場合）を実行する。
-  3.  成功した場合、作成された worktree のフルパスを標準出力に出力する。
+  1. **ブランチ名が指定されている場合:**
+     - **新規/ローカルブランチモード（`-r`なし）:**
+       - ローカルブランチ`branch_name`の存在確認（`git show-ref --verify`）
+       - 存在する場合: 既存ブランチでworktreeを作成
+       - 存在しない場合: `--from`指定ブランチ（デフォルト: メインブランチ）から新規作成
+     - **リモートブランチモード（`-r`あり）:**
+       - `git fetch origin`でリモート情報を更新
+       - `origin/branch_name`からローカル追跡ブランチを作成
+
+  2. **ブランチ名が省略された場合:**
+     - **デフォルト: 新規ブランチ入力モード**
+       - TextInputコンポーネントでブランチ名入力
+       - リアルタイム妥当性検証とプレビュー
+     - **`-r`指定時: リモートブランチ選択モード**
+       - リモートブランチ一覧取得後、SelectListコンポーネント表示
+
+  3. **worktree作成:**
+     - 作成場所: `{worktree_base_path}/{repo_name}/{sanitized_branch_name}`
+     - ブランチ名正規化: スラッシュ（`/`）をハイフン（`-`）に変換
+     - 成功時: 作成されたworktreeのフルパスを表示
+     - エラー時: 詳細なエラーメッセージを表示
+
+- **作成されるGitコマンド例:**
+
+  ```bash
+  # 新規ブランチ作成
+  git worktree add "/path/to/git-worktrees/repo/feature-auth" -b "feature/auth" "main"
+
+  # 既存ローカルブランチ
+  git worktree add "/path/to/git-worktrees/repo/existing-branch" "existing-branch"
+
+  # リモートブランチから作成
+  git worktree add "/path/to/git-worktrees/repo/feature-api" -b "feature/api" "origin/feature/api"
+  ```
+
+- **UX設計原則:**
+  - 新規ブランチ作成を主要ユースケースとして優先
+  - 最小限のキーストロークで操作完了
+  - リアルタイムフィードバックによる入力ミスの防止
+  - モード切り替えによる柔軟な操作フロー
 
 ---
 

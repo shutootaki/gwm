@@ -217,3 +217,33 @@ export function removeWorktree(path: string, force: boolean = false): void {
     );
   }
 }
+
+/**
+ * Gitリポジトリ名を取得する
+ * リモートのorigin URLからリポジトリ名を抽出する
+ * フォールバックとして現在のディレクトリ名を使用する
+ */
+export function getRepositoryName(): string {
+  try {
+    const remoteUrl = execSync('git remote get-url origin', {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+
+    // GitHubのURLからリポジトリ名を抽出
+    // HTTPS: https://github.com/user/repo.git
+    // SSH: git@github.com:user/repo.git
+    const match = remoteUrl.match(/\/([^/]+?)(?:\.git)?$/);
+    if (match && match[1]) {
+      return match[1];
+    }
+  } catch {
+    // リモートが存在しない場合やエラーの場合はフォールバック
+    console.warn(
+      'Could not get repository name from remote, falling back to directory name'
+    );
+  }
+
+  // フォールバック: 現在のディレクトリ名を使用
+  return process.cwd().split('/').pop() || 'unknown';
+}

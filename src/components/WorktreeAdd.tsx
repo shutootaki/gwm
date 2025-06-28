@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
-import { join, basename } from 'path';
+import { join } from 'path';
 import { loadConfig } from '../config.js';
 import { SelectList } from './SelectList.js';
+import {
+  TextInput,
+  validateBranchName,
+  generateWorktreePreview,
+} from './TextInput.js';
 import { SelectItem } from '../types/index.js';
 import { formatErrorForDisplay } from '../utils/index.js';
+import { getRepositoryName } from '../utils/git.js';
 
 // シェルエスケープ用のヘルパー関数
 function escapeShellArg(arg: string): string {
@@ -23,6 +29,8 @@ interface RemoteBranch {
   fullName: string;
 }
 
+type ViewMode = 'input' | 'select' | 'loading';
+
 export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   branchName,
   isRemote = false,
@@ -31,14 +39,15 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [remoteBranches, setRemoteBranches] = useState<RemoteBranch[]>([]);
-  const [showBranchSelection, setShowBranchSelection] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('input');
+  const [isRemoteBranchesLoaded, setIsRemoteBranchesLoaded] = useState(false);
 
   const config = loadConfig();
 
   const createWorktree = useCallback(
     (branch: string, remote: boolean) => {
       try {
-        const repoName = basename(process.cwd());
+        const repoName = getRepositoryName();
         const sanitizedBranch = branch.replace(/\//g, '-');
         const worktreePath = join(
           config.worktree_base_path,
@@ -104,7 +113,8 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
         });
 
       setRemoteBranches(branches);
-      setShowBranchSelection(true);
+      setIsRemoteBranchesLoaded(true);
+      setViewMode('select');
     } catch (err) {
       setError(formatErrorForDisplay(err));
     }
@@ -114,9 +124,13 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     if (branchName) {
       // 引数でブランチ名が指定された場合、直接作成
       createWorktree(branchName, isRemote);
-    } else {
-      // 引数なしの場合、リモートブランチ一覧を取得して選択UI表示
+    } else if (isRemote) {
+      // -r フラグが指定された場合、リモートブランチ選択モードに
+      setViewMode('loading');
       fetchRemoteBranches();
+    } else {
+      // 引数なしの場合、デフォルトで新規ブランチ入力モード
+      setViewMode('input');
     }
   }, [branchName, isRemote, createWorktree]);
 
@@ -124,19 +138,48 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     createWorktree(item.value, true);
   };
 
+  const handleBranchInput = (branchName: string) => {
+    createWorktree(branchName, false);
+  };
+
   const handleCancel = () => {
     setError('Operation cancelled');
+  };
+
+  const handleModeSwitch = () => {
+    if (viewMode === 'input') {
+      // 新規ブランチ入力からリモートブランチ選択に切り替え
+      if (!isRemoteBranchesLoaded) {
+        setViewMode('loading');
+        fetchRemoteBranches();
+      } else {
+        setViewMode('select');
+      }
+    } else if (viewMode === 'select') {
+      // リモートブランチ選択から新規ブランチ入力に切り替え
+      setViewMode('input');
+    }
   };
 
   if (success) {
     return (
       <Box flexDirection="column">
         <Box marginBottom={1}>
-          <Text color="green" bold>Worktree created successfully!</Text>
+          <Text color="green" bold>
+            Worktree created successfully!
+          </Text>
         </Box>
-        <Box flexDirection="column" borderStyle="single" borderColor="green" padding={1}>
+        <Box
+          flexDirection="column"
+          borderStyle="single"
+          borderColor="green"
+          padding={1}
+        >
           <Text color="white">Location:</Text>
-          <Text color="cyan" bold>  {success}</Text>
+          <Text color="cyan" bold>
+            {' '}
+            {success}
+          </Text>
           <Text color="gray">
             Use <Text color="cyan">cd &quot;{success}&quot;</Text> to navigate
           </Text>
@@ -149,19 +192,38 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     return (
       <Box flexDirection="column">
         <Box marginBottom={1}>
-          <Text color="red" bold>Failed to create worktree</Text>
-        </Box>
-        <Box flexDirection="column" borderStyle="single" borderColor="red" padding={1}>
-          <Text color="red">{error}</Text>
-          <Text color="gray">
-            Branch may already exist or permission issue
+          <Text color="red" bold>
+            Failed to create worktree
           </Text>
+        </Box>
+        <Box
+          flexDirection="column"
+          borderStyle="single"
+          borderColor="red"
+          padding={1}
+        >
+          <Text color="red">{error}</Text>
+          <Text color="gray">Branch may already exist or permission issue</Text>
         </Box>
       </Box>
     );
   }
 
-  if (showBranchSelection) {
+  if (viewMode === 'input') {
+    return (
+      <TextInput
+        title="Create new worktree"
+        placeholder="Enter new branch name..."
+        onSubmit={handleBranchInput}
+        onCancel={handleCancel}
+        onModeSwitch={handleModeSwitch}
+        validate={validateBranchName}
+        preview={generateWorktreePreview}
+      />
+    );
+  }
+
+  if (viewMode === 'select') {
     const items: SelectItem[] = remoteBranches.map((branch) => ({
       label: branch.name,
       value: branch.name,
@@ -178,6 +240,7 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     );
   }
 
+  // viewMode === 'loading'
   return (
     <Box flexDirection="column">
       <Text color="cyan">Fetching remote branches...</Text>

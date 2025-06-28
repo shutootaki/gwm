@@ -37,7 +37,7 @@ npm install -g gwm
 ### ソースから
 
 ```bash
-git clone https://github.com/shuto-otaki/wtm.git
+git clone https://github.com/shutootaki/gwm.git
 cd gwm
 pnpm install
 pnpm build
@@ -256,7 +256,7 @@ wgo dash        # "feature-dashboard"にマッチ
 ### セットアップ
 
 ```bash
-git clone https://github.com/shuto-otaki/wtm.git
+git clone https://github.com/shutootaki/gwm.git
 cd gwm
 pnpm install
 ```

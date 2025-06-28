@@ -84,7 +84,9 @@ export const SelectList: React.FC<SelectListProps> = ({
     <Box flexDirection="column">
       {/* Title */}
       <Box marginBottom={1}>
-        <Text color="cyan" bold>{title}</Text>
+        <Text color="cyan" bold>
+          {title}
+        </Text>
       </Box>
 
       {/* Stats */}
@@ -94,7 +96,8 @@ export const SelectList: React.FC<SelectListProps> = ({
             {filteredItems.length} / {items.length} items
             {hasSelection && (
               <>
-                {' '}• {selectedIndex + 1} of {filteredItems.length}
+                {' '}
+                • {selectedIndex + 1} of {filteredItems.length}
               </>
             )}
           </Text>
@@ -106,7 +109,9 @@ export const SelectList: React.FC<SelectListProps> = ({
         <Box flexDirection="column">
           <Text color="gray">{placeholder}</Text>
           <Box marginTop={0}>
-            <Text color="cyan" bold>❯ </Text>
+            <Text color="cyan" bold>
+              ❯{' '}
+            </Text>
             <Text>{query}</Text>
             <Text color="cyan">█</Text>
           </Box>
@@ -132,7 +137,10 @@ export const SelectList: React.FC<SelectListProps> = ({
                 <Box key={item.value}>
                   <Text color={isSelected ? 'cyan' : 'white'}>
                     {isSelected ? '▶ ' : '  '}
-                    <Text color={isSelected ? 'cyan' : 'white'} bold={isSelected}>
+                    <Text
+                      color={isSelected ? 'cyan' : 'white'}
+                      bold={isSelected}
+                    >
                       {item.label}
                     </Text>
                   </Text>
@@ -153,15 +161,22 @@ export const SelectList: React.FC<SelectListProps> = ({
       {/* Preview */}
       {hasSelection && currentItem && (
         <Box marginBottom={1}>
-          <Box flexDirection="column" borderStyle="single" borderColor="gray" padding={1}>
-            <Text color="yellow" bold>Preview</Text>
+          <Box
+            flexDirection="column"
+            borderStyle="single"
+            borderColor="gray"
+            padding={1}
+          >
+            <Text color="yellow" bold>
+              Preview
+            </Text>
             <Text color="white">
-              <Text color="cyan" bold>{currentItem.label}</Text>
+              <Text color="cyan" bold>
+                {currentItem.label}
+              </Text>
             </Text>
             {currentItem.value !== currentItem.label && (
-              <Text color="gray">
-                Value: {currentItem.value}
-              </Text>
+              <Text color="gray">Value: {currentItem.value}</Text>
             )}
           </Box>
         </Box>
@@ -170,7 +185,9 @@ export const SelectList: React.FC<SelectListProps> = ({
       {/* Help */}
       <Box>
         <Text color="gray">
-          <Text color="cyan">↑/↓</Text> navigate • <Text color="green">Enter</Text> select • <Text color="red">Esc</Text> cancel • <Text color="yellow">Ctrl+U</Text> clear
+          <Text color="cyan">↑/↓</Text> navigate •{' '}
+          <Text color="green">Enter</Text> select • <Text color="red">Esc</Text>{' '}
+          cancel • <Text color="yellow">Ctrl+U</Text> clear
         </Text>
       </Box>
     </Box>
