@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
 import { getWorktreesWithStatus } from '../src/utils/git.js';
 import { loadConfig } from '../src/config.js';
@@ -87,7 +87,7 @@ locked`;
     expect(worktrees[0]).toMatchObject({
       path: '/Users/test/project',
       branch: 'refs/heads/main',
-      status: 'NORMAL',
+      status: 'MAIN',
       isMain: true,
     });
 
@@ -95,15 +95,15 @@ locked`;
     expect(worktrees[1]).toMatchObject({
       path: '/Users/test/git-worktrees/project/feature-branch',
       branch: 'refs/heads/feature-branch',
-      status: 'NORMAL',
+      status: 'OTHER',
       isMain: false,
     });
 
-    // ロックされたworktree（リモートトラッキングなし）
+    // ロックされたworktree
     expect(worktrees[2]).toMatchObject({
       path: '/Users/test/git-worktrees/project/bugfix-login',
       branch: 'refs/heads/bugfix-login',
-      status: 'LOCKED',
+      status: 'OTHER',
       isMain: false,
     });
   });
@@ -140,7 +140,7 @@ branch refs/heads/feature-branch`;
 
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[0].status).toBe('NORMAL');
+    expect(worktrees[0].status).toBe('MAIN');
     expect(worktrees[0].isActive).toBe(false);
     expect(worktrees[1].status).toBe('ACTIVE');
     expect(worktrees[1].isActive).toBe(true);
@@ -188,7 +188,7 @@ branch refs/heads/merged-feature`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/merged-feature',
-      status: 'PRUNABLE',
+      status: 'OTHER',
     });
   });
 
@@ -224,7 +224,7 @@ branch refs/heads/deleted-branch`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/deleted-branch',
-      status: 'PRUNABLE',
+      status: 'OTHER',
     });
   });
 
@@ -275,7 +275,7 @@ detached`;
     expect(worktrees[1]).toMatchObject({
       path: '/Users/test/git-worktrees/project/detached-head',
       branch: '(detached)',
-      status: 'NORMAL',
+      status: 'OTHER',
     });
   });
 
@@ -300,7 +300,7 @@ bare`;
     expect(worktrees[0]).toMatchObject({
       path: '/Users/test/project.git',
       branch: '(bare)',
-      status: 'NORMAL',
+      status: 'MAIN',
       isMain: true,
     });
   });
@@ -349,7 +349,7 @@ branch refs/heads/feature`;
 
     expect(worktrees[1]).toMatchObject({
       branch: 'refs/heads/feature',
-      status: 'PRUNABLE',
+      status: 'OTHER',
     });
   });
 

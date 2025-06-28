@@ -14,7 +14,7 @@ export const Welcome: React.FC = () => {
       <Text> list, ls List all worktrees with status</Text>
       <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
       <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
-      <Text> clean [-y] Clean merged/deleted worktrees</Text>
+      {/* <Text> clean [-y] Clean merged/deleted worktrees</Text> */}
       <Text> go [query] [--code] [--cursor] Navigate or open worktree</Text>
       <Text></Text>
       <Text bold>Options:</Text>
@@ -30,8 +30,8 @@ export const Welcome: React.FC = () => {
       <Text> gwm add feature/new-ui Add worktree from local branch</Text>
       <Text> gwm add -r origin/main Add from remote branch</Text>
       <Text> gwm remove Interactive worktree removal</Text>
-      <Text> gwm clean Interactive cleanup of old worktrees</Text>
-      <Text> gwm clean -y Auto-cleanup without confirmation</Text>
+      {/* <Text> gwm clean Interactive cleanup of old worktrees</Text> */}
+      {/* <Text> gwm clean -y Auto-cleanup without confirmation</Text> */}
       <Text></Text>
       <Text color="gray">
         Configuration: ~/.config/gwm/config.toml or ~/.gwmrc
