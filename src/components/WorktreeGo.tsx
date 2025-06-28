@@ -28,12 +28,12 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
         const escapedPath = `"${worktree.path.replace(/"/g, '\\"')}"`;
         execSync(`code ${escapedPath}`, { stdio: 'inherit' });
 
-        setSuccess(`Opened ${worktree.branch} in VS Code`);
+        setSuccess(`Opened ${worktree.branch} in Editor`);
         setTimeout(() => process.exit(0), 1000);
       } catch (err) {
         if (err instanceof Error && err.message.includes('which code')) {
           setError(
-            'VS Code command "code" not found. Please install VS Code and add it to your PATH.'
+            'Editor command "code" not found. Please install Editor and add it to your PATH.'
           );
         } else {
           setError(formatErrorForDisplay(err));
