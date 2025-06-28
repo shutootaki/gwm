@@ -6,7 +6,6 @@ import { SelectTest } from './components/SelectTest.js';
 import { Welcome } from './components/Welcome.js';
 import { WorktreeAdd } from './components/WorktreeAdd.js';
 import { WorktreeClean } from './components/WorktreeClean.js';
-import { WorktreeCode } from './components/WorktreeCode.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
@@ -15,6 +14,7 @@ import {
   parseAddArgs,
   parseRemoveArgs,
   parseCleanArgs,
+  parseGoArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -46,10 +46,10 @@ const App: React.FC = () => {
       const { query, force } = parseRemoveArgs(args);
       return <WorktreeRemove query={query} force={force} />;
     }
-    case 'go':
-      return <WorktreeGo query={args[1]} />;
-    case 'code':
-      return <WorktreeCode query={args[1]} />;
+    case 'go': {
+      const { query, openCode } = parseGoArgs(args);
+      return <WorktreeGo query={query} openCode={openCode} />;
+    }
     case 'clean': {
       const { yes } = parseCleanArgs(args);
       return <WorktreeClean yes={yes} />;

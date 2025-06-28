@@ -45,7 +45,6 @@ The CLI follows a component-based architecture:
 - `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
 - `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
-- `gwm code [query]` - Open selected worktree in VS Code
 
 ## Key Features
 
