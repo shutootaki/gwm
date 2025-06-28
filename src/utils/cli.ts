@@ -69,9 +69,11 @@ export function parseCleanArgs(args: string[]): CleanArgs {
 export function parseGoArgs(args: string[]): {
   query?: string;
   openCode: boolean;
+  openCursor: boolean;
 } {
   let query: string | undefined;
   let openCode = false;
+  let openCursor = false;
 
   for (let i = 1; i < args.length; i++) {
     // start from 1 to skip 'go' command
@@ -79,13 +81,15 @@ export function parseGoArgs(args: string[]): {
 
     if (arg === '-c' || arg === '--code') {
       openCode = true;
+    } else if (arg === '--cursor') {
+      openCursor = true;
     } else if (!arg.startsWith('-') && !query) {
       // First non-flag argument is the query
       query = arg;
     }
   }
 
-  return { query, openCode };
+  return { query, openCode, openCursor };
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {
