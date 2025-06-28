@@ -45,7 +45,6 @@ The CLI follows a component-based architecture:
 - `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
 - `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
-- `gwm code [query]` - Open selected worktree in VS Code
 
 ## Key Features
 
@@ -144,3 +143,9 @@ Note: Some test files reference `ink-testing-library` which needs to be installe
 - **Utilities**: Git operations, CLI parsing, configuration handling complete
 - **Testing**: Comprehensive unit tests for utilities
 - **Missing**: `ink-testing-library` dependency for UI component tests
+
+## Rules（Important）
+
+- Design and code properly with UX as the top priority
+- Always write tests when coding
+- After coding, check the operation as much as possible.

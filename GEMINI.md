@@ -4,35 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`gwm` (worktree manager) is a CLI tool designed to streamline Git worktree management with an interactive, React-based terminal UI. The project is currently in the specification phase with detailed requirements defined but no implementation yet.
+`gwm` (worktree manager) is a TypeScript CLI tool for Git worktree management with an interactive React-based terminal UI built with Ink. The project is actively implemented with core functionality completed.
 
 ## Project Structure
 
-This is a TypeScript-based CLI tool with the following planned architecture:
-
-- **Language**: TypeScript for type safety and development experience
-- **UI Framework**: React for declarative UI components
-- **CLI Library**: Ink for React-based terminal interfaces
+- **Language**: TypeScript with ES modules
+- **UI Framework**: React with Ink for terminal interfaces
+- **Testing**: Vitest for unit testing
 - **Package Manager**: pnpm
 - **Configuration**: TOML format (`~/.config/gwm/config.toml`)
 
-## Core Commands (Planned)
+## Development Commands
 
-### Development Commands
+- `pnpm build` - Compile TypeScript to dist/
+- `pnpm dev` - Watch mode compilation
+- `pnpm start` - Run compiled CLI tool
+- `pnpm test` - Run tests with Vitest
+- `pnpm test:run` - Run tests once
+- `pnpm test:ui` - Launch Vitest UI
+- `pnpm test:coverage` - Generate coverage report
+- `pnpm lint` - ESLint check
+- `pnpm lint:fix` - ESLint fix
+- `pnpm format` - Prettier format
 
-- `pnpm init` - Initialize project with package.json
-- `pnpm add typescript ink react @types/react` - Install core dependencies
-- `pnpm link --global` - Register gwm command locally for testing
-- `pnpm add -D eslint prettier` - Add code quality tools
+## Architecture
 
-### Main CLI Commands (Specification)
+The CLI follows a component-based architecture:
+
+- `src/index.tsx` - Main entry point with command routing
+- `src/components/` - React components for each command
+- `src/utils/` - Core utilities (CLI parsing, Git operations, formatting)
+- `src/types/` - TypeScript type definitions
+- `src/config.ts` - Configuration management
+- `test/` - Unit tests for all utilities and components
+
+## Main CLI Commands
 
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
 - `gwm add [branch_name]` - Add new worktree interactively or from specified branch
 - `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
 - `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
-- `gwm code [query]` - Open selected worktree in VS Code
 
 ## Key Features
 
@@ -115,8 +127,25 @@ The tool wraps several Git commands:
 - `git fetch --prune origin` - Update remote branch status
 - `git branch -r` - List remote branches
 
-## Current Status
+## Testing
 
-- **Specification**: Complete with detailed command behaviors
-- **Development Plan**: 5-phase roadmap defined
-- **Implementation**: Not started - ready for initial project setup
+Tests are located in `test/` directory using Vitest:
+
+- Run single test: `pnpm test <filename>`
+- Watch mode: `pnpm test --watch`
+- Coverage excludes UI components and main entry point
+
+Note: Some test files reference `ink-testing-library` which needs to be installed for component testing.
+
+## Current Implementation Status
+
+- **Core Commands**: All main commands implemented with React components
+- **Utilities**: Git operations, CLI parsing, configuration handling complete
+- **Testing**: Comprehensive unit tests for utilities
+- **Missing**: `ink-testing-library` dependency for UI component tests
+
+## Rules（Important）
+
+- Design and code properly with UX as the top priority
+- Always write tests when coding
+- After coding, check the operation as much as possible.

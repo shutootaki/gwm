@@ -26,7 +26,6 @@ A modern CLI tool for efficient Git worktree management with an interactive, Rea
 
 - Node.js 16+
 - Git 2.25+
-- VS Code (optional, for `gwm code` command)
 
 ### From npm (Coming Soon)
 
@@ -136,18 +135,6 @@ gwm go
 gwm go feature
 ```
 
-### `gwm code [query]`
-
-Open a worktree in Visual Studio Code.
-
-```bash
-# Interactive selection
-gwm code
-
-# Pre-filter selection
-gwm code feature
-```
-
 ## Shell Integration
 
 Add this function to your `~/.zshrc` or `~/.bashrc` for seamless navigation:
@@ -222,7 +209,7 @@ wgo main        # Switch to main branch
 wgo dashboard   # Switch back to feature
 
 # Open different worktree in VS Code
-gwm code api-refactor
+gwm go api-refactor --code
 
 # Clean up when done
 gwm clean       # Interactive cleanup

@@ -3,6 +3,7 @@ import {
   parseAddArgs,
   parseRemoveArgs,
   parseCleanArgs,
+  parseGoArgs,
   isHelpRequested,
 } from '../src/utils/cli.js';
 
@@ -201,6 +202,75 @@ describe('parseCleanArgs', () => {
 
     expect(result).toEqual({
       yes: true,
+    });
+  });
+});
+
+// goコマンドの引数解析をテスト
+describe('parseGoArgs', () => {
+  // 位置引数からのクエリ解析をテスト
+  it('should parse query from positional arguments', () => {
+    const args = ['go', 'feature'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: false,
+    });
+  });
+
+  // -cフラグの解析をテスト
+  it('should parse code flag (-c)', () => {
+    const args = ['go', 'feature', '-c'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
+    });
+  });
+
+  // --codeフラグの解析をテスト
+  it('should parse code flag (--code)', () => {
+    const args = ['go', 'feature', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
+    });
+  });
+
+  // クエリなしでcodeフラグの解析をテスト
+  it('should parse code flag without query', () => {
+    const args = ['go', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: true,
+    });
+  });
+
+  // クエリなしのgoコマンドの処理をテスト
+  it('should handle go command without arguments', () => {
+    const args = ['go'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: false,
+    });
+  });
+
+  // フラグとクエリの順序をテスト
+  it('should handle flag before query', () => {
+    const args = ['go', '-c', 'feature'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
     });
   });
 });

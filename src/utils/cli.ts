@@ -66,6 +66,28 @@ export function parseCleanArgs(args: string[]): CleanArgs {
   return { yes: hasFlag(args, ['-y', '--yes']) };
 }
 
+export function parseGoArgs(args: string[]): {
+  query?: string;
+  openCode: boolean;
+} {
+  let query: string | undefined;
+  let openCode = false;
+
+  for (let i = 1; i < args.length; i++) {
+    // start from 1 to skip 'go' command
+    const arg = args[i];
+
+    if (arg === '-c' || arg === '--code') {
+      openCode = true;
+    } else if (!arg.startsWith('-') && !query) {
+      // First non-flag argument is the query
+      query = arg;
+    }
+  }
+
+  return { query, openCode };
+}
+
 export function isHelpRequested(args: string[], command?: string): boolean {
   return args.includes('--help') || args.includes('-h') || command === 'help';
 }
