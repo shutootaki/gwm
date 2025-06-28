@@ -91,8 +91,19 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
 
   const fetchRemoteBranches = async () => {
     try {
-      // リモートの最新情報を取得
-      execSync('git fetch origin', { cwd: process.cwd() });
+      // リモート一覧を取得して fetch
+      const remotes = execSync('git remote', {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      })
+        .split('\n')
+        .map((r) => r.trim())
+        .filter(Boolean);
+
+      const targetRemotes = remotes.includes('origin') ? ['origin'] : remotes;
+      for (const remote of targetRemotes) {
+        execSync(`git fetch ${remote}`, { cwd: process.cwd() });
+      }
 
       // リモートブランチ一覧を取得
       const output = execSync('git branch -r', {
