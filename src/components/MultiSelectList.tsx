@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
+import { useEditableText } from '../hooks/useEditableText.js';
 
 interface MultiSelectListProps {
   items: SelectItem[];
@@ -23,7 +24,11 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
   title = 'Multi-select',
   showStats = true,
 }) => {
-  const [query, setQuery] = useState(initialQuery);
+  const {
+    value: query,
+    setValue: setQuery,
+    cursorPosition,
+  } = useEditableText({ initialValue: initialQuery, skipChars: [' '] });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -92,16 +97,7 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       return;
     }
 
-    if (key.ctrl && input === 'a') {
-      // 全選択/全解除
-      if (selectedItems.size === filteredItems.length) {
-        setSelectedItems(new Set());
-      } else {
-        setSelectedItems(new Set(filteredItems.map((item) => item.value)));
-      }
-      return;
-    }
-
+    // Space: 現在行の選択トグル
     if (input === ' ') {
       const currentItem = filteredItems[selectedIndex];
       if (currentItem) {
@@ -114,15 +110,6 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
         setSelectedItems(newSelected);
       }
       return;
-    }
-
-    if (key.backspace || key.delete) {
-      setQuery(query.slice(0, -1));
-      return;
-    }
-
-    if (input && input.length === 1 && input !== ' ') {
-      setQuery(query + input);
     }
   });
 
@@ -169,8 +156,9 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
             <Text color="cyan" bold>
               ❯{' '}
             </Text>
-            <Text>{query}</Text>
+            <Text>{query.slice(0, cursorPosition)}</Text>
             <Text color="cyan">█</Text>
+            <Text>{query.slice(cursorPosition)}</Text>
           </Box>
         </Box>
       </Box>
@@ -269,7 +257,6 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
             <Text color="red">Esc</Text> cancel
           </Text>
           <Text color="gray">
-            <Text color="cyan">Ctrl+A</Text> select all •{' '}
             <Text color="cyan">Ctrl+U</Text> clear search
           </Text>
         </Box>
