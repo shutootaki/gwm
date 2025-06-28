@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
-import { join } from 'path';
-import { loadConfig } from '../config.js';
 import { SelectList } from './SelectList.js';
 import {
   TextInput,
@@ -11,17 +9,15 @@ import {
 } from './TextInput.js';
 import { SelectItem } from '../types/index.js';
 import { formatErrorForDisplay } from '../utils/index.js';
-import { getRepositoryName } from '../utils/git.js';
-
-// シェルエスケープ用のヘルパー関数
-function escapeShellArg(arg: string): string {
-  return `"${arg.replace(/"/g, '\\"')}"`;
-}
+import { useWorktree } from '../hooks/useWorktree.js';
 
 interface WorktreeAddProps {
   branchName?: string;
   isRemote?: boolean;
   fromBranch?: string;
+  openCode?: boolean;
+  openCursor?: boolean;
+  outputPath?: boolean;
 }
 
 interface RemoteBranch {
@@ -35,6 +31,9 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   branchName,
   isRemote = false,
   fromBranch,
+  openCode = false,
+  openCursor = false,
+  outputPath = false,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -42,52 +41,14 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('input');
   const [isRemoteBranchesLoaded, setIsRemoteBranchesLoaded] = useState(false);
 
-  const config = loadConfig();
-
-  const createWorktree = useCallback(
-    (branch: string, remote: boolean) => {
-      try {
-        const repoName = getRepositoryName();
-        const sanitizedBranch = branch.replace(/\//g, '-');
-        const worktreePath = join(
-          config.worktree_base_path,
-          repoName,
-          sanitizedBranch
-        );
-
-        let command: string;
-
-        if (remote) {
-          // リモートブランチの場合
-          command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(`origin/${branch}`)}`;
-        } else {
-          // ローカルブランチまたは新規作成の場合
-          const baseBranch = fromBranch || config.main_branches[0];
-
-          // ローカルブランチが存在するかチェック
-          try {
-            execSync(
-              `git show-ref --verify --quiet ${escapeShellArg(`refs/heads/${branch}`)}`,
-              {
-                cwd: process.cwd(),
-              }
-            );
-            // 存在する場合、そのブランチで作成
-            command = `git worktree add ${escapeShellArg(worktreePath)} ${escapeShellArg(branch)}`;
-          } catch {
-            // 存在しない場合、新規作成
-            command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
-          }
-        }
-
-        execSync(command, { cwd: process.cwd() });
-        setSuccess(worktreePath);
-      } catch (err) {
-        setError(formatErrorForDisplay(err));
-      }
-    },
-    [config, fromBranch]
-  );
+  const { createWorktree } = useWorktree({
+    fromBranch,
+    openCode,
+    openCursor,
+    outputPath,
+    onSuccess: (data) => setSuccess(JSON.stringify(data)),
+    onError: setError,
+  });
 
   const fetchRemoteBranches = async () => {
     try {
@@ -162,6 +123,18 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   };
 
   if (success) {
+    let worktreePath: string;
+    let actions: string[] = [];
+
+    try {
+      const parsed = JSON.parse(success);
+      worktreePath = parsed.path;
+      actions = parsed.actions || [];
+    } catch {
+      // 後方互換性のため、文字列の場合はそのままパスとして扱う
+      worktreePath = success;
+    }
+
     return (
       <Box flexDirection="column">
         <Box marginBottom={1}>
@@ -178,11 +151,24 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
           <Text color="white">Location:</Text>
           <Text color="cyan" bold>
             {' '}
-            {success}
+            {worktreePath}
           </Text>
-          <Text color="gray">
-            Use <Text color="cyan">cd &quot;{success}&quot;</Text> to navigate
-          </Text>
+          {actions.length > 0 && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text color="white">Actions:</Text>
+              {actions.map((action, index) => (
+                <Text key={index} color="yellow">
+                  • {action}
+                </Text>
+              ))}
+            </Box>
+          )}
+          <Box marginTop={1}>
+            <Text color="gray">
+              Use <Text color="cyan">cd &quot;{worktreePath}&quot;</Text> to
+              navigate
+            </Text>
+          </Box>
         </Box>
       </Box>
     );

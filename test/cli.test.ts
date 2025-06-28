@@ -18,6 +18,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: false,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -30,6 +33,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -42,6 +48,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -54,6 +63,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: false,
       fromBranch: 'develop',
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -66,6 +78,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: 'develop',
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -78,6 +93,9 @@ describe('parseAddArgs', () => {
       branchName: undefined,
       isRemote: false,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -90,6 +108,65 @@ describe('parseAddArgs', () => {
       branchName: undefined,
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --code flag', () => {
+    const args = ['add', 'feature-branch', '--code'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: true,
+      openCursor: false,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --cursor flag', () => {
+    const args = ['add', 'feature-branch', '--cursor'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: false,
+      openCursor: true,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --cd flag', () => {
+    const args = ['add', 'feature-branch', '--cd'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: true,
+    });
+  });
+
+  it('should parse combination of --code and --cursor flags', () => {
+    const args = ['add', 'feature-branch', '--code', '--cursor'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: true,
+      openCursor: true,
+      outputPath: false,
     });
   });
 });
