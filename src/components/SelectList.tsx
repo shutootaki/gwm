@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
+import { useEditableText } from '../hooks/useEditableText.js';
 
 interface SelectListProps {
   items: SelectItem[];
@@ -23,7 +24,9 @@ export const SelectList: React.FC<SelectListProps> = ({
   title = 'Select',
   showStats = true,
 }) => {
-  const [query, setQuery] = useState(initialQuery);
+  const { value: query, cursorPosition } = useEditableText({
+    initialValue: initialQuery,
+  });
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // フィルタリングされた項目
@@ -62,19 +65,7 @@ export const SelectList: React.FC<SelectListProps> = ({
       return;
     }
 
-    if (key.ctrl && input === 'u') {
-      setQuery('');
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      setQuery(query.slice(0, -1));
-      return;
-    }
-
-    if (input && input.length === 1) {
-      setQuery(query + input);
-    }
+    // 文字列編集系は useEditableText フックが処理済み
   });
 
   const currentItem = filteredItems[selectedIndex];
@@ -112,8 +103,9 @@ export const SelectList: React.FC<SelectListProps> = ({
             <Text color="cyan" bold>
               ❯{' '}
             </Text>
-            <Text>{query}</Text>
+            <Text>{query.slice(0, cursorPosition)}</Text>
             <Text color="cyan">█</Text>
+            <Text>{query.slice(cursorPosition)}</Text>
           </Box>
         </Box>
       </Box>
@@ -187,7 +179,9 @@ export const SelectList: React.FC<SelectListProps> = ({
         <Text color="gray">
           <Text color="cyan">↑/↓</Text> navigate •{' '}
           <Text color="green">Enter</Text> select • <Text color="red">Esc</Text>{' '}
-          cancel • <Text color="yellow">Ctrl+U</Text> clear
+          cancel • <Text color="yellow">Ctrl+U</Text> clear •{' '}
+          <Text color="yellow">Ctrl+W/⌥⌫</Text> delete-word •{' '}
+          <Text color="yellow">Ctrl+A/B/F/E/D</Text> edit
         </Text>
       </Box>
     </Box>
