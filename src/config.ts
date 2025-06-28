@@ -23,12 +23,26 @@ export function loadConfig(): Config {
     if (existsSync(configPath)) {
       try {
         const content = readFileSync(configPath, 'utf8');
-        const parsed = TOML.parse(content) as Partial<Config>;
+        const parsed = TOML.parse(content) as Partial<Record<string, unknown>>;
+
+        const worktreeBasePath =
+          typeof parsed.worktree_base_path === 'string' &&
+          parsed.worktree_base_path.trim()
+            ? (parsed.worktree_base_path as string)
+            : DEFAULT_CONFIG.worktree_base_path;
+
+        const mainBranches = Array.isArray(parsed.main_branches)
+          ? (parsed.main_branches as unknown[]).filter(
+              (v): v is string => typeof v === 'string' && v.trim() !== ''
+            )
+          : DEFAULT_CONFIG.main_branches;
 
         return {
-          worktree_base_path:
-            parsed.worktree_base_path || DEFAULT_CONFIG.worktree_base_path,
-          main_branches: parsed.main_branches || DEFAULT_CONFIG.main_branches,
+          worktree_base_path: worktreeBasePath,
+          main_branches:
+            mainBranches.length > 0
+              ? mainBranches
+              : DEFAULT_CONFIG.main_branches,
         };
       } catch (error) {
         console.error(`Error reading config file ${configPath}:`, error);

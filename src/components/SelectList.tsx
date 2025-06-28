@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
+import { useEditableText } from '../hooks/useEditableText.js';
 
 interface SelectListProps {
   items: SelectItem[];
@@ -23,8 +24,14 @@ export const SelectList: React.FC<SelectListProps> = ({
   title = 'Select',
   showStats = true,
 }) => {
-  const [query, setQuery] = useState(initialQuery);
+  const {
+    value: query,
+    setValue: setQuery,
+    cursorPosition,
+  } = useEditableText({ initialValue: initialQuery });
+
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   // フィルタリングされた項目
   const filteredItems = items.filter((item) =>
@@ -38,6 +45,30 @@ export const SelectList: React.FC<SelectListProps> = ({
       setSelectedIndex(maxIndex);
     }
   }, [filteredItems.length, selectedIndex]);
+
+  // スクロール位置を項目数の範囲内に収める
+  useEffect(() => {
+    const maxScroll = Math.max(0, filteredItems.length - maxDisplayItems);
+    if (scrollOffset > maxScroll) {
+      setScrollOffset(Math.max(0, Math.min(maxScroll, selectedIndex)));
+    }
+  }, [filteredItems.length, maxDisplayItems, scrollOffset, selectedIndex]);
+
+  // ↓/↑ で選択を移動する共通ロジック
+  const moveSelection = (delta: number) => {
+    if (filteredItems.length === 0) return;
+    let nextIndex = selectedIndex + delta;
+    nextIndex = Math.max(0, Math.min(filteredItems.length - 1, nextIndex));
+
+    // スクロール位置を調整してカーソルを可視範囲内へ
+    if (nextIndex < scrollOffset) {
+      setScrollOffset(nextIndex);
+    } else if (nextIndex >= scrollOffset + maxDisplayItems) {
+      setScrollOffset(nextIndex - maxDisplayItems + 1);
+    }
+
+    setSelectedIndex(nextIndex);
+  };
 
   useInput((input, key) => {
     if (key.escape) {
@@ -53,32 +84,36 @@ export const SelectList: React.FC<SelectListProps> = ({
     }
 
     if (key.upArrow || (key.ctrl && input === 'p')) {
-      setSelectedIndex(Math.max(0, selectedIndex - 1));
+      moveSelection(-1);
       return;
     }
 
     if (key.downArrow || (key.ctrl && input === 'n')) {
-      setSelectedIndex(Math.min(filteredItems.length - 1, selectedIndex + 1));
+      moveSelection(1);
       return;
     }
 
+    // Ctrl+U: クエリ消去 & スクロール位置リセット
     if (key.ctrl && input === 'u') {
       setQuery('');
+      setScrollOffset(0);
       return;
-    }
-
-    if (key.backspace || key.delete) {
-      setQuery(query.slice(0, -1));
-      return;
-    }
-
-    if (input && input.length === 1) {
-      setQuery(query + input);
     }
   });
 
   const currentItem = filteredItems[selectedIndex];
   const hasSelection = filteredItems.length > 0;
+
+  // 可視アイテム計算
+  const visibleItems = filteredItems.slice(
+    scrollOffset,
+    scrollOffset + maxDisplayItems
+  );
+  const hiddenAbove = scrollOffset;
+  const hiddenBelow = Math.max(
+    0,
+    filteredItems.length - (scrollOffset + visibleItems.length)
+  );
 
   return (
     <Box flexDirection="column">
@@ -112,8 +147,9 @@ export const SelectList: React.FC<SelectListProps> = ({
             <Text color="cyan" bold>
               ❯{' '}
             </Text>
-            <Text>{query}</Text>
+            <Text>{query.slice(0, cursorPosition)}</Text>
             <Text color="cyan">█</Text>
+            <Text>{query.slice(cursorPosition)}</Text>
           </Box>
         </Box>
       </Box>
@@ -131,8 +167,16 @@ export const SelectList: React.FC<SelectListProps> = ({
           </Box>
         ) : (
           <Box flexDirection="column">
-            {filteredItems.slice(0, maxDisplayItems).map((item, index) => {
-              const isSelected = index === selectedIndex;
+            {/* 上に隠れた要素数表示 */}
+            {hiddenAbove > 0 && (
+              <Box>
+                <Text color="yellow">↑ {hiddenAbove} more</Text>
+              </Box>
+            )}
+
+            {visibleItems.map((item, index) => {
+              const globalIndex = scrollOffset + index;
+              const isSelected = globalIndex === selectedIndex;
               return (
                 <Box key={item.value}>
                   <Text color={isSelected ? 'cyan' : 'white'}>
@@ -147,11 +191,10 @@ export const SelectList: React.FC<SelectListProps> = ({
                 </Box>
               );
             })}
-            {filteredItems.length > maxDisplayItems && (
-              <Box marginTop={1}>
-                <Text color="yellow">
-                  ... {filteredItems.length - maxDisplayItems} more
-                </Text>
+
+            {hiddenBelow > 0 && (
+              <Box>
+                <Text color="yellow">↓ {hiddenBelow} more</Text>
               </Box>
             )}
           </Box>

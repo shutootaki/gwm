@@ -20,6 +20,8 @@ export function parseWorktrees(output: string): Worktree[] {
   for (const line of lines) {
     if (line.startsWith('worktree ')) {
       if (currentWorktree.path) {
+        if (!currentWorktree.branch) currentWorktree.branch = '(detached)';
+        if (!currentWorktree.head) currentWorktree.head = 'UNKNOWN';
         worktrees.push(currentWorktree as Worktree);
       }
       currentWorktree = {
@@ -44,6 +46,9 @@ export function parseWorktrees(output: string): Worktree[] {
   }
 
   if (currentWorktree.path) {
+    // フィールドのフォールバック値を付与
+    if (!currentWorktree.branch) currentWorktree.branch = '(detached)';
+    if (!currentWorktree.head) currentWorktree.head = 'UNKNOWN';
     worktrees.push(currentWorktree as Worktree);
   }
 
@@ -103,19 +108,23 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
  */
 export function fetchAndPrune(): void {
   try {
+    // origin を前提として fetch --prune を試みる
     execSync('git fetch --prune origin', {
       stdio: 'ignore',
       cwd: process.cwd(),
     });
   } catch (err) {
-    if (err instanceof Error && err.message.includes('No such remote')) {
+    const message = err instanceof Error ? err.message : String(err);
+
+    // origin が存在しない場合はユーザーフレンドリなメッセージを返す
+    if (/No such remote ['"]?origin['"]?/.test(message)) {
       throw new Error(
         'No remote named "origin" found. Please configure a remote repository.'
       );
     }
-    throw new Error(
-      `Failed to fetch and prune from remote: ${err instanceof Error ? err.message : 'Unknown error'}`
-    );
+
+    // それ以外のエラーは共通メッセージにラップ
+    throw new Error(`Failed to fetch and prune from remote: ${message}`);
   }
 }
 
@@ -123,9 +132,12 @@ export function fetchAndPrune(): void {
  * worktreeを削除する
  */
 export function removeWorktree(path: string, force: boolean = false): void {
+  // シェルエスケープ簡易実装（ダブルクォート & バックスラッシュ をエスケープ）
+  const escapedPath = `"${path.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
   try {
     const forceFlag = force ? ' --force' : '';
-    execSync(`git worktree remove "${path}"${forceFlag}`, {
+    execSync(`git worktree remove ${escapedPath}${forceFlag}`, {
       cwd: process.cwd(),
     });
   } catch (err) {

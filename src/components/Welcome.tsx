@@ -15,14 +15,15 @@ export const Welcome: React.FC = () => {
       <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
       <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
       {/* <Text> clean [-y] Clean merged/deleted worktrees</Text> */}
-      <Text> go [query] Navigate to worktree (use with shell function)</Text>
-      <Text> code [query] Open worktree in VS Code</Text>
+      <Text> go [query] [--code] [--cursor] Navigate or open worktree</Text>
       <Text></Text>
       <Text bold>Options:</Text>
       <Text> -r, --remote Add from remote branch</Text>
       <Text> --from &lt;branch&gt; Specify base branch for new worktree</Text>
       <Text> -f, --force Force remove worktree</Text>
       <Text> -y, --yes Skip confirmation prompts</Text>
+      <Text> --code Open selected worktree in VS Code</Text>
+      <Text> --cursor Open selected worktree in Cursor</Text>
       <Text></Text>
       <Text bold>Examples:</Text>
       <Text> gwm list Show all worktrees</Text>

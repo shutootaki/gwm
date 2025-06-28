@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Text, Box, useInput } from 'ink';
 import { join } from 'path';
 import { loadConfig } from '../config.js';
 import { getRepositoryName } from '../utils/git.js';
+import { useEditableText } from '../hooks/useEditableText.js';
 
 interface TextInputProps {
   title: string;
@@ -25,12 +26,14 @@ export const TextInput: React.FC<TextInputProps> = ({
   validate,
   preview,
 }) => {
-  const [value, setValue] = useState(initialValue);
+  // 共通フックで文字列編集ロジックを扱う
+  const { value, cursorPosition } = useEditableText({ initialValue });
 
   const validationError = validate ? validate(value) : null;
   const previewText = preview ? preview(value) : null;
   const canSubmit = value.trim() && !validationError;
 
+  // 送信 / キャンセル / モード切替など、フック外のキーイベントのみ処理
   useInput((input, key) => {
     if (key.escape) {
       onCancel();
@@ -47,20 +50,6 @@ export const TextInput: React.FC<TextInputProps> = ({
     if (key.tab && onModeSwitch) {
       onModeSwitch();
       return;
-    }
-
-    if (key.ctrl && input === 'u') {
-      setValue('');
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      setValue(value.slice(0, -1));
-      return;
-    }
-
-    if (input && input.length === 1) {
-      setValue(value + input);
     }
   });
 
@@ -81,8 +70,13 @@ export const TextInput: React.FC<TextInputProps> = ({
             <Text color="cyan" bold>
               ❯{' '}
             </Text>
-            <Text color={validationError ? 'red' : 'white'}>{value}</Text>
+            <Text color={validationError ? 'red' : 'white'}>
+              {value.slice(0, cursorPosition)}
+            </Text>
             <Text color="cyan">█</Text>
+            <Text color={validationError ? 'red' : 'white'}>
+              {value.slice(cursorPosition)}
+            </Text>
           </Box>
         </Box>
       </Box>
@@ -133,7 +127,8 @@ export const TextInput: React.FC<TextInputProps> = ({
               • <Text color="yellow">Tab</Text> browse remote branches
             </>
           )}{' '}
-          • <Text color="yellow">Ctrl+U</Text> clear
+          • <Text color="yellow">Cmd+Del</Text> clear •{' '}
+          <Text color="yellow">Ctrl+W/⌥⌫</Text> delete-word
         </Text>
       </Box>
     </Box>
@@ -146,8 +141,9 @@ export function validateBranchName(branchName: string): string | null {
     return 'Branch name cannot be empty';
   }
 
-  // Git ブランチ名の制約をチェック
-  const invalidChars = /[~^:?*[\]\\]/;
+  // Git ブランチ名に使用できない文字をチェック。
+  // 文字クラス内で '[' ']' '\\' を表現するため、それぞれ \\[ \\] \\\\ とエスケープする。
+  const invalidChars = /[~^:?*\\[\]]/;
   if (invalidChars.test(branchName)) {
     return 'Branch name contains invalid characters (~^:?*[]\\)';
   }
