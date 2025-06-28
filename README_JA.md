@@ -26,7 +26,6 @@ InkベースのインタラクティブなReact端末UIを備えた、効率的�
 
 - Node.js 16+
 - Git 2.25+
-- VS Code（オプション、`gwm code`コマンド用）
 
 ### npmから（近日公開予定）
 
@@ -136,39 +135,6 @@ gwm go
 gwm go feature
 ```
 
-### `gwm code [query]`
-
-選択したworktreeをVisual Studio Codeで開きます。
-
-```bash
-# インタラクティブ選択
-gwm code
-
-# 事前フィルタリング選択
-gwm code feature
-```
-
-## シェル統合
-
-シームレスなナビゲーションのために、`~/.zshrc`または`~/.bashrc`にこの関数を追加してください：
-
-```bash
-function wgo() {
-  local path
-  path="$(gwm go "$1")"
-  if [ -n "$path" ]; then
-    cd "$path"
-  fi
-}
-```
-
-使用法:
-
-```bash
-wgo feature  # "feature"にマッチするworktreeに移動
-wgo          # インタラクティブ選択
-```
-
 ## 設定
 
 `~/.config/gwm/config.toml`に設定ファイルを作成してください：
@@ -222,7 +188,7 @@ wgo main        # mainブランチに切り替え
 wgo dashboard   # 機能ブランチに戻る
 
 # VS Codeで別のworktreeを開く
-gwm code api-refactor
+gwm go api-refactor --code
 
 # 完了時のクリーンアップ
 gwm clean       # インタラクティブクリーンアップ

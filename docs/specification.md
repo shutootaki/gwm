@@ -216,19 +216,6 @@
 
 ---
 
-### 3.6. `gwm code`
-
-- **目的:** 選択した worktree を Visual Studio Code で開く。
-- **構文:** `gwm code [query]`
-- **引数:**
-  - `query` (任意): 開きたい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
-- **実行フロー:**
-  1.  `gwm go` と同様に、対話的 UI でユーザーに worktree を選択させる。
-  2.  ユーザーが worktree を選択して決定した場合、`code <selected_path>` コマンドを実行して VSCode でそのディレクトリを開く。
-  3.  `code` コマンドが PATH 上に存在しない場合は、エラーメッセージを表示する。
-
----
-
 ## 4\. 技術スタック (Technology Stack)
 
 本 CLI ツールは、モダンで堅牢な開発体験と、リッチな UI を提供するために以下の技術を採用する。

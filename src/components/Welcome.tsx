@@ -15,8 +15,7 @@ export const Welcome: React.FC = () => {
       <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
       <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
       <Text> clean [-y] Clean merged/deleted worktrees</Text>
-      <Text> go [query] Navigate to worktree (use with shell function)</Text>
-      <Text> code [query] Open worktree in VS Code</Text>
+      <Text> go [query] Navigate to worktree</Text>
       <Text></Text>
       <Text bold>Options:</Text>
       <Text> -r, --remote Add from remote branch</Text>
