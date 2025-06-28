@@ -43,7 +43,7 @@
 - **パス:** `~/.config/gwm/config.toml` または `~/.gwmrc`
 - **設定項目:**
   - `worktree_base_path`: worktree を作成するベースディレクトリ (例: `"/Users/myuser/dev/worktrees"`)
-  - `main_branches`: メインラインとなるブランチ名のリスト (例: `["main", "master", "develop"]`)。`clean`コマンドや`create`コマンドのデフォルト分岐元として使用する。
+  - `main_branches`: メインラインとなるブランチ名のリスト (例: `["main", "master", "develop"]`)。`clean`コマンドや`add`コマンドのデフォルト分岐元として使用する。
 
 ## 3\. コマンド仕様 (Command Specifications)
 
@@ -73,10 +73,10 @@
 
 ---
 
-### 3.2. `gwm create [branch_name]`
+### 3.2. `gwm add [branch_name]`
 
 - **目的:** 指定されたブランチから新しい worktree を作成する。
-- **構文:** `gwm create [branch_name] [-r | --remote] [--from <base_branch>]`
+- **構文:** `gwm add [branch_name] [-r | --remote] [--from <base_branch>]`
 - **引数:**
   - `branch_name` (任意): 作成する worktree のブランチ名。省略した場合、対話的にリモートブランチを選択する UI を起動する。
 - **オプション:**

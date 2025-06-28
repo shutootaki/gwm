@@ -25,13 +25,13 @@ const mockExecSync = vi.mocked(execSync);
 const mockExistsSync = vi.mocked(existsSync);
 const mockMkdirSync = vi.mocked(mkdirSync);
 
-describe('gwm create command integration tests', () => {
+describe('gwm add command integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   // 既存ローカルブランチからのworktree作成をテスト
-  it('should create worktree from existing local branch', () => {
+  it('should add worktree from existing local branch', () => {
     const branchName = 'feature-auth';
     const expectedPath = '/Users/test/worktrees/project/feature-auth';
 
@@ -55,7 +55,7 @@ describe('gwm create command integration tests', () => {
 
     mockExistsSync.mockReturnValue(true);
 
-    // 実際のcreateWorktree関数をここで呼び出すと仮定
+    // 実際のaddWorktree関数をここで呼び出すと仮定
     expect(() => {
       mockExecSync(`git worktree add "${expectedPath}" ${branchName}`);
     }).not.toThrow();
@@ -66,7 +66,7 @@ describe('gwm create command integration tests', () => {
   });
 
   // 新規ローカルブランチからのworktree作成をテスト
-  it('should create worktree from new local branch with --from option', () => {
+  it('should add worktree from new local branch with --from option', () => {
     const branchName = 'feature-new';
     const fromBranch = 'develop';
     const expectedPath = '/Users/test/worktrees/project/feature-new';
@@ -105,7 +105,7 @@ describe('gwm create command integration tests', () => {
   });
 
   // リモートブランチからのworktree作成をテスト（-rフラグ）
-  it('should create worktree from remote branch with -r flag', () => {
+  it('should add worktree from remote branch with -r flag', () => {
     const branchName = 'feature-remote';
     const expectedPath = '/Users/test/worktrees/project/feature-remote';
 
@@ -237,7 +237,7 @@ describe('gwm create command integration tests', () => {
   });
 
   // ディレクトリ作成のテスト
-  it('should create parent directories if they do not exist', () => {
+  it('should add parent directories if they do not exist', () => {
     const branchName = 'feature-mkdir';
     const expectedPath = '/Users/test/worktrees/project/feature-mkdir';
     const parentDir = '/Users/test/worktrees/project';
@@ -319,7 +319,7 @@ describe('gwm create command integration tests', () => {
   });
 
   // ブランチ名なしでの呼び出し（インタラクティブUI想定）をテスト
-  it('should handle create command without branch name for interactive mode', () => {
+  it('should handle add command without branch name for interactive mode', () => {
     // インタラクティブモードでは、リモートブランチ一覧を取得
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {

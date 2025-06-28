@@ -12,22 +12,22 @@ export const Welcome: React.FC = () => {
       <Text></Text>
       <Text bold>Commands:</Text>
       <Text> list, ls List all worktrees with status</Text>
-      <Text> create [branch] [-r] [--from branch] Create new worktree</Text>
+      <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
       <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
       <Text> clean [-y] Clean merged/deleted worktrees</Text>
       <Text> go [query] Navigate to worktree (use with shell function)</Text>
       <Text> code [query] Open worktree in VS Code</Text>
       <Text></Text>
       <Text bold>Options:</Text>
-      <Text> -r, --remote Create from remote branch</Text>
+      <Text> -r, --remote Add from remote branch</Text>
       <Text> --from &lt;branch&gt; Specify base branch for new worktree</Text>
       <Text> -f, --force Force remove worktree</Text>
       <Text> -y, --yes Skip confirmation prompts</Text>
       <Text></Text>
       <Text bold>Examples:</Text>
       <Text> gwm list Show all worktrees</Text>
-      <Text> gwm create feature/new-ui Create worktree from local branch</Text>
-      <Text> gwm create -r origin/main Create from remote branch</Text>
+      <Text> gwm add feature/new-ui Add worktree from local branch</Text>
+      <Text> gwm add -r origin/main Add from remote branch</Text>
       <Text> gwm remove Interactive worktree removal</Text>
       <Text> gwm clean Interactive cleanup of old worktrees</Text>
       <Text> gwm clean -y Auto-cleanup without confirmation</Text>

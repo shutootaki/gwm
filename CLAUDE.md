@@ -41,7 +41,7 @@ The CLI follows a component-based architecture:
 ## Main CLI Commands
 
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
-- `gwm create [branch_name]` - Create new worktree interactively or from specified branch
+- `gwm add [branch_name]` - Add new worktree interactively or from specified branch
 - `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
 - `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
@@ -74,7 +74,7 @@ The project follows a 5-phase development plan:
 
 1. **Foundation**: Project setup, TypeScript config, basic Ink "Hello World"
 2. **Read-only Features**: `gwm list` implementation, config file handling
-3. **Core Operations**: Interactive UI components, create/remove/go/code commands
+3. **Core Operations**: Interactive UI components, add/remove/go/code commands
 4. **Automation**: `gwm clean` command with merge detection
 5. **Distribution**: Error handling, documentation, npm publishing
 
@@ -123,7 +123,7 @@ Development tools:
 The tool wraps several Git commands:
 
 - `git worktree list --porcelain` - Machine-readable worktree listing
-- `git worktree add` - Create new worktrees
+- `git worktree add` - Add new worktrees
 - `git worktree remove` - Remove worktrees
 - `git fetch --prune origin` - Update remote branch status
 - `git branch -r` - List remote branches

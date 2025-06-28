@@ -37,7 +37,7 @@ npm install -g gwm
 ### From Source
 
 ```bash
-git clone https://github.com/your-username/gwm.git
+git clone https://github.com/shuto-otaki/wtm.git
 cd gwm
 pnpm install
 pnpm build
@@ -61,22 +61,22 @@ gwm list
 - `PRUNABLE`: Merged or deleted branches (cleanup candidates)
 - `LOCKED`: Git-locked worktrees
 
-### `gwm create [branch_name]`
+### `gwm add [branch_name]`
 
-Create a new worktree from a branch. Without arguments, launches interactive remote branch selection.
+Add a new worktree from a branch. Without arguments, launches interactive remote branch selection.
 
 ```bash
 # Interactive mode - select from remote branches
-gwm create
+gwm add
 
-# Create from local branch (or new branch if doesn't exist)
-gwm create feature/new-ui
+# Add from local branch (or new branch if doesn't exist)
+gwm add feature/new-ui
 
-# Create from remote branch
-gwm create -r feature/api-update
+# Add from remote branch
+gwm add -r feature/api-update
 
-# Create new branch from specific base
-gwm create new-feature --from main
+# Add new branch from specific base
+gwm add new-feature --from main
 ```
 
 **Options:**
@@ -171,7 +171,7 @@ wgo          # Interactive selection
 
 ## Configuration
 
-Create a configuration file at `~/.config/gwm/config.toml`:
+Add a configuration file at `~/.config/gwm/config.toml`:
 
 ```toml
 # Base directory for worktrees (default: ~/worktrees)
@@ -212,8 +212,8 @@ Worktrees are created following this pattern:
 # List current worktrees
 gwm list
 
-# Create worktree for PR review
-gwm create -r feature/new-dashboard
+# Add worktree for PR review
+gwm add -r feature/new-dashboard
 
 # Work on the feature...
 
@@ -233,13 +233,13 @@ gwm remove      # Remove specific worktrees
 
 ```bash
 # Interactive branch selection for new worktree
-gwm create
+gwm add
 
-# Create worktree from remote branch
-gwm create -r hotfix/critical-bug
+# Add worktree from remote branch
+gwm add -r hotfix/critical-bug
 
-# Create new feature branch from main
-gwm create new-feature --from main
+# Add new feature branch from main
+gwm add new-feature --from main
 
 # Multi-select worktree removal
 gwm remove feature
@@ -256,7 +256,7 @@ wgo dash        # Matches "feature-dashboard"
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/gwm.git
+git clone https://github.com/shuto-otaki/wtm.git
 cd gwm
 pnpm install
 ```
@@ -295,7 +295,7 @@ gwm --help              # Test the CLI
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+2. Add your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request

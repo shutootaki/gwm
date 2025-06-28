@@ -1,4 +1,4 @@
-export interface CreateArgs {
+export interface AddArgs {
   branchName?: string;
   isRemote: boolean;
   fromBranch?: string;
@@ -13,13 +13,13 @@ export interface CleanArgs {
   yes: boolean;
 }
 
-export function parseCreateArgs(args: string[]): CreateArgs {
+export function parseAddArgs(args: string[]): AddArgs {
   let branchName: string | undefined;
   let isRemote = false;
   let fromBranch: string | undefined;
 
   for (let i = 1; i < args.length; i++) {
-    // start from 1 to skip 'create' command
+    // start from 1 to skip 'add' command
     const arg = args[i];
 
     if (arg === '-r' || arg === '--remote') {

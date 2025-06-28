@@ -37,7 +37,7 @@ npm install -g gwm
 ### ソースから
 
 ```bash
-git clone https://github.com/your-username/gwm.git
+git clone https://github.com/shuto-otaki/wtm.git
 cd gwm
 pnpm install
 pnpm build
@@ -61,22 +61,22 @@ gwm list
 - `PRUNABLE`: マージ済みまたは削除されたブランチ（クリーンアップ候補）
 - `LOCKED`: Gitロックされたworktree
 
-### `gwm create [branch_name]`
+### `gwm add [branch_name]`
 
 ブランチから新しいworktreeを作成します。引数なしの場合、インタラクティブなリモートブランチ選択を起動します。
 
 ```bash
 # インタラクティブモード - リモートブランチから選択
-gwm create
+gwm add
 
 # ローカルブランチから作成（存在しない場合は新規ブランチ）
-gwm create feature/new-ui
+gwm add feature/new-ui
 
 # リモートブランチから作成
-gwm create -r feature/api-update
+gwm add -r feature/api-update
 
 # 特定のベースから新しいブランチを作成
-gwm create new-feature --from main
+gwm add new-feature --from main
 ```
 
 **オプション:**
@@ -213,7 +213,7 @@ Worktreeは以下のパターンで作成されます：
 gwm list
 
 # PRレビュー用のworktreeを作成
-gwm create -r feature/new-dashboard
+gwm add -r feature/new-dashboard
 
 # 機能の作業...
 
@@ -233,13 +233,13 @@ gwm remove      # 特定のworktreeを削除
 
 ```bash
 # 新しいworktree用のインタラクティブブランチ選択
-gwm create
+gwm add
 
 # リモートブランチからworktreeを作成
-gwm create -r hotfix/critical-bug
+gwm add -r hotfix/critical-bug
 
 # mainから新しい機能ブランチを作成
-gwm create new-feature --from main
+gwm add new-feature --from main
 
 # 複数選択によるworktree削除
 gwm remove feature
@@ -256,7 +256,7 @@ wgo dash        # "feature-dashboard"にマッチ
 ### セットアップ
 
 ```bash
-git clone https://github.com/your-username/gwm.git
+git clone https://github.com/shuto-otaki/wtm.git
 cd gwm
 pnpm install
 ```

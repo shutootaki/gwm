@@ -12,7 +12,7 @@ function escapeShellArg(arg: string): string {
   return `"${arg.replace(/"/g, '\\"')}"`;
 }
 
-interface WorktreeCreateProps {
+interface WorktreeAddProps {
   branchName?: string;
   isRemote?: boolean;
   fromBranch?: string;
@@ -23,7 +23,7 @@ interface RemoteBranch {
   fullName: string;
 }
 
-export const WorktreeCreate: React.FC<WorktreeCreateProps> = ({
+export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   branchName,
   isRemote = false,
   fromBranch,
@@ -155,7 +155,7 @@ export const WorktreeCreate: React.FC<WorktreeCreateProps> = ({
         items={items}
         onSelect={handleBranchSelect}
         onCancel={handleCancel}
-        placeholder="Select a remote branch to create worktree:"
+        placeholder="Select a remote branch to add worktree:"
       />
     );
   }
