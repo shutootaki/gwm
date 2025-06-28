@@ -74,12 +74,12 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
 
   if (success.length > 0) {
     return (
-      <Box flexDirection="column">
-        <Text color="green">
-          ✓ Successfully removed {success.length} worktree(s):
+      <Box flexDirection="column" borderStyle="single" borderColor="green" padding={1}>
+        <Text color="green" bold>
+          Successfully removed {success.length} worktree(s):
         </Text>
         {success.map((path) => (
-          <Text key={path}> {path}</Text>
+          <Text key={path} color="gray">  ✓ {path}</Text>
         ))}
       </Box>
     );
@@ -87,26 +87,26 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
 
   if (error) {
     return (
-      <Box>
-        <Text color="red">✗ Error: {error}</Text>
+      <Box flexDirection="column" borderStyle="single" borderColor="red" padding={1}>
+        <Text color="red" bold>Error: {error}</Text>
       </Box>
     );
   }
 
   if (removing) {
     return (
-      <Box>
-        <Text>Removing worktrees...</Text>
+      <Box flexDirection="column" borderStyle="single" borderColor="yellow" padding={1}>
+        <Text color="yellow" bold>Removing worktrees...</Text>
+        <Text color="gray">Please wait...</Text>
       </Box>
     );
   }
 
   if (worktrees.length === 0) {
     return (
-      <Box>
-        <Text>
-          No removable worktrees found (main worktree cannot be removed)
-        </Text>
+      <Box flexDirection="column" borderStyle="single" borderColor="gray" padding={1}>
+        <Text color="gray" bold>No removable worktrees found</Text>
+        <Text color="gray">Main worktree cannot be removed</Text>
       </Box>
     );
   }
@@ -121,7 +121,8 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
       items={items}
       onConfirm={handleConfirm}
       onCancel={handleCancel}
-      placeholder={`Select worktrees to remove${force ? ' (force mode)' : ''}:`}
+      title={`Remove worktrees${force ? ' (force mode)' : ''}`}
+      placeholder={`Select worktrees to remove${force ? ' (force mode)' : ''}...`}
       initialQuery={query}
     />
   );

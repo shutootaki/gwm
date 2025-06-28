@@ -7,13 +7,13 @@ interface WorktreeGoProps {
 
 export const WorktreeGo: React.FC<WorktreeGoProps> = ({ query }) => {
   const handleSelect = (worktree: { path: string }) => {
-    // パスのみを出力して終了
+    // Output path only and exit
     console.log(worktree.path);
     process.exit(0);
   };
 
   const handleCancel = () => {
-    // 何も出力せずに終了
+    // Exit without output
     process.exit(0);
   };
 
