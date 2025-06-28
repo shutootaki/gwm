@@ -38,7 +38,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
@@ -46,7 +46,7 @@ describe('gwm go command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/bugfix-login',
+        path: '/Users/test/git-worktrees/project/bugfix-login',
         head: 'fedcba0987654321',
         branch: 'refs/heads/bugfix-login',
         status: 'NORMAL',
@@ -64,7 +64,7 @@ describe('gwm go command integration tests', () => {
     mockConsoleLog(selectedWorktree.path);
 
     expect(mockConsoleLog).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/feature-branch'
+      '/Users/test/git-worktrees/project/feature-branch'
     );
     expect(mockConsoleLog).toHaveBeenCalledTimes(1);
   });
@@ -81,7 +81,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-auth',
+        path: '/Users/test/git-worktrees/project/feature-auth',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-auth',
         status: 'NORMAL',
@@ -89,7 +89,7 @@ describe('gwm go command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/feature-ui',
+        path: '/Users/test/git-worktrees/project/feature-ui',
         head: 'fedcba0987654321',
         branch: 'refs/heads/feature-ui',
         status: 'NORMAL',
@@ -97,7 +97,7 @@ describe('gwm go command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/bugfix-login',
+        path: '/Users/test/git-worktrees/project/bugfix-login',
         head: '123456789abcdef0',
         branch: 'refs/heads/bugfix-login',
         status: 'NORMAL',
@@ -132,7 +132,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-user-authentication',
+        path: '/Users/test/git-worktrees/project/feature-user-authentication',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-user-authentication',
         status: 'NORMAL',
@@ -140,7 +140,7 @@ describe('gwm go command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/fix-user-login',
+        path: '/Users/test/git-worktrees/project/fix-user-login',
         head: 'fedcba0987654321',
         branch: 'refs/heads/fix-user-login',
         status: 'NORMAL',
@@ -218,7 +218,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/unique-branch',
+        path: '/Users/test/git-worktrees/project/unique-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/unique-branch',
         status: 'NORMAL',
@@ -242,7 +242,7 @@ describe('gwm go command integration tests', () => {
 
     expect(matches).toHaveLength(1);
     expect(mockConsoleLog).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/unique-branch'
+      '/Users/test/git-worktrees/project/unique-branch'
     );
   });
 
@@ -258,7 +258,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
@@ -266,7 +266,7 @@ describe('gwm go command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/detached-head',
+        path: '/Users/test/git-worktrees/project/detached-head',
         head: 'fedcba0987654321',
         branch: '(detached)',
         status: 'NORMAL',
@@ -302,7 +302,7 @@ describe('gwm go command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'ACTIVE',
@@ -352,7 +352,7 @@ describe('gwm go command integration tests', () => {
   it('should work correctly with shell function integration', async () => {
     const mockWorktrees = [
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
@@ -370,7 +370,7 @@ describe('gwm go command integration tests', () => {
 
     // シェル関数側でcdを実行する想定
     const outputPath = selectedWorktree.path;
-    expect(outputPath).toBe('/Users/test/worktrees/project/feature-branch');
+    expect(outputPath).toBe('/Users/test/git-worktrees/project/feature-branch');
     expect(mockConsoleLog).toHaveBeenCalledWith(outputPath);
   });
 });

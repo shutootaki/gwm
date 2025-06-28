@@ -16,7 +16,7 @@ vi.mock('fs', () => ({
 
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
+    worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
   })),
 }));
@@ -33,7 +33,7 @@ describe('gwm add command integration tests', () => {
   // 既存ローカルブランチからのworktree作成をテスト
   it('should add worktree from existing local branch', () => {
     const branchName = 'feature-auth';
-    const expectedPath = '/Users/test/worktrees/project/feature-auth';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-auth';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -69,7 +69,7 @@ describe('gwm add command integration tests', () => {
   it('should add worktree from new local branch with --from option', () => {
     const branchName = 'feature-new';
     const fromBranch = 'develop';
-    const expectedPath = '/Users/test/worktrees/project/feature-new';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-new';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -107,7 +107,7 @@ describe('gwm add command integration tests', () => {
   // リモートブランチからのworktree作成をテスト（-rフラグ）
   it('should add worktree from remote branch with -r flag', () => {
     const branchName = 'feature-remote';
-    const expectedPath = '/Users/test/worktrees/project/feature-remote';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-remote';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -160,7 +160,7 @@ describe('gwm add command integration tests', () => {
   it('should normalize branch names with slashes to hyphens in path', () => {
     const branchName = 'feature/user-auth';
     const normalizedPath = 'feature-user-auth';
-    const expectedPath = `/Users/test/worktrees/project/${normalizedPath}`;
+    const expectedPath = `/Users/test/git-worktrees/project/${normalizedPath}`;
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -239,8 +239,8 @@ describe('gwm add command integration tests', () => {
   // ディレクトリ作成のテスト
   it('should add parent directories if they do not exist', () => {
     const branchName = 'feature-mkdir';
-    const expectedPath = '/Users/test/worktrees/project/feature-mkdir';
-    const parentDir = '/Users/test/worktrees/project';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-mkdir';
+    const parentDir = '/Users/test/git-worktrees/project';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -280,7 +280,7 @@ describe('gwm add command integration tests', () => {
   // デフォルトのmain_branchesからの分岐をテスト
   it('should use first main branch as default when --from is not specified', () => {
     const branchName = 'feature-default';
-    const expectedPath = '/Users/test/worktrees/project/feature-default';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-default';
     const defaultFromBranch = 'main'; // main_branches[0]
 
     mockExecSync.mockImplementation((command) => {
@@ -348,7 +348,7 @@ describe('gwm add command integration tests', () => {
   // worktree作成エラーのハンドリングをテスト
   it('should handle worktree creation errors gracefully', () => {
     const branchName = 'feature-error';
-    const expectedPath = '/Users/test/worktrees/project/feature-error';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-error';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -408,7 +408,7 @@ describe('gwm add command integration tests', () => {
   // パス出力のテスト
   it('should output created worktree path on success', () => {
     const branchName = 'feature-output';
-    const expectedPath = '/Users/test/worktrees/project/feature-output';
+    const expectedPath = '/Users/test/git-worktrees/project/feature-output';
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
@@ -437,6 +437,8 @@ describe('gwm add command integration tests', () => {
     );
 
     expect(result).toBeTruthy();
-    expect(expectedPath).toBe('/Users/test/worktrees/project/feature-output');
+    expect(expectedPath).toBe(
+      '/Users/test/git-worktrees/project/feature-output'
+    );
   });
 });

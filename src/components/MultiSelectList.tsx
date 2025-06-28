@@ -72,7 +72,7 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       if (selectedItems.size === filteredItems.length) {
         setSelectedItems(new Set());
       } else {
-        setSelectedItems(new Set(filteredItems.map(item => item.value)));
+        setSelectedItems(new Set(filteredItems.map((item) => item.value)));
       }
       return;
     }
@@ -107,7 +107,9 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
     <Box flexDirection="column">
       {/* Title */}
       <Box marginBottom={1}>
-        <Text color="cyan" bold>{title}</Text>
+        <Text color="cyan" bold>
+          {title}
+        </Text>
       </Box>
 
       {/* Stats */}
@@ -115,12 +117,10 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
         <Box marginBottom={1}>
           <Text color="gray">
             {filteredItems.length} / {items.length} items
-            {hasItems && (
-              <>
-                {' '}• cursor at {selectedIndex + 1}
-              </>
-            )}
-            {' '}• <Text color="green" bold>{selectedItems.size} selected</Text>
+            {hasItems && <> • cursor at {selectedIndex + 1}</>} •{' '}
+            <Text color="green" bold>
+              {selectedItems.size} selected
+            </Text>
           </Text>
         </Box>
       )}
@@ -130,7 +130,9 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
         <Box flexDirection="column">
           <Text color="gray">{placeholder}</Text>
           <Box marginTop={0}>
-            <Text color="cyan" bold>❯ </Text>
+            <Text color="cyan" bold>
+              ❯{' '}
+            </Text>
             <Text>{query}</Text>
             <Text color="cyan">█</Text>
           </Box>
@@ -159,7 +161,9 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
                   <Text color={isCurrent ? 'cyan' : 'white'}>
                     {isCurrent ? '▶ ' : '  '}
                     {isItemSelected ? (
-                      <Text color="green" bold>[x] </Text>
+                      <Text color="green" bold>
+                        [x]{' '}
+                      </Text>
                     ) : (
                       <Text color="gray">[ ] </Text>
                     )}
@@ -184,19 +188,26 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       {/* Selected Items Preview */}
       {selectedItems.size > 0 && (
         <Box marginBottom={1}>
-          <Box flexDirection="column" borderStyle="single" borderColor="green" padding={1}>
+          <Box
+            flexDirection="column"
+            borderStyle="single"
+            borderColor="green"
+            padding={1}
+          >
             <Text color="green" bold>
               Selected ({selectedItems.size} items)
             </Text>
             <Box flexDirection="column">
-              {Array.from(selectedItems).slice(0, 5).map((value) => {
-                const item = items.find(i => i.value === value);
-                return item ? (
-                  <Text key={value} color="gray">
-                    • {item.label}
-                  </Text>
-                ) : null;
-              })}
+              {Array.from(selectedItems)
+                .slice(0, 5)
+                .map((value) => {
+                  const item = items.find((i) => i.value === value);
+                  return item ? (
+                    <Text key={value} color="gray">
+                      • {item.label}
+                    </Text>
+                  ) : null;
+                })}
               {selectedItems.size > 5 && (
                 <Text color="gray">... {selectedItems.size - 5} more</Text>
               )}
@@ -209,10 +220,14 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       <Box>
         <Box flexDirection="column">
           <Text color="gray">
-            <Text color="cyan">↑/↓</Text> navigate • <Text color="yellow">Space</Text> toggle • <Text color="green">Enter</Text> confirm • <Text color="red">Esc</Text> cancel
+            <Text color="cyan">↑/↓</Text> navigate •{' '}
+            <Text color="yellow">Space</Text> toggle •{' '}
+            <Text color="green">Enter</Text> confirm •{' '}
+            <Text color="red">Esc</Text> cancel
           </Text>
           <Text color="gray">
-            <Text color="cyan">Ctrl+A</Text> select all • <Text color="cyan">Ctrl+U</Text> clear search
+            <Text color="cyan">Ctrl+A</Text> select all •{' '}
+            <Text color="cyan">Ctrl+U</Text> clear search
           </Text>
         </Box>
       </Box>

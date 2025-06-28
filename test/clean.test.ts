@@ -14,7 +14,7 @@ vi.mock('child_process', () => ({
 
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
+    worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
   })),
 }));
@@ -47,7 +47,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/merged-feature',
+        path: '/Users/test/git-worktrees/project/merged-feature',
         head: 'abcdef1234567890',
         branch: 'refs/heads/merged-feature',
         status: 'PRUNABLE',
@@ -55,7 +55,7 @@ describe('gwm clean command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/active-feature',
+        path: '/Users/test/git-worktrees/project/active-feature',
         head: 'fedcba0987654321',
         branch: 'refs/heads/active-feature',
         status: 'NORMAL',
@@ -75,7 +75,7 @@ describe('gwm clean command integration tests', () => {
 
     expect(prunableWorktrees).toHaveLength(1);
     expect(prunableWorktrees[0].path).toBe(
-      '/Users/test/worktrees/project/merged-feature'
+      '/Users/test/git-worktrees/project/merged-feature'
     );
 
     // クリーンアップ実行
@@ -86,7 +86,7 @@ describe('gwm clean command integration tests', () => {
 
     expect(mockFetchAndPrune).toHaveBeenCalled();
     expect(mockRemoveWorktree).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/merged-feature'
+      '/Users/test/git-worktrees/project/merged-feature'
     );
   });
 
@@ -102,7 +102,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/deleted-remote',
+        path: '/Users/test/git-worktrees/project/deleted-remote',
         head: 'abcdef1234567890',
         branch: 'refs/heads/deleted-remote',
         status: 'PRUNABLE',
@@ -146,7 +146,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/merged-1',
+        path: '/Users/test/git-worktrees/project/merged-1',
         head: 'abcdef1234567890',
         branch: 'refs/heads/merged-1',
         status: 'PRUNABLE',
@@ -154,7 +154,7 @@ describe('gwm clean command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/merged-2',
+        path: '/Users/test/git-worktrees/project/merged-2',
         head: 'fedcba0987654321',
         branch: 'refs/heads/merged-2',
         status: 'PRUNABLE',
@@ -178,10 +178,10 @@ describe('gwm clean command integration tests', () => {
 
     expect(mockRemoveWorktree).toHaveBeenCalledTimes(2);
     expect(mockRemoveWorktree).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/merged-1'
+      '/Users/test/git-worktrees/project/merged-1'
     );
     expect(mockRemoveWorktree).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/merged-2'
+      '/Users/test/git-worktrees/project/merged-2'
     );
   });
 
@@ -197,7 +197,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/merged-1',
+        path: '/Users/test/git-worktrees/project/merged-1',
         head: 'abcdef1234567890',
         branch: 'refs/heads/merged-1',
         status: 'PRUNABLE',
@@ -205,7 +205,7 @@ describe('gwm clean command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/merged-2',
+        path: '/Users/test/git-worktrees/project/merged-2',
         head: 'fedcba0987654321',
         branch: 'refs/heads/merged-2',
         status: 'PRUNABLE',
@@ -231,17 +231,17 @@ describe('gwm clean command integration tests', () => {
 
     expect(mockRemoveWorktree).toHaveBeenCalledTimes(1);
     expect(mockRemoveWorktree).toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/merged-1'
+      '/Users/test/git-worktrees/project/merged-1'
     );
     expect(mockRemoveWorktree).not.toHaveBeenCalledWith(
-      '/Users/test/worktrees/project/merged-2'
+      '/Users/test/git-worktrees/project/merged-2'
     );
   });
 
   // 複数のメインブランチでのマージ検出をテスト
   it('should check merge status against all configured main branches', async () => {
     vi.mocked(loadConfig).mockReturnValue({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
 
@@ -255,7 +255,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-merged-to-develop',
+        path: '/Users/test/git-worktrees/project/feature-merged-to-develop',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-merged-to-develop',
         status: 'PRUNABLE',
@@ -317,7 +317,7 @@ describe('gwm clean command integration tests', () => {
   it('should handle worktree removal errors gracefully', async () => {
     const mockWorktrees = [
       {
-        path: '/Users/test/worktrees/project/locked-worktree',
+        path: '/Users/test/git-worktrees/project/locked-worktree',
         head: 'abcdef1234567890',
         branch: 'refs/heads/locked-worktree',
         status: 'PRUNABLE',
@@ -333,7 +333,7 @@ describe('gwm clean command integration tests', () => {
     });
 
     expect(() => {
-      mockRemoveWorktree('/Users/test/worktrees/project/locked-worktree');
+      mockRemoveWorktree('/Users/test/git-worktrees/project/locked-worktree');
     }).toThrow('Failed to remove worktree: worktree is locked');
   });
 
@@ -349,7 +349,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/active-feature',
+        path: '/Users/test/git-worktrees/project/active-feature',
         head: 'abcdef1234567890',
         branch: 'refs/heads/active-feature',
         status: 'NORMAL',
@@ -381,7 +381,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true, // メインworktree
       },
       {
-        path: '/Users/test/worktrees/project/merged-feature',
+        path: '/Users/test/git-worktrees/project/merged-feature',
         head: 'abcdef1234567890',
         branch: 'refs/heads/merged-feature',
         status: 'PRUNABLE',
@@ -402,7 +402,7 @@ describe('gwm clean command integration tests', () => {
     expect(prunableWorktrees).toHaveLength(1);
     expect(prunableWorktrees[0].isMain).toBe(false);
     expect(prunableWorktrees[0].path).toBe(
-      '/Users/test/worktrees/project/merged-feature'
+      '/Users/test/git-worktrees/project/merged-feature'
     );
   });
 
@@ -418,7 +418,7 @@ describe('gwm clean command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/locked-but-merged',
+        path: '/Users/test/git-worktrees/project/locked-but-merged',
         head: 'abcdef1234567890',
         branch: 'refs/heads/locked-but-merged',
         status: 'LOCKED',
@@ -439,7 +439,7 @@ describe('gwm clean command integration tests', () => {
     expect(prunableWorktrees).toHaveLength(0);
     expect(lockedWorktrees).toHaveLength(1);
     expect(lockedWorktrees[0].path).toBe(
-      '/Users/test/worktrees/project/locked-but-merged'
+      '/Users/test/git-worktrees/project/locked-but-merged'
     );
   });
 });

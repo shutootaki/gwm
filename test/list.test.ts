@@ -11,7 +11,7 @@ vi.mock('child_process', () => ({
 // loadConfigをモック化
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
+    worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
   })),
 }));
@@ -37,11 +37,11 @@ describe('gwm list command integration tests', () => {
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/feature-branch
+worktree /Users/test/git-worktrees/project/feature-branch
 HEAD abcdef1234567890ab1234567890abcdef123456
 branch refs/heads/feature-branch
 
-worktree /Users/test/worktrees/project/bugfix-login
+worktree /Users/test/git-worktrees/project/bugfix-login
 HEAD fedcba0987654321fedcba0987654321fedcba09
 branch refs/heads/bugfix-login
 locked`;
@@ -93,7 +93,7 @@ locked`;
 
     // 通常のworktree
     expect(worktrees[1]).toMatchObject({
-      path: '/Users/test/worktrees/project/feature-branch',
+      path: '/Users/test/git-worktrees/project/feature-branch',
       branch: 'refs/heads/feature-branch',
       status: 'NORMAL',
       isMain: false,
@@ -101,7 +101,7 @@ locked`;
 
     // ロックされたworktree（リモートトラッキングなし）
     expect(worktrees[2]).toMatchObject({
-      path: '/Users/test/worktrees/project/bugfix-login',
+      path: '/Users/test/git-worktrees/project/bugfix-login',
       branch: 'refs/heads/bugfix-login',
       status: 'LOCKED',
       isMain: false,
@@ -111,13 +111,15 @@ locked`;
   // ACTIVE状態の表示をテスト
   it('should mark current worktree as ACTIVE with asterisk', async () => {
     const originalCwd = process.cwd;
-    process.cwd = vi.fn(() => '/Users/test/worktrees/project/feature-branch');
+    process.cwd = vi.fn(
+      () => '/Users/test/git-worktrees/project/feature-branch'
+    );
 
     const porcelainOutput = `worktree /Users/test/project
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/feature-branch
+worktree /Users/test/git-worktrees/project/feature-branch
 HEAD abcdef1234567890ab1234567890abcdef123456
 branch refs/heads/feature-branch`;
 
@@ -152,7 +154,7 @@ branch refs/heads/feature-branch`;
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/merged-feature
+worktree /Users/test/git-worktrees/project/merged-feature
 HEAD fedcba0987654321fedcba0987654321fedcba09
 branch refs/heads/merged-feature`;
 
@@ -196,7 +198,7 @@ branch refs/heads/merged-feature`;
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/deleted-branch
+worktree /Users/test/git-worktrees/project/deleted-branch
 HEAD fedcba0987654321fedcba0987654321fedcba09
 branch refs/heads/deleted-branch`;
 
@@ -254,7 +256,7 @@ branch refs/heads/main`;
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/detached-head
+worktree /Users/test/git-worktrees/project/detached-head
 HEAD abcdef1234567890ab1234567890abcdef123456
 detached`;
 
@@ -271,7 +273,7 @@ detached`;
     const worktrees = await getWorktreesWithStatus();
 
     expect(worktrees[1]).toMatchObject({
-      path: '/Users/test/worktrees/project/detached-head',
+      path: '/Users/test/git-worktrees/project/detached-head',
       branch: '(detached)',
       status: 'NORMAL',
     });
@@ -306,7 +308,7 @@ bare`;
   // 複数メインブランチ設定での動作をテスト
   it('should work with multiple main branches configuration', async () => {
     vi.mocked(loadConfig).mockReturnValue({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
 
@@ -314,7 +316,7 @@ bare`;
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/develop
 
-worktree /Users/test/worktrees/project/feature
+worktree /Users/test/git-worktrees/project/feature
 HEAD abcdef1234567890ab1234567890abcdef123456
 branch refs/heads/feature`;
 

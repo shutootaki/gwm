@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
-import { parseWorktrees, getWorktreesWithStatus, fetchAndPrune, removeWorktree } from '../src/utils/git.js';
+import {
+  parseWorktrees,
+  getWorktreesWithStatus,
+  fetchAndPrune,
+  removeWorktree,
+} from '../src/utils/git.js';
 
 // execSyncをモック化
 vi.mock('child_process', () => ({
@@ -10,9 +15,9 @@ vi.mock('child_process', () => ({
 // loadConfigをモック化
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
-    main_branches: ['main', 'master']
-  }))
+    worktree_base_path: '/Users/test/git-worktrees',
+    main_branches: ['main', 'master'],
+  })),
 }));
 
 const mockExecSync = vi.mocked(execSync);
@@ -28,11 +33,11 @@ describe('parseWorktrees', () => {
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/feature-1
+worktree /Users/test/git-worktrees/project/feature-1
 HEAD abcdef1234567890abcdef1234567890abcdef12
 branch refs/heads/feature-1
 
-worktree /Users/test/worktrees/project/feature-2
+worktree /Users/test/git-worktrees/project/feature-2
 HEAD fedcba0987654321fedcba0987654321fedcba09
 branch refs/heads/feature-2
 locked`;
@@ -40,7 +45,7 @@ locked`;
     const result = parseWorktrees(porcelainOutput);
 
     expect(result).toHaveLength(3);
-    
+
     // メインworktree
     expect(result[0]).toEqual({
       path: '/Users/test/project',
@@ -48,27 +53,27 @@ locked`;
       branch: 'refs/heads/main',
       status: 'NORMAL',
       isActive: false,
-      isMain: true
+      isMain: true,
     });
 
     // feature-1 worktree
     expect(result[1]).toEqual({
-      path: '/Users/test/worktrees/project/feature-1',
+      path: '/Users/test/git-worktrees/project/feature-1',
       head: 'abcdef1234567890abcdef1234567890abcdef12',
       branch: 'refs/heads/feature-1',
       status: 'NORMAL',
       isActive: false,
-      isMain: false
+      isMain: false,
     });
 
     // feature-2 worktree (locked)
     expect(result[2]).toEqual({
-      path: '/Users/test/worktrees/project/feature-2',
+      path: '/Users/test/git-worktrees/project/feature-2',
       head: 'fedcba0987654321fedcba0987654321fedcba09',
       branch: 'refs/heads/feature-2',
       status: 'LOCKED',
       isActive: false,
-      isMain: false
+      isMain: false,
     });
   });
 
@@ -87,7 +92,7 @@ bare`;
       branch: '(bare)',
       status: 'NORMAL',
       isActive: false,
-      isMain: true
+      isMain: true,
     });
   });
 
@@ -106,20 +111,20 @@ detached`;
       branch: '(detached)',
       status: 'NORMAL',
       isActive: false,
-      isMain: true
+      isMain: true,
     });
   });
 
   // 現在のディレクトリをACTIVE状態にマークする機能をテスト
   it('should mark current directory as ACTIVE', () => {
     const originalCwd = process.cwd;
-    process.cwd = vi.fn(() => '/Users/test/worktrees/project/feature-1');
+    process.cwd = vi.fn(() => '/Users/test/git-worktrees/project/feature-1');
 
     const porcelainOutput = `worktree /Users/test/project
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/feature-1
+worktree /Users/test/git-worktrees/project/feature-1
 HEAD abcdef1234567890abcdef1234567890abcdef12
 branch refs/heads/feature-1`;
 
@@ -159,7 +164,7 @@ describe('getWorktreesWithStatus', () => {
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /Users/test/worktrees/project/feature-1
+worktree /Users/test/git-worktrees/project/feature-1
 HEAD abcdef1234567890abcdef1234567890abcdef12
 branch refs/heads/feature-1`;
 
@@ -171,7 +176,9 @@ branch refs/heads/feature-1`;
         return porcelainOutput;
       }
       // リモート追跡ブランチのチェック
-      if (command?.includes('git show-ref --verify --quiet refs/remotes/origin/')) {
+      if (
+        command?.includes('git show-ref --verify --quiet refs/remotes/origin/')
+      ) {
         throw new Error('No remote tracking branch');
       }
       return '';
@@ -197,14 +204,14 @@ describe('fetchAndPrune', () => {
     expect(() => fetchAndPrune()).not.toThrow();
     expect(mockExecSync).toHaveBeenCalledWith('git fetch --prune origin', {
       stdio: 'ignore',
-      cwd: process.cwd()
+      cwd: process.cwd(),
     });
   });
 
   // リモートoriginが存在しない場合のエラーハンドリングをテスト
   it('should throw error when no remote origin exists', () => {
     mockExecSync.mockImplementation(() => {
-      const error = new Error('No such remote \'origin\'');
+      const error = new Error("No such remote 'origin'");
       throw error;
     });
 

@@ -10,7 +10,7 @@ vi.mock('os', () => ({
 
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
+    worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
   })),
 }));
@@ -62,7 +62,7 @@ describe('Path Generation and Normalization Tests', () => {
     vi.clearAllMocks();
     mockHomedir.mockReturnValue('/Users/test');
     mockLoadConfig.mockReturnValue({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
   });
@@ -114,7 +114,7 @@ describe('Path Generation and Normalization Tests', () => {
     // デフォルト設定のベースパス取得をテスト
     it('should return default base path from config', () => {
       const basePath = getWorktreeBasePath();
-      expect(basePath).toBe('/Users/test/worktrees');
+      expect(basePath).toBe('/Users/test/git-worktrees');
     });
 
     // カスタム設定のベースパス取得をテスト
@@ -170,7 +170,7 @@ describe('Path Generation and Normalization Tests', () => {
       const repositoryPath = '/Users/test/projects/my-app';
       const branchName = 'feature/user-auth';
 
-      const expectedPath = '/Users/test/worktrees/my-app/feature-user-auth';
+      const expectedPath = '/Users/test/git-worktrees/my-app/feature-user-auth';
       const generatedPath = generateWorktreePath(repositoryPath, branchName);
 
       expect(generatedPath).toBe(expectedPath);
@@ -182,7 +182,7 @@ describe('Path Generation and Normalization Tests', () => {
       const branchName = 'team/backend/feature/payment-integration';
 
       const expectedPath =
-        '/Users/test/worktrees/e-commerce/team-backend-feature-payment-integration';
+        '/Users/test/git-worktrees/e-commerce/team-backend-feature-payment-integration';
       const generatedPath = generateWorktreePath(repositoryPath, branchName);
 
       expect(generatedPath).toBe(expectedPath);
@@ -209,7 +209,7 @@ describe('Path Generation and Normalization Tests', () => {
       const repositoryPath = '/Users/test/projects/my-app';
       const branchName = 'main';
 
-      const expectedPath = '/Users/test/worktrees/my-app/main';
+      const expectedPath = '/Users/test/git-worktrees/my-app/main';
       const generatedPath = generateWorktreePath(repositoryPath, branchName);
 
       expect(generatedPath).toBe(expectedPath);
@@ -220,7 +220,8 @@ describe('Path Generation and Normalization Tests', () => {
       const repositoryPath = '/Users/test/projects/my-app';
       const branchName = 'release/v2.1.0-beta.1';
 
-      const expectedPath = '/Users/test/worktrees/my-app/release-v2.1.0-beta.1';
+      const expectedPath =
+        '/Users/test/git-worktrees/my-app/release-v2.1.0-beta.1';
       const generatedPath = generateWorktreePath(repositoryPath, branchName);
 
       expect(generatedPath).toBe(expectedPath);
@@ -239,8 +240,8 @@ describe('Path Generation and Normalization Tests', () => {
 
     // チルダがない場合はそのまま返すテスト
     it('should return absolute paths as-is', () => {
-      expect(expandTildePath('/Users/test/worktrees')).toBe(
-        '/Users/test/worktrees'
+      expect(expandTildePath('/Users/test/git-worktrees')).toBe(
+        '/Users/test/git-worktrees'
       );
       expect(expandTildePath('/opt/local/bin')).toBe('/opt/local/bin');
       expect(expandTildePath('relative/path')).toBe('relative/path');
@@ -303,7 +304,9 @@ describe('Path Generation and Normalization Tests', () => {
         '/Users/test/projects/app',
         'feature-branch'
       );
-      expect(generatedPath).toBe('/Users/test/worktrees/app/feature-branch');
+      expect(generatedPath).toBe(
+        '/Users/test/git-worktrees/app/feature-branch'
+      );
 
       // 設定変更
       mockLoadConfig.mockReturnValue({

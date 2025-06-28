@@ -38,10 +38,11 @@ interface SelectInputProps {
 // ファジーサーチ機能のモック実装
 function fuzzySearch(items: SelectItem[], query: string): SelectItem[] {
   if (!query) return items;
-  
-  return items.filter(item => 
-    item.label.toLowerCase().includes(query.toLowerCase()) ||
-    item.value.toString().toLowerCase().includes(query.toLowerCase())
+
+  return items.filter(
+    (item) =>
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
+      item.value.toString().toLowerCase().includes(query.toLowerCase())
   );
 }
 
@@ -70,29 +71,31 @@ describe('Interactive UI Integration Tests', () => {
           branch: 'refs/heads/main',
           status: 'NORMAL',
           isActive: false,
-          isMain: true
+          isMain: true,
         },
         {
-          path: '/Users/test/worktrees/project/feature-branch',
+          path: '/Users/test/git-worktrees/project/feature-branch',
           head: 'abcdef1234567890',
           branch: 'refs/heads/feature-branch',
           status: 'NORMAL',
           isActive: false,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
       // UIアイテムの生成
-      const items: SelectItem[] = mockWorktrees.map(w => ({
+      const items: SelectItem[] = mockWorktrees.map((w) => ({
         label: `${w.status === 'ACTIVE' ? '* ' : '  '}${w.branch.replace('refs/heads/', '')} (${w.path})`,
-        value: w
+        value: w,
       }));
 
       expect(items).toHaveLength(2);
       expect(items[0].label).toBe('  main (/Users/test/project)');
-      expect(items[1].label).toBe('  feature-branch (/Users/test/worktrees/project/feature-branch)');
+      expect(items[1].label).toBe(
+        '  feature-branch (/Users/test/git-worktrees/project/feature-branch)'
+      );
     });
 
     // ACTIVE状態のworktreeマーキングをテスト
@@ -104,57 +107,61 @@ describe('Interactive UI Integration Tests', () => {
           branch: 'refs/heads/main',
           status: 'NORMAL',
           isActive: false,
-          isMain: true
+          isMain: true,
         },
         {
-          path: '/Users/test/worktrees/project/feature-branch',
+          path: '/Users/test/git-worktrees/project/feature-branch',
           head: 'abcdef1234567890',
           branch: 'refs/heads/feature-branch',
           status: 'ACTIVE',
           isActive: true,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
-      const items: SelectItem[] = mockWorktrees.map(w => ({
+      const items: SelectItem[] = mockWorktrees.map((w) => ({
         label: `${w.status === 'ACTIVE' ? '* ' : '  '}${w.branch.replace('refs/heads/', '')} (${w.path})`,
-        value: w
+        value: w,
       }));
 
       expect(items[0].label).toBe('  main (/Users/test/project)');
-      expect(items[1].label).toBe('* feature-branch (/Users/test/worktrees/project/feature-branch)');
+      expect(items[1].label).toBe(
+        '* feature-branch (/Users/test/git-worktrees/project/feature-branch)'
+      );
     });
 
     // ユーザー選択処理をテスト
     it('should handle user selection correctly', async () => {
       const mockWorktrees = [
         {
-          path: '/Users/test/worktrees/project/feature-branch',
+          path: '/Users/test/git-worktrees/project/feature-branch',
           head: 'abcdef1234567890',
           branch: 'refs/heads/feature-branch',
           status: 'NORMAL',
           isActive: false,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
-      const items: SelectItem[] = mockWorktrees.map(w => ({
+      const items: SelectItem[] = mockWorktrees.map((w) => ({
         label: `  ${w.branch.replace('refs/heads/', '')} (${w.path})`,
-        value: w
+        value: w,
       }));
 
       // ユーザーが選択したと仮定
       const selectedItem = items[0];
       const onSelect = vi.fn();
-      
+
       onSelect(selectedItem);
 
       expect(onSelect).toHaveBeenCalledWith(selectedItem);
-      expect(selectedItem.value.path).toBe('/Users/test/worktrees/project/feature-branch');
+      expect(selectedItem.value.path).toBe(
+        '/Users/test/git-worktrees/project/feature-branch'
+      );
     });
   });
 
@@ -168,36 +175,38 @@ describe('Interactive UI Integration Tests', () => {
           branch: 'refs/heads/main',
           status: 'NORMAL',
           isActive: false,
-          isMain: true
+          isMain: true,
         },
         {
-          path: '/Users/test/worktrees/project/merged-1',
+          path: '/Users/test/git-worktrees/project/merged-1',
           head: 'abcdef1234567890',
           branch: 'refs/heads/merged-1',
           status: 'PRUNABLE',
           isActive: false,
-          isMain: false
+          isMain: false,
         },
         {
-          path: '/Users/test/worktrees/project/merged-2',
+          path: '/Users/test/git-worktrees/project/merged-2',
           head: 'fedcba0987654321',
           branch: 'refs/heads/merged-2',
           status: 'PRUNABLE',
           isActive: false,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
       // メインworktreeを除外
-      const selectableWorktrees = mockWorktrees.filter(w => !w.isMain);
-      
-      const multiSelectItems: MultiSelectItem[] = selectableWorktrees.map(w => ({
-        label: `${w.branch.replace('refs/heads/', '')} (${w.status})`,
-        value: w,
-        selected: false
-      }));
+      const selectableWorktrees = mockWorktrees.filter((w) => !w.isMain);
+
+      const multiSelectItems: MultiSelectItem[] = selectableWorktrees.map(
+        (w) => ({
+          label: `${w.branch.replace('refs/heads/', '')} (${w.status})`,
+          value: w,
+          selected: false,
+        })
+      );
 
       expect(multiSelectItems).toHaveLength(2);
       expect(multiSelectItems[0].label).toBe('merged-1 (PRUNABLE)');
@@ -208,7 +217,7 @@ describe('Interactive UI Integration Tests', () => {
     it('should toggle selection state correctly', () => {
       const items: MultiSelectItem[] = [
         { label: 'Item 1', value: 'value1', selected: false },
-        { label: 'Item 2', value: 'value2', selected: false }
+        { label: 'Item 2', value: 'value2', selected: false },
       ];
 
       // 1つ目を選択
@@ -232,17 +241,17 @@ describe('Interactive UI Integration Tests', () => {
       const items: MultiSelectItem[] = [
         { label: 'Item 1', value: 'value1', selected: true },
         { label: 'Item 2', value: 'value2', selected: false },
-        { label: 'Item 3', value: 'value3', selected: true }
+        { label: 'Item 3', value: 'value3', selected: true },
       ];
 
-      const selectedItems = items.filter(item => item.selected);
+      const selectedItems = items.filter((item) => item.selected);
       const onSubmit = vi.fn();
-      
+
       onSubmit(selectedItems);
 
       expect(onSubmit).toHaveBeenCalledWith([
         { label: 'Item 1', value: 'value1', selected: true },
-        { label: 'Item 3', value: 'value3', selected: true }
+        { label: 'Item 3', value: 'value3', selected: true },
       ]);
     });
   });
@@ -254,7 +263,7 @@ describe('Interactive UI Integration Tests', () => {
         { label: 'feature-auth', value: 'feature-auth' },
         { label: 'feature-ui', value: 'feature-ui' },
         { label: 'bugfix-login', value: 'bugfix-login' },
-        { label: 'main', value: 'main' }
+        { label: 'main', value: 'main' },
       ];
 
       const query = 'feature';
@@ -270,7 +279,7 @@ describe('Interactive UI Integration Tests', () => {
       const items: SelectItem[] = [
         { label: 'Feature-Auth', value: 'feature-auth' },
         { label: 'BUGFIX-LOGIN', value: 'bugfix-login' },
-        { label: 'main', value: 'main' }
+        { label: 'main', value: 'main' },
       ];
 
       const query = 'feature';
@@ -285,7 +294,7 @@ describe('Interactive UI Integration Tests', () => {
       const items: SelectItem[] = [
         { label: 'user-authentication', value: 'user-auth' },
         { label: 'user-interface', value: 'user-ui' },
-        { label: 'server-config', value: 'server' }
+        { label: 'server-config', value: 'server' },
       ];
 
       const query = 'user';
@@ -301,7 +310,7 @@ describe('Interactive UI Integration Tests', () => {
       const items: SelectItem[] = [
         { label: 'item1', value: 'value1' },
         { label: 'item2', value: 'value2' },
-        { label: 'item3', value: 'value3' }
+        { label: 'item3', value: 'value3' },
       ];
 
       const query = '';
@@ -314,7 +323,7 @@ describe('Interactive UI Integration Tests', () => {
     it('should return empty array when no items match', () => {
       const items: SelectItem[] = [
         { label: 'feature-auth', value: 'feature-auth' },
-        { label: 'bugfix-login', value: 'bugfix-login' }
+        { label: 'bugfix-login', value: 'bugfix-login' },
       ];
 
       const query = 'nonexistent';
@@ -330,7 +339,7 @@ describe('Interactive UI Integration Tests', () => {
       const items: SelectItem[] = [
         { label: 'Item 1', value: 'value1' },
         { label: 'Item 2', value: 'value2' },
-        { label: 'Item 3', value: 'value3' }
+        { label: 'Item 3', value: 'value3' },
       ];
 
       let currentIndex = 0;
@@ -363,7 +372,7 @@ describe('Interactive UI Integration Tests', () => {
     it('should handle Enter key for selection', () => {
       const items: SelectItem[] = [
         { label: 'Item 1', value: 'value1' },
-        { label: 'Item 2', value: 'value2' }
+        { label: 'Item 2', value: 'value2' },
       ];
 
       const currentIndex = 1;
@@ -399,7 +408,7 @@ describe('Interactive UI Integration Tests', () => {
     it('should handle Space key for multi-selection toggle', () => {
       const items: MultiSelectItem[] = [
         { label: 'Item 1', value: 'value1', selected: false },
-        { label: 'Item 2', value: 'value2', selected: false }
+        { label: 'Item 2', value: 'value2', selected: false },
       ];
 
       const currentIndex = 0;
@@ -430,47 +439,48 @@ describe('Interactive UI Integration Tests', () => {
           branch: 'refs/heads/main',
           status: 'NORMAL',
           isActive: false,
-          isMain: true
+          isMain: true,
         },
         {
-          path: '/Users/test/worktrees/project/feature',
+          path: '/Users/test/git-worktrees/project/feature',
           head: 'abcdef1',
           branch: 'refs/heads/feature',
           status: 'ACTIVE',
           isActive: true,
-          isMain: false
+          isMain: false,
         },
         {
-          path: '/Users/test/worktrees/project/merged',
+          path: '/Users/test/git-worktrees/project/merged',
           head: 'fedcba9',
           branch: 'refs/heads/merged',
           status: 'PRUNABLE',
           isActive: false,
-          isMain: false
+          isMain: false,
         },
         {
-          path: '/Users/test/worktrees/project/locked',
+          path: '/Users/test/git-worktrees/project/locked',
           head: '123abc4',
           branch: 'refs/heads/locked',
           status: 'LOCKED',
           isActive: false,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
-      const items: SelectItem[] = mockWorktrees.map(w => {
-        const statusIcon = {
-          'ACTIVE': '* ',
-          'NORMAL': '  ',
-          'PRUNABLE': '⚠ ',
-          'LOCKED': '🔒'
-        }[w.status] || '  ';
+      const items: SelectItem[] = mockWorktrees.map((w) => {
+        const statusIcon =
+          {
+            ACTIVE: '* ',
+            NORMAL: '  ',
+            PRUNABLE: '⚠ ',
+            LOCKED: '🔒',
+          }[w.status] || '  ';
 
         return {
           label: `${statusIcon}${w.branch.replace('refs/heads/', '')} (${w.status})`,
-          value: w
+          value: w,
         };
       });
 
@@ -484,20 +494,20 @@ describe('Interactive UI Integration Tests', () => {
     it('should display shortened commit hashes', async () => {
       const mockWorktrees = [
         {
-          path: '/Users/test/worktrees/project/feature',
+          path: '/Users/test/git-worktrees/project/feature',
           head: '1234567890abcdef1234567890abcdef12345678',
           branch: 'refs/heads/feature',
           status: 'NORMAL',
           isActive: false,
-          isMain: false
-        }
+          isMain: false,
+        },
       ];
 
       mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
-      const items: SelectItem[] = mockWorktrees.map(w => ({
+      const items: SelectItem[] = mockWorktrees.map((w) => ({
         label: `  ${w.branch.replace('refs/heads/', '')} (${w.head.substring(0, 7)})`,
-        value: w
+        value: w,
       }));
 
       expect(items[0].label).toBe('  feature (1234567)');
@@ -510,9 +520,9 @@ describe('Interactive UI Integration Tests', () => {
       mockGetWorktreesWithStatus.mockResolvedValue([]);
 
       const worktrees = await mockGetWorktreesWithStatus();
-      const items: SelectItem[] = worktrees.map(w => ({
+      const items: SelectItem[] = worktrees.map((w) => ({
         label: w.branch,
-        value: w
+        value: w,
       }));
 
       expect(items).toHaveLength(0);
@@ -522,7 +532,7 @@ describe('Interactive UI Integration Tests', () => {
     it('should handle empty filtered results', () => {
       const items: SelectItem[] = [
         { label: 'feature-auth', value: 'feature-auth' },
-        { label: 'bugfix-login', value: 'bugfix-login' }
+        { label: 'bugfix-login', value: 'bugfix-login' },
       ];
 
       const query = 'nonexistent';
