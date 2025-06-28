@@ -26,7 +26,6 @@ A modern CLI tool for efficient Git worktree management with an interactive, Rea
 
 - Node.js 16+
 - Git 2.25+
-- VS Code (optional, for `gwm code` command)
 
 ### From npm (Coming Soon)
 
@@ -126,48 +125,27 @@ gwm clean -y
 
 ### `gwm go [query]`
 
-Navigate to a worktree directory. Designed for shell integration.
+Navigate to or open a worktree directory.
+
+- Without options: Starts a subshell **already located** at the selected worktree path. When the subshell exits, `gwm` also終了します。
+- `--code`: Open the selected worktree in **VS Code** and exit.
+- `--cursor`: Open the selected worktree in **Cursor** and exit.
 
 ```bash
-# Interactive selection
+# Interactive selection & move into the **directory** (subshell)
 gwm go
 
-# Pre-filter selection
+# Pre-filter selection with a query string
 gwm go feature
+
+# Open the worktree directly in VS Code
+gwm go api-refactor --code
+
+# Open the worktree in Cursor editor
+gwm go bugfix/login --cursor
 ```
 
-### `gwm code [query]`
-
-Open a worktree in Visual Studio Code.
-
-```bash
-# Interactive selection
-gwm code
-
-# Pre-filter selection
-gwm code feature
-```
-
-## Shell Integration
-
-Add this function to your `~/.zshrc` or `~/.bashrc` for seamless navigation:
-
-```bash
-function wgo() {
-  local path
-  path="$(gwm go "$1")"
-  if [ -n "$path" ]; then
-    cd "$path"
-  fi
-}
-```
-
-Usage:
-
-```bash
-wgo feature  # Navigate to worktree matching "feature"
-wgo          # Interactive selection
-```
+> ℹ️ Because `gwm go` now changes the directory for you, additional shell helper functions such as `wgo` are no longer necessary.
 
 ## Configuration
 
@@ -217,12 +195,12 @@ gwm add -r feature/new-dashboard
 
 # Work on the feature...
 
-# Navigate between worktrees
-wgo main        # Switch to main branch
-wgo dashboard   # Switch back to feature
+# Navigate between worktrees via interactive selector
+gwm go main        # Switch to main branch (interactive if multiple match)
+gwm go dashboard   # Switch back to feature
 
 # Open different worktree in VS Code
-gwm code api-refactor
+gwm go api-refactor --code
 
 # Clean up when done
 gwm clean       # Interactive cleanup
@@ -248,7 +226,7 @@ gwm remove feature
 gwm clean -y
 
 # Quick navigation with fuzzy search
-wgo dash        # Matches "feature-dashboard"
+gwm go dash        # Matches "feature-dashboard"
 ```
 
 ## Development

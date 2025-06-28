@@ -194,38 +194,25 @@
 
 ### 3.5. `gwm go`
 
-- **目的:** シェルと連携し、選択した worktree のディレクトリに移動 (`cd`) するためのパスを出力する。
-- **構文:** `gwm go [query]`
+- **目的:** 選択した worktree へ **直接移動**（サブシェル起動）する、またはエディタで開く。
+- **構文:** `gwm go [query] [--code] [--cursor]`
 - **引数:**
-  - `query` (任意): 移動したい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
-- **実行フロー:**
-  1.  対話的 UI を起動して、ユーザーに移動先の worktree を選択させる。
-  2.  ユーザーが worktree を選択して決定した場合、その worktree の**フルパスのみ**を標準出力に出力する。
-  3.  ユーザーがキャンセルした場合（ESC キーなど）、何も出力せずに終了する。
-- **シェルの設定例（ドキュメントに記載）:**
-  ```shell
-  # ~/.zshrc or ~/.bashrc
-  function wgo() {
-    local path
-    path="$(gwm go "$1")"
-    if [ -n "$path" ]; then
-      cd "$path"
-    fi
-  }
+  - `query` (任意): 移動・オープンしたい worktree のブランチ名を指定。ファジーサーチの初期クエリとして使用。
+- **オプション:**
+  - `--code`: 選択した worktree を VS Code で開き、`gwm` は即終了する。
+  - `--cursor`: 選択した worktree を Cursor で開き、`gwm` は即終了する。
+- **デフォルト挙動 (オプション無し):**
+  1. 対話的 UI で worktree を選択。
+  2. 選択後、ユーザーのログインシェル (`$SHELL`) をサブプロセスとして起動し、`cwd` を選択した worktree パスに設定する。
+  3. ユーザーがサブシェルを抜けると (`exit` など)、`gwm` も終了する。
+- **フローチャート:**
+  ```text
+  start -> UI -> [Select] -> { --code? } yes -> open VSCode -> exit
+                                     no  -> { --cursor? } yes -> open Cursor -> exit
+                                     no  -> spawn subshell (cd) -> wait -> exit
   ```
 
----
-
-### 3.6. `gwm code`
-
-- **目的:** 選択した worktree を Visual Studio Code で開く。
-- **構文:** `gwm code [query]`
-- **引数:**
-  - `query` (任意): 開きたい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
-- **実行フロー:**
-  1.  `gwm go` と同様に、対話的 UI でユーザーに worktree を選択させる。
-  2.  ユーザーが worktree を選択して決定した場合、`code <selected_path>` コマンドを実行して VSCode でそのディレクトリを開く。
-  3.  `code` コマンドが PATH 上に存在しない場合は、エラーメッセージを表示する。
+> **補足:** 旧バージョンで必要だった `wgo()` シェル関数は不要となった。
 
 ---
 

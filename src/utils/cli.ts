@@ -2,6 +2,9 @@ export interface AddArgs {
   branchName?: string;
   isRemote: boolean;
   fromBranch?: string;
+  openCode: boolean;
+  openCursor: boolean;
+  outputPath: boolean;
 }
 
 export interface RemoveArgs {
@@ -13,63 +16,80 @@ export interface CleanArgs {
   yes: boolean;
 }
 
+function hasFlag(args: string[], flags: string[]): boolean {
+  return flags.some((f) => args.includes(f));
+}
+
+function getOptionValue(args: string[], option: string): string | undefined {
+  const index = args.indexOf(option);
+  return index !== -1 && index + 1 < args.length ? args[index + 1] : undefined;
+}
+
+function getFirstPositional(args: string[], skip = 1): string | undefined {
+  return args.slice(skip).find((a) => !a.startsWith('-'));
+}
+
 export function parseAddArgs(args: string[]): AddArgs {
   let branchName: string | undefined;
-  let isRemote = false;
-  let fromBranch: string | undefined;
+  const isRemote = hasFlag(args, ['-r', '--remote']);
+  const fromBranch = getOptionValue(args, '--from');
+  const openCode = hasFlag(args, ['--code']);
+  const openCursor = hasFlag(args, ['--cursor']);
+  const outputPath = hasFlag(args, ['--cd']);
 
+  // 位置引数（ブランチ名）は --from の値を除外した最初の非フラグ
   for (let i = 1; i < args.length; i++) {
-    // start from 1 to skip 'add' command
     const arg = args[i];
 
-    if (arg === '-r' || arg === '--remote') {
-      isRemote = true;
-    } else if (arg === '--from') {
-      if (i + 1 < args.length) {
-        fromBranch = args[i + 1];
-        i++; // skip next argument as it's the value for --from
-      }
-    } else if (!arg.startsWith('-') && !branchName) {
-      // First non-flag argument is the branch name
+    if (arg === '--from') {
+      i++; // 次は値なのでスキップ
+      continue;
+    }
+
+    if (!arg.startsWith('-')) {
       branchName = arg;
+      break;
     }
   }
 
-  return { branchName, isRemote, fromBranch };
+  return { branchName, isRemote, fromBranch, openCode, openCursor, outputPath };
 }
 
 export function parseRemoveArgs(args: string[]): RemoveArgs {
+  return {
+    query: getFirstPositional(args, 1),
+    force: hasFlag(args, ['-f', '--force']),
+  };
+}
+
+export function parseCleanArgs(args: string[]): CleanArgs {
+  return { yes: hasFlag(args, ['-y', '--yes']) };
+}
+
+export function parseGoArgs(args: string[]): {
+  query?: string;
+  openCode: boolean;
+  openCursor: boolean;
+} {
   let query: string | undefined;
-  let force = false;
+  let openCode = false;
+  let openCursor = false;
 
   for (let i = 1; i < args.length; i++) {
-    // start from 1 to skip 'remove'/'rm' command
+    // start from 1 to skip 'go' command
     const arg = args[i];
 
-    if (arg === '-f' || arg === '--force') {
-      force = true;
+    if (arg === '-c' || arg === '--code') {
+      openCode = true;
+    } else if (arg === '--cursor') {
+      openCursor = true;
     } else if (!arg.startsWith('-') && !query) {
       // First non-flag argument is the query
       query = arg;
     }
   }
 
-  return { query, force };
-}
-
-export function parseCleanArgs(args: string[]): CleanArgs {
-  let yes = false;
-
-  for (let i = 1; i < args.length; i++) {
-    // start from 1 to skip 'clean' command
-    const arg = args[i];
-
-    if (arg === '-y' || arg === '--yes') {
-      yes = true;
-    }
-  }
-
-  return { yes };
+  return { query, openCode, openCursor };
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {

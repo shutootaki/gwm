@@ -3,6 +3,7 @@ import {
   parseAddArgs,
   parseRemoveArgs,
   parseCleanArgs,
+  parseGoArgs,
   isHelpRequested,
 } from '../src/utils/cli.js';
 
@@ -17,6 +18,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: false,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -29,6 +33,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -41,6 +48,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -53,6 +63,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: false,
       fromBranch: 'develop',
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -65,6 +78,9 @@ describe('parseAddArgs', () => {
       branchName: 'feature-branch',
       isRemote: true,
       fromBranch: 'develop',
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -77,6 +93,9 @@ describe('parseAddArgs', () => {
       branchName: undefined,
       isRemote: false,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
     });
   });
 
@@ -89,6 +108,65 @@ describe('parseAddArgs', () => {
       branchName: undefined,
       isRemote: true,
       fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --code flag', () => {
+    const args = ['add', 'feature-branch', '--code'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: true,
+      openCursor: false,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --cursor flag', () => {
+    const args = ['add', 'feature-branch', '--cursor'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: false,
+      openCursor: true,
+      outputPath: false,
+    });
+  });
+
+  it('should parse --cd flag', () => {
+    const args = ['add', 'feature-branch', '--cd'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: true,
+    });
+  });
+
+  it('should parse combination of --code and --cursor flags', () => {
+    const args = ['add', 'feature-branch', '--code', '--cursor'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: true,
+      openCursor: true,
+      outputPath: false,
     });
   });
 });
@@ -201,6 +279,117 @@ describe('parseCleanArgs', () => {
 
     expect(result).toEqual({
       yes: true,
+    });
+  });
+});
+
+// goコマンドの引数解析をテスト
+describe('parseGoArgs', () => {
+  // 位置引数からのクエリ解析をテスト
+  it('should parse query from positional arguments', () => {
+    const args = ['go', 'feature'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: false,
+      openCursor: false,
+    });
+  });
+
+  // -cフラグの解析をテスト
+  it('should parse code flag (-c)', () => {
+    const args = ['go', 'feature', '-c'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
+      openCursor: false,
+    });
+  });
+
+  // --codeフラグの解析をテスト
+  it('should parse code flag (--code)', () => {
+    const args = ['go', 'feature', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
+      openCursor: false,
+    });
+  });
+
+  // クエリなしでcodeフラグの解析をテスト
+  it('should parse code flag without query', () => {
+    const args = ['go', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: true,
+      openCursor: false,
+    });
+  });
+
+  // クエリなしのgoコマンドの処理をテスト
+  it('should handle go command without arguments', () => {
+    const args = ['go'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: false,
+      openCursor: false,
+    });
+  });
+
+  // フラグとクエリの順序をテスト
+  it('should handle flag before query', () => {
+    const args = ['go', '-c', 'feature'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'feature',
+      openCode: true,
+      openCursor: false,
+    });
+  });
+
+  // --cursor フラグの解析をテスト
+  it('should parse cursor flag (--cursor)', () => {
+    const args = ['go', 'bugfix', '--cursor'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'bugfix',
+      openCode: false,
+      openCursor: true,
+    });
+  });
+
+  // --code と --cursor の組み合わせをテスト
+  it('should parse combination of --code and --cursor flags', () => {
+    const args = ['go', 'hotfix', '--code', '--cursor'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'hotfix',
+      openCode: true,
+      openCursor: true,
+    });
+  });
+
+  // フラグのみでクエリなしのケースをテスト
+  it('should handle flags only without query', () => {
+    const args = ['go', '--cursor', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: true,
+      openCursor: true,
     });
   });
 });

@@ -6,7 +6,6 @@ import { SelectTest } from './components/SelectTest.js';
 import { Welcome } from './components/Welcome.js';
 import { WorktreeAdd } from './components/WorktreeAdd.js';
 import { WorktreeClean } from './components/WorktreeClean.js';
-import { WorktreeCode } from './components/WorktreeCode.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
@@ -15,6 +14,7 @@ import {
   parseAddArgs,
   parseRemoveArgs,
   parseCleanArgs,
+  parseGoArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -32,12 +32,22 @@ const App: React.FC = () => {
     case 'ls':
       return <WorktreeList />;
     case 'add': {
-      const { branchName, isRemote, fromBranch } = parseAddArgs(args);
+      const {
+        branchName,
+        isRemote,
+        fromBranch,
+        openCode,
+        openCursor,
+        outputPath,
+      } = parseAddArgs(args);
       return (
         <WorktreeAdd
           branchName={branchName}
           isRemote={isRemote}
           fromBranch={fromBranch}
+          openCode={openCode}
+          openCursor={openCursor}
+          outputPath={outputPath}
         />
       );
     }
@@ -46,10 +56,12 @@ const App: React.FC = () => {
       const { query, force } = parseRemoveArgs(args);
       return <WorktreeRemove query={query} force={force} />;
     }
-    case 'go':
-      return <WorktreeGo query={args[1]} />;
-    case 'code':
-      return <WorktreeCode query={args[1]} />;
+    case 'go': {
+      const { query, openCode, openCursor } = parseGoArgs(args);
+      return (
+        <WorktreeGo query={query} openCode={openCode} openCursor={openCursor} />
+      );
+    }
     case 'clean': {
       const { yes } = parseCleanArgs(args);
       return <WorktreeClean yes={yes} />;
