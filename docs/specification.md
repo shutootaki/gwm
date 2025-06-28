@@ -55,21 +55,20 @@
 - **構文:** `gwm list`
 - **実行フロー:**
   1.  `git worktree list --porcelain` を実行して、マシンリーダブルな形式で worktree 情報を取得する。
-  2.  各 worktree について、ブランチがリモートの`main_branches`にマージ済みか判定する。
+  2.  各 worktree について、3分類のステータス（ACTIVE/MAIN/OTHER）を判定する。
   3.  判定結果やその他の情報を加えて、整形されたテーブル形式で標準出力に表示する。
 - **出力形式（例）:**
   ```
   STATUS      BRANCH                   PATH                                  HEAD
   ----------- ------------------------ ------------------------------------- --------
   * ACTIVE    feature/new-ui           /path/to/project                      a1b2c3d Add new button
-    PRUNABLE  fix/login-bug (merged)   ~/git-worktrees/project/fix-login-bug     e4f5g6h Fix typo
-    NORMAL    feature/api-cache        ~/git-worktrees/project/feature-api-cache c7d8e9f Implement caching
+  M MAIN      main                     ~/git-worktrees/project/main             123abc4 Latest main
+  - OTHER     feature/api-cache        ~/git-worktrees/project/feature-api-cache c7d8e9f Implement caching
   ```
   - **STATUS:**
-    - `ACTIVE`: 現在のディレクトリが属する worktree。`*` を付ける。
-    - `NORMAL`: 通常の worktree。
-    - `PRUNABLE`: `main_branches`にマージ済み、またはリモートでブランチが削除されている。`gwm clean`の削除対象候補。
-    - `LOCKED`: `git worktree lock` されている worktree。
+    - `ACTIVE`: 現在のディレクトリが属する worktree。`*` を付ける（yellow）。
+    - `MAIN`: ベースとなるメインの worktree。`M` を付ける（cyan）。
+    - `OTHER`: その他の worktree。`-` を付ける（white）。
 
 ---
 
@@ -172,27 +171,7 @@
 
 ---
 
-### 3.4. `gwm clean`
-
-- **目的:** リモートでマージ済み、または削除済みの古い worktree を掃除する。
-- **構文:** `gwm clean`
-- **オプション:**
-  - `--yes, -y`: **\<ins\>対話的な選択モードをスキップし、\</ins\>** 検出された削除可能な worktree をすべて即座に削除する。
-- **実行フロー:**
-  1.  `git fetch --prune origin` を実行し、リモートの状態を最新化する。
-  2.  設定ファイルで指定された `main_branches` を取得する。
-  3.  以下の条件に合致する「削除可能 (`PRUNABLE`)」な worktree をリストアップする。
-      - 対応するブランチが `main_branches` のいずれかにマージ済みである。
-      - 対応するリモート追跡ブランチが存在しない。
-  4.  **\<ins\>もし`--yes`オプションが指定されていなければ、以下の対話モードに入る。\</ins\>**
-      - \<ins\>削除候補の worktree 一覧で対話的な UI を起動する。\</ins\>
-      - \<ins\>ユーザーは削除したい worktree を（複数）選択できる。\</ins\>
-      - \<ins\>ユーザーが承認した場合、**選択された worktree のみ**を削除する。\</ins\>
-  5.  **\<ins\>`--yes`オプションが指定されている場合、** 削除候補の worktree をすべて削除する。\</ins\>
-
----
-
-### 3.5. `gwm go`
+### 3.4. `gwm go`
 
 - **目的:** シェルと連携し、選択した worktree のディレクトリに移動 (`cd`) するためのパスを出力する。
 - **構文:** `gwm go [query]`
@@ -216,7 +195,7 @@
 
 ---
 
-### 3.6. `gwm code`
+### 3.5. `gwm code`
 
 - **目的:** 選択した worktree を Visual Studio Code で開く。
 - **構文:** `gwm code [query]`

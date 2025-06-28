@@ -51,7 +51,7 @@ locked`;
       path: '/Users/test/project',
       head: '1234567890abcdef1234567890abcdef12345678',
       branch: 'refs/heads/main',
-      status: 'NORMAL',
+      status: 'MAIN',
       isActive: false,
       isMain: true,
     });
@@ -61,7 +61,7 @@ locked`;
       path: '/Users/test/git-worktrees/project/feature-1',
       head: 'abcdef1234567890abcdef1234567890abcdef12',
       branch: 'refs/heads/feature-1',
-      status: 'NORMAL',
+      status: 'OTHER',
       isActive: false,
       isMain: false,
     });
@@ -71,7 +71,7 @@ locked`;
       path: '/Users/test/git-worktrees/project/feature-2',
       head: 'fedcba0987654321fedcba0987654321fedcba09',
       branch: 'refs/heads/feature-2',
-      status: 'LOCKED',
+      status: 'OTHER',
       isActive: false,
       isMain: false,
     });
@@ -90,7 +90,7 @@ bare`;
       path: '/Users/test/project.git',
       head: '1234567890abcdef1234567890abcdef12345678',
       branch: '(bare)',
-      status: 'NORMAL',
+      status: 'MAIN',
       isActive: false,
       isMain: true,
     });
@@ -109,7 +109,7 @@ detached`;
       path: '/Users/test/project',
       head: '1234567890abcdef1234567890abcdef12345678',
       branch: '(detached)',
-      status: 'NORMAL',
+      status: 'MAIN',
       isActive: false,
       isMain: true,
     });
@@ -131,7 +131,7 @@ branch refs/heads/feature-1`;
     const result = parseWorktrees(porcelainOutput);
 
     expect(result[0].isActive).toBe(false);
-    expect(result[0].status).toBe('NORMAL');
+    expect(result[0].status).toBe('MAIN');
     expect(result[1].isActive).toBe(true);
     expect(result[1].status).toBe('ACTIVE');
 
@@ -175,20 +175,14 @@ branch refs/heads/feature-1`;
       if (command === 'git worktree list --porcelain') {
         return porcelainOutput;
       }
-      // リモート追跡ブランチのチェック
-      if (
-        command?.includes('git show-ref --verify --quiet refs/remotes/origin/')
-      ) {
-        throw new Error('No remote tracking branch');
-      }
       return '';
     });
 
     const result = await getWorktreesWithStatus();
 
     expect(result).toHaveLength(2);
-    expect(result[0].status).toBe('NORMAL');
-    expect(result[1].status).toBe('PRUNABLE'); // リモート追跡ブランチがないため
+    expect(result[0].status).toBe('MAIN');
+    expect(result[1].status).toBe('OTHER');
   });
 });
 

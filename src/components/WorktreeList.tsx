@@ -11,12 +11,10 @@ import {
 const getStatusIcon = (status: string, isActive: boolean) => {
   if (isActive) return '*';
   switch (status) {
-    case 'NORMAL':
-      return ' ';
-    case 'PRUNABLE':
-      return 'x';
-    case 'LOCKED':
-      return '#';
+    case 'MAIN':
+      return 'M';
+    case 'OTHER':
+      return '-';
     default:
       return ' ';
   }
@@ -25,12 +23,10 @@ const getStatusIcon = (status: string, isActive: boolean) => {
 const getStatusColor = (status: string, isActive: boolean) => {
   if (isActive) return 'yellow';
   switch (status) {
-    case 'NORMAL':
-      return 'green';
-    case 'PRUNABLE':
-      return 'red';
-    case 'LOCKED':
-      return 'gray';
+    case 'MAIN':
+      return 'cyan';
+    case 'OTHER':
+      return 'white';
     default:
       return 'white';
   }
@@ -88,16 +84,14 @@ export const WorktreeList: React.FC = () => {
   const stats = {
     total: worktrees.length,
     active: worktrees.filter((w) => w.isActive).length,
-    normal: worktrees.filter((w) => w.status === 'NORMAL' && !w.isActive)
-      .length,
-    prunable: worktrees.filter((w) => w.status === 'PRUNABLE').length,
-    locked: worktrees.filter((w) => w.status === 'LOCKED').length,
+    main: worktrees.filter((w) => w.status === 'MAIN' && !w.isActive).length,
+    other: worktrees.filter((w) => w.status === 'OTHER').length,
   };
 
   // 動的な列幅を計算
   const columnWidths = getOptimalColumnWidths(
     worktrees.map((w) => ({
-      branch: w.status === 'PRUNABLE' ? `${w.branch} (merged)` : w.branch,
+      branch: w.branch,
       path: w.path,
     }))
   );
@@ -119,28 +113,14 @@ export const WorktreeList: React.FC = () => {
             <Text color="yellow" bold>
               {stats.active}
             </Text>{' '}
-            | Normal:{' '}
-            <Text color="green" bold>
-              {stats.normal}
+            | Main:{' '}
+            <Text color="cyan" bold>
+              {stats.main}
+            </Text>{' '}
+            | Other:{' '}
+            <Text color="white" bold>
+              {stats.other}
             </Text>
-            {stats.prunable > 0 && (
-              <>
-                {' '}
-                | Prunable:{' '}
-                <Text color="red" bold>
-                  {stats.prunable}
-                </Text>
-              </>
-            )}
-            {stats.locked > 0 && (
-              <>
-                {' '}
-                | Locked:{' '}
-                <Text color="gray" bold>
-                  {stats.locked}
-                </Text>
-              </>
-            )}
           </Text>
         </Box>
       </Box>
@@ -164,10 +144,7 @@ export const WorktreeList: React.FC = () => {
       {/* ワークツリー一覧 */}
       <Box flexDirection="column">
         {worktrees.map((worktree, index) => {
-          const branchDisplay =
-            worktree.status === 'PRUNABLE'
-              ? `${worktree.branch} (merged)`
-              : worktree.branch;
+          const branchDisplay = worktree.branch;
 
           const statusIcon = getStatusIcon(worktree.status, worktree.isActive);
           const statusColor = getStatusColor(
@@ -204,12 +181,6 @@ export const WorktreeList: React.FC = () => {
             Use <Text color="cyan">gwm go [query]</Text> to navigate,{' '}
             <Text color="cyan">gwm remove</Text> to delete
           </Text>
-          {stats.prunable > 0 && (
-            <Text color="yellow">
-              Use <Text color="cyan">gwm clean</Text> to remove prunable
-              worktrees
-            </Text>
-          )}
         </Box>
       </Box>
     </Box>

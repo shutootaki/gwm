@@ -5,7 +5,7 @@ import { render } from 'ink';
 import { SelectTest } from './components/SelectTest.js';
 import { Welcome } from './components/Welcome.js';
 import { WorktreeAdd } from './components/WorktreeAdd.js';
-import { WorktreeClean } from './components/WorktreeClean.js';
+// import { WorktreeClean } from './components/WorktreeClean.js';
 import { WorktreeCode } from './components/WorktreeCode.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
@@ -14,7 +14,7 @@ import React from 'react';
 import {
   parseAddArgs,
   parseRemoveArgs,
-  parseCleanArgs,
+  // parseCleanArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -50,10 +50,10 @@ const App: React.FC = () => {
       return <WorktreeGo query={args[1]} />;
     case 'code':
       return <WorktreeCode query={args[1]} />;
-    case 'clean': {
-      const { yes } = parseCleanArgs(args);
-      return <WorktreeClean yes={yes} />;
-    }
+    // case 'clean': {
+    //   const { yes } = parseCleanArgs(args);
+    //   return <WorktreeClean yes={yes} />;
+    // }
     case 'config':
       return <ConfigTest />;
     case 'select-test':

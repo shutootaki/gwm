@@ -57,20 +57,20 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
   return { query, force };
 }
 
-export function parseCleanArgs(args: string[]): CleanArgs {
-  let yes = false;
+// export function parseCleanArgs(args: string[]): CleanArgs {
+//   let yes = false;
 
-  for (let i = 1; i < args.length; i++) {
-    // start from 1 to skip 'clean' command
-    const arg = args[i];
+//   for (let i = 1; i < args.length; i++) {
+//     // start from 1 to skip 'clean' command
+//     const arg = args[i];
 
-    if (arg === '-y' || arg === '--yes') {
-      yes = true;
-    }
-  }
+//     if (arg === '-y' || arg === '--yes') {
+//       yes = true;
+//     }
+//   }
 
-  return { yes };
-}
+//   return { yes };
+// }
 
 export function isHelpRequested(args: string[], command?: string): boolean {
   return args.includes('--help') || args.includes('-h') || command === 'help';

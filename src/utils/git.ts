@@ -1,11 +1,10 @@
 import { execSync } from 'child_process';
-import { loadConfig } from '../config.js';
 
 export interface Worktree {
   path: string;
   branch: string;
   head: string;
-  status: 'ACTIVE' | 'NORMAL' | 'PRUNABLE' | 'LOCKED';
+  status: 'ACTIVE' | 'MAIN' | 'OTHER';
   isActive: boolean;
   isMain: boolean;
 }
@@ -25,7 +24,7 @@ export function parseWorktrees(output: string): Worktree[] {
       }
       currentWorktree = {
         path: line.substring(9),
-        status: 'NORMAL',
+        status: 'OTHER',
         isActive: false,
         isMain: false,
       };
@@ -35,13 +34,12 @@ export function parseWorktrees(output: string): Worktree[] {
       currentWorktree.branch = line.substring(7);
     } else if (line === 'bare') {
       currentWorktree.branch = '(bare)';
-      currentWorktree.isMain = true; // bare repositoryは通常メイン
+      currentWorktree.isMain = true;
+      currentWorktree.status = 'MAIN';
     } else if (line === 'detached') {
       currentWorktree.branch = '(detached)';
     } else if (line === 'locked') {
-      if (currentWorktree.status !== 'ACTIVE') {
-        currentWorktree.status = 'LOCKED';
-      }
+      // lockedの情報は保持するが、ステータスは変更しない
     }
   }
 
@@ -52,6 +50,7 @@ export function parseWorktrees(output: string): Worktree[] {
   // 最初のworktreeをメインとしてマーク（通常の場合）
   if (worktrees.length > 0 && !worktrees.some((w) => w.isMain)) {
     worktrees[0].isMain = true;
+    worktrees[0].status = 'MAIN';
   }
 
   // 現在のディレクトリと一致するworktreeをACTIVEにする
@@ -90,94 +89,12 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
 
     const worktrees = parseWorktrees(output);
 
-    // PRUNABLE状態を判定
-    for (const worktree of worktrees) {
-      if (
-        worktree.status === 'LOCKED' ||
-        worktree.status === 'ACTIVE' ||
-        worktree.isMain
-      ) {
-        continue; // LOCKEDやACTIVE、メインworktreeはスキップ
-      }
-
-      if (await isPrunableWorktree(worktree)) {
-        worktree.status = 'PRUNABLE';
-      }
-    }
-
     return worktrees;
   } catch (err) {
     if (err instanceof Error) {
       throw err; // 既に適切なメッセージがある場合はそのまま
     }
     throw new Error(`Failed to get worktrees: ${err}`);
-  }
-}
-
-/**
- * worktreeが削除可能（PRUNABLE）かどうかを判定する
- */
-async function isPrunableWorktree(worktree: Worktree): Promise<boolean> {
-  if (worktree.branch === '(bare)' || worktree.branch === '(detached)') {
-    return false;
-  }
-
-  try {
-    const config = loadConfig();
-    const mainBranches = config.main_branches;
-
-    // リモート追跡ブランチが存在しない場合はPRUNABLE
-    if (!hasRemoteTrackingBranch(worktree.branch)) {
-      return true;
-    }
-
-    // メインブランチにマージ済みかチェック
-    for (const mainBranch of mainBranches) {
-      if (isMergedToMainBranch(worktree.branch, mainBranch)) {
-        return true;
-      }
-    }
-
-    return false;
-  } catch (err) {
-    console.error(
-      `Error checking prunable status for ${worktree.branch}:`,
-      err
-    );
-    return false;
-  }
-}
-
-/**
- * リモート追跡ブランチが存在するかチェック
- */
-function hasRemoteTrackingBranch(branchName: string): boolean {
-  try {
-    execSync(
-      `git show-ref --verify --quiet refs/remotes/origin/${branchName}`,
-      {
-        stdio: 'ignore',
-        cwd: process.cwd(),
-      }
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * ブランチがメインブランチにマージ済みかチェック
- */
-function isMergedToMainBranch(branchName: string, mainBranch: string): boolean {
-  try {
-    execSync(`git merge-base --is-ancestor ${branchName} ${mainBranch}`, {
-      stdio: 'ignore',
-      cwd: process.cwd(),
-    });
-    return true;
-  } catch {
-    return false;
   }
 }
 

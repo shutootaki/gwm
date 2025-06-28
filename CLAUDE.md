@@ -43,7 +43,7 @@ The CLI follows a component-based architecture:
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
 - `gwm add [branch_name]` - Add new worktree interactively or from specified branch
 - `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
-- `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
+- `gwm clean` - Currently disabled (PRUNABLE auto-detection removed)
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
 - `gwm code [query]` - Open selected worktree in VS Code
 
@@ -63,10 +63,9 @@ The CLI follows a component-based architecture:
 
 ### Status Indicators
 
-- `ACTIVE`: Current worktree (marked with `*`)
-- `NORMAL`: Standard worktree
-- `PRUNABLE`: Merged or deleted branches (candidates for cleanup)
-- `LOCKED`: Git-locked worktrees
+- `ACTIVE`: Current worktree (marked with `*`, yellow)
+- `MAIN`: Base main worktree (marked with `M`, cyan)
+- `OTHER`: All other worktrees (marked with `-`, white)
 
 ## Development Phases
 
@@ -75,7 +74,7 @@ The project follows a 5-phase development plan:
 1. **Foundation**: Project setup, TypeScript config, basic Ink "Hello World"
 2. **Read-only Features**: `gwm list` implementation, config file handling
 3. **Core Operations**: Interactive UI components, add/remove/go/code commands
-4. **Automation**: `gwm clean` command with merge detection
+4. **Automation**: ~~`gwm clean` command with merge detection~~ (simplified to 3-status system)
 5. **Distribution**: Error handling, documentation, npm publishing
 
 ## Configuration
