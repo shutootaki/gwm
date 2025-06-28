@@ -195,6 +195,35 @@
 
 ---
 
+### 3.6. `gwm pull-main`
+
+- **目的:** カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新する。
+- **構文:** `gwm pull-main`
+- **背景:** 
+  - ユーザーのworktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接移動できない場合がある
+  - このコマンドにより、任意のディレクトリからメインブランチの更新が可能になる
+- **実行フロー:**
+  1. 設定ファイルから `main_branches` の設定を読み込む（例: `["main", "master", "develop"]`）
+  2. 現在のプロジェクトのworktree一覧を取得し、メインブランチに該当するworktreeを特定
+  3. 各メインブランチのworktreeで `git pull` を実行
+  4. 各worktreeの更新結果（成功/失敗）を表示
+- **出力例:**
+  ```
+  ✅ メインブランチの更新が完了しました
+  
+  ✅ refs/heads/main (/Users/user/worktrees/project/main)
+     Updating a1b2c3d..e4f5g6h
+     Fast-forward
+      src/utils/git.ts | 10 ++++++++++
+      1 file changed, 10 insertions(+)
+  ```
+- **エラーハンドリング:**
+  - メインブランチのworktreeが見つからない場合: 該当ブランチ名を含むエラーメッセージを表示
+  - 個別のpull処理でエラーが発生した場合: そのworktreeのみ失敗として記録し、他の処理は継続
+  - Git操作エラー: 詳細なエラーメッセージを表示
+
+---
+
 ## 4\. 技術スタック (Technology Stack)
 
 本 CLI ツールは、モダンで堅牢な開発体験と、リッチな UI を提供するために以下の技術を採用する。

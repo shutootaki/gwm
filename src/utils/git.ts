@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { loadConfig } from '../config.js';
 
 export interface Worktree {
   path: string;
@@ -175,4 +176,68 @@ export function getRepositoryName(): string {
 
   // フォールバック: 現在のディレクトリ名を使用
   return process.cwd().split('/').pop() || 'unknown';
+}
+
+export interface PullResult {
+  branch: string;
+  path: string;
+  success: boolean;
+  message: string;
+}
+
+/**
+ * メインブランチ（複数可）のworktreeでgit pullを実行する
+ */
+export async function pullMainBranch(): Promise<PullResult[]> {
+  try {
+    const config = loadConfig();
+    const worktrees = await getWorktreesWithStatus();
+    const results: PullResult[] = [];
+
+    // メインブランチに該当するworktreeを特定
+    const mainWorktrees = worktrees.filter((worktree) =>
+      config.main_branches.some(
+        (mainBranch) =>
+          worktree.branch === mainBranch ||
+          worktree.branch === `refs/heads/${mainBranch}`
+      )
+    );
+
+    if (mainWorktrees.length === 0) {
+      throw new Error(
+        `No worktrees found for main branches: ${config.main_branches.join(', ')}`
+      );
+    }
+
+    // 各メインワークツリーでpullを実行
+    for (const worktree of mainWorktrees) {
+      try {
+        const output = execSync('git pull', {
+          cwd: worktree.path,
+          encoding: 'utf8',
+        });
+
+        results.push({
+          branch: worktree.branch,
+          path: worktree.path,
+          success: true,
+          message: output.trim(),
+        });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        results.push({
+          branch: worktree.branch,
+          path: worktree.path,
+          success: false,
+          message: `Failed to pull: ${errorMessage}`,
+        });
+      }
+    }
+
+    return results;
+  } catch (err) {
+    throw new Error(
+      `Failed to pull main branches: ${err instanceof Error ? err.message : 'Unknown error'}`
+    );
+  }
 }

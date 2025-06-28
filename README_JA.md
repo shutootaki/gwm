@@ -111,7 +111,26 @@ gwm go
 
 # 事前フィルタリング選択
 gwm go feature
+
+# VS Codeでworktreeを開く
+gwm go api-refactor --code
+
+# Cursorでworktreeを開く
+gwm go bugfix/login --cursor
 ```
+
+### `gwm pull-main`
+
+カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新します。
+
+```bash
+# メインブランチの更新
+gwm pull-main
+```
+
+**使用ケース:**
+
+- worktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接mainブランチを最新状態に更新できない場合
 
 ## 設定
 
@@ -190,6 +209,9 @@ gwm remove feature
 
 # マージ済みブランチの自動クリーンアップ
 gwm clean -y
+
+# メインブランチの更新
+gwm pull-main
 
 # ファジーサーチによる素早いナビゲーション
 wgo dash        # "feature-dashboard"にマッチ
