@@ -14,7 +14,7 @@ InkベースのインタラクティブなReact端末UIを備えた、効率的�
 
 - **インタラクティブUI**: すべての操作でfzfライクなファジーサーチと複数選択機能
 - **直感的なコマンド**: 一貫した動作を持つシンプルで単一目的のコマンド
-- **スマートなステータス検出**: マージ済み、削除済み、削除可能なworktreeを自動識別
+- **ステータス分類**: 3分類ステータスシステム（Active/Main/Other）
 - **シェル統合**: シェル関数によるシームレスなディレクトリナビゲーション
 - **VS Code統合**: エディタでworktreeを直接開く機能
 - **柔軟な設定**: TOMLファイルでベースパスとメインブランチをカスタマイズ
@@ -55,10 +55,9 @@ gwm list
 
 **ステータスインジケータ:**
 
-- `* ACTIVE`: 現在アクティブなworktree
-- `NORMAL`: 通常のworktree
-- `PRUNABLE`: マージ済みまたは削除されたブランチ（クリーンアップ候補）
-- `LOCKED`: Gitロックされたworktree
+- `* ACTIVE`: 現在アクティブなworktree（黄色）
+- `M MAIN`: ベースとなるメインworktree（シアン）
+- `- OTHER`: その他のすべてのworktree（白）
 
 ### `gwm add [branch_name]`
 
@@ -102,27 +101,6 @@ gwm remove -f
 
 - `-f, --force`: 未コミットの変更があっても強制削除
 
-### `gwm clean`
-
-マージ済みまたは削除されたworktreeをクリーンアップします。メインブランチにマージされたブランチやリモートから削除されたブランチのworktreeを識別します。
-
-```bash
-# 複数選択によるインタラクティブクリーンアップ
-gwm clean
-
-# 検出されたすべての候補を自動クリーンアップ
-gwm clean -y
-```
-
-**検出条件:**
-
-- ブランチが設定されたメインブランチのいずれかにマージ済み
-- リモート追跡ブランチが存在しない
-
-**オプション:**
-
-- `-y, --yes`: インタラクティブ選択をスキップして検出されたすべての候補を削除
-
 ### `gwm go [query]`
 
 worktreeディレクトリに移動します。シェル統合用に設計されています。
@@ -133,7 +111,26 @@ gwm go
 
 # 事前フィルタリング選択
 gwm go feature
+
+# VS Codeでworktreeを開く
+gwm go api-refactor --code
+
+# Cursorでworktreeを開く
+gwm go bugfix/login --cursor
 ```
+
+### `gwm pull-main`
+
+カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新します。
+
+```bash
+# メインブランチの更新
+gwm pull-main
+```
+
+**使用ケース:**
+
+- worktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接mainブランチを最新状態に更新できない場合
 
 ## 設定
 
@@ -212,6 +209,9 @@ gwm remove feature
 
 # マージ済みブランチの自動クリーンアップ
 gwm clean -y
+
+# メインブランチの更新
+gwm pull-main
 
 # ファジーサーチによる素早いナビゲーション
 wgo dash        # "feature-dashboard"にマッチ

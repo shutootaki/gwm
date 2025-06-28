@@ -88,9 +88,7 @@ describe('WorktreeRemove', () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
     mockRemoveWorktree.mockReturnValue(undefined);
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeRemove)
-    );
+    const { lastFrame } = render(React.createElement(WorktreeRemove));
 
     expect(lastFrame()).toBeDefined();
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
@@ -114,9 +112,7 @@ describe('WorktreeRemove', () => {
       throw new Error('Cannot remove worktree');
     });
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeRemove)
-    );
+    const { lastFrame } = render(React.createElement(WorktreeRemove));
 
     expect(lastFrame()).toBeDefined();
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
@@ -125,9 +121,7 @@ describe('WorktreeRemove', () => {
   it('should show error when no worktrees are selected', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeRemove)
-    );
+    const { lastFrame } = render(React.createElement(WorktreeRemove));
 
     expect(lastFrame()).toBeDefined();
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);

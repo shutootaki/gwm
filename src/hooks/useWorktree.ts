@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { execSync, spawnSync } from 'child_process';
 import { join } from 'path';
 import { loadConfig } from '../config.js';
@@ -24,7 +24,7 @@ export function useWorktree({
   onSuccess,
   onError,
 }: UseWorktreeOptions) {
-  const config = loadConfig();
+  const config = useMemo(() => loadConfig(), []);
 
   const createWorktree = useCallback(
     (branch: string, isRemote: boolean) => {

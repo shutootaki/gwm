@@ -104,6 +104,11 @@ export function useEditableText(options: UseEditableTextOptions = {}) {
       return;
     }
 
+    // Ctrl+N / Ctrl+P: SelectList や MultiSelectList でカーソル移動として使うため、文字入力としては無視する
+    if (key.ctrl && (input === 'n' || input === 'p')) {
+      return;
+    }
+
     // 通常の文字入力（スキップ指定されていない）
     if (input && input.length === 1 && !skipChars.includes(input)) {
       const newValue =

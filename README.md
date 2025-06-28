@@ -14,7 +14,7 @@ A modern CLI tool for efficient Git worktree management with an interactive, Rea
 
 - **Interactive UI**: fzf-like fuzzy search and multi-selection for all operations
 - **Intuitive Commands**: Simple, single-purpose commands with consistent behavior
-- **Smart Status Detection**: Automatically identifies merged, deleted, and prunable worktrees
+- **Simple Status Classification**: 3-category status system (Active/Main/Other)
 - **Shell Integration**: Seamless directory navigation with shell functions
 - **VS Code Integration**: Open worktrees directly in your editor
 - **Flexible Configuration**: Customize base paths and main branches via TOML configuration
@@ -55,10 +55,9 @@ gwm list
 
 **Status Indicators:**
 
-- `* ACTIVE`: Currently active worktree
-- `NORMAL`: Standard worktree
-- `PRUNABLE`: Merged or deleted branches (cleanup candidates)
-- `LOCKED`: Git-locked worktrees
+- `* ACTIVE`: Currently active worktree (yellow)
+- `M MAIN`: Base main worktree (cyan)
+- `- OTHER`: All other worktrees (white)
 
 ### `gwm add [branch_name]`
 
@@ -102,27 +101,6 @@ gwm remove -f
 
 - `-f, --force`: Force removal even with uncommitted changes
 
-### `gwm clean`
-
-Clean up merged or deleted worktrees. Identifies worktrees where branches have been merged into main branches or deleted from remote.
-
-```bash
-# Interactive cleanup with multi-selection
-gwm clean
-
-# Auto-cleanup all detected candidates
-gwm clean -y
-```
-
-**Detection Criteria:**
-
-- Branch is merged into one of the configured main branches
-- Remote tracking branch no longer exists
-
-**Options:**
-
-- `-y, --yes`: Skip interactive selection and remove all detected candidates
-
 ### `gwm go [query]`
 
 Navigate to or open a worktree directory.
@@ -145,7 +123,18 @@ gwm go api-refactor --code
 gwm go bugfix/login --cursor
 ```
 
-> ℹ️ Because `gwm go` now changes the directory for you, additional shell helper functions such as `wgo` are no longer necessary.
+### `gwm pull-main`
+
+Updates the worktree for the main branch to its latest state, even when your current directory is outside of the worktree directory.
+
+```bash
+# Update the main branch
+gwm pull-main
+```
+
+**Use cases:**
+
+- Your worktree directories live in a specific folder (e.g., `~/username/git-worktree`) and you can't easily update the main branch.
 
 ## Configuration
 

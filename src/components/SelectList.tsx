@@ -1,12 +1,7 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useReducer,
-} from 'react';
+import React, { useEffect, useMemo, useCallback, useReducer } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
+import { useEditableText } from '../hooks/useEditableText.js';
 
 interface SelectListProps {
   items: SelectItem[];
@@ -29,7 +24,11 @@ export const SelectList: React.FC<SelectListProps> = ({
   title = 'Select',
   showStats = true,
 }) => {
-  const [query, setQuery] = useState(initialQuery);
+  const {
+    value: query,
+    setValue: setQuery,
+    cursorPosition,
+  } = useEditableText({ initialValue: initialQuery });
 
   /*
    * selectedIndex と scrollOffset をまとめて 1 つの useReducer で管理することで、
@@ -157,20 +156,12 @@ export const SelectList: React.FC<SelectListProps> = ({
       return;
     }
 
+    // Ctrl+U: クエリ消去 & スクロール位置リセット
     if (key.ctrl && input === 'u') {
       setQuery('');
       // 一括リセット（scrollOffset も含む）
       dispatch({ type: 'RESET' });
       return;
-    }
-
-    if (key.backspace || key.delete) {
-      setQuery(query.slice(0, -1));
-      return;
-    }
-
-    if (input && input.length === 1) {
-      setQuery(query + input);
     }
   });
 
@@ -223,8 +214,9 @@ export const SelectList: React.FC<SelectListProps> = ({
             <Text color="cyan" bold>
               ❯{' '}
             </Text>
-            <Text>{query}</Text>
+            <Text>{query.slice(0, cursorPosition)}</Text>
             <Text color="cyan">█</Text>
+            <Text>{query.slice(cursorPosition)}</Text>
           </Box>
         </Box>
       </Box>
