@@ -32,12 +32,22 @@ const App: React.FC = () => {
     case 'ls':
       return <WorktreeList />;
     case 'add': {
-      const { branchName, isRemote, fromBranch } = parseAddArgs(args);
+      const {
+        branchName,
+        isRemote,
+        fromBranch,
+        openCode,
+        openCursor,
+        outputPath,
+      } = parseAddArgs(args);
       return (
         <WorktreeAdd
           branchName={branchName}
           isRemote={isRemote}
           fromBranch={fromBranch}
+          openCode={openCode}
+          openCursor={openCursor}
+          outputPath={outputPath}
         />
       );
     }
