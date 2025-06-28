@@ -9,15 +9,19 @@ interface MultiSelectListProps {
   placeholder?: string;
   initialQuery?: string;
   maxDisplayItems?: number;
+  title?: string;
+  showStats?: boolean;
 }
 
 export const MultiSelectList: React.FC<MultiSelectListProps> = ({
   items,
   onConfirm,
   onCancel,
-  placeholder = 'Type to search, Space to select, Enter to confirm...',
+  placeholder = 'Type to search, Space to select...',
   initialQuery = '',
   maxDisplayItems = 15,
+  title = 'Multi-select',
+  showStats = true,
 }) => {
   const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -48,13 +52,28 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       return;
     }
 
-    if (key.upArrow) {
+    if (key.upArrow || (key.ctrl && input === 'p')) {
       setSelectedIndex(Math.max(0, selectedIndex - 1));
       return;
     }
 
-    if (key.downArrow) {
+    if (key.downArrow || (key.ctrl && input === 'n')) {
       setSelectedIndex(Math.min(filteredItems.length - 1, selectedIndex + 1));
+      return;
+    }
+
+    if (key.ctrl && input === 'u') {
+      setQuery('');
+      return;
+    }
+
+    if (key.ctrl && input === 'a') {
+      // 全選択/全解除
+      if (selectedItems.size === filteredItems.length) {
+        setSelectedItems(new Set());
+      } else {
+        setSelectedItems(new Set(filteredItems.map(item => item.value)));
+      }
       return;
     }
 
@@ -82,54 +101,121 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
     }
   });
 
+  const hasItems = filteredItems.length > 0;
+
   return (
     <Box flexDirection="column">
+      {/* Title */}
       <Box marginBottom={1}>
-        <Text color="gray">{placeholder}</Text>
-      </Box>
-      <Box marginBottom={1}>
-        <Text color="cyan">{'> '}</Text>
-        <Text>{query}</Text>
-        <Text color="gray">{'█'}</Text>
+        <Text color="cyan" bold>{title}</Text>
       </Box>
 
-      {filteredItems.length === 0 ? (
-        <Text color="red">No matches found</Text>
-      ) : (
+      {/* Stats */}
+      {showStats && (
+        <Box marginBottom={1}>
+          <Text color="gray">
+            {filteredItems.length} / {items.length} items
+            {hasItems && (
+              <>
+                {' '}• cursor at {selectedIndex + 1}
+              </>
+            )}
+            {' '}• <Text color="green" bold>{selectedItems.size} selected</Text>
+          </Text>
+        </Box>
+      )}
+
+      {/* Search Input */}
+      <Box marginBottom={1}>
         <Box flexDirection="column">
-          {filteredItems.slice(0, maxDisplayItems).map((item, index) => {
-            const isSelected = selectedItems.has(item.value);
-            const isCurrent = index === selectedIndex;
+          <Text color="gray">{placeholder}</Text>
+          <Box marginTop={0}>
+            <Text color="cyan" bold>❯ </Text>
+            <Text>{query}</Text>
+            <Text color="cyan">█</Text>
+          </Box>
+        </Box>
+      </Box>
 
-            return (
-              <Box key={item.value}>
-                <Text color={isCurrent ? 'cyan' : 'white'}>
-                  {isCurrent ? '❯ ' : '  '}
-                  {isSelected ? '☑ ' : '☐ '}
-                  {item.label}
+      {/* Results */}
+      <Box marginBottom={1}>
+        {!hasItems ? (
+          <Box flexDirection="column">
+            <Text color="red">No matches found</Text>
+            {query && (
+              <Text color="gray">
+                Press <Text color="cyan">Ctrl+U</Text> to clear search
+              </Text>
+            )}
+          </Box>
+        ) : (
+          <Box flexDirection="column">
+            {filteredItems.slice(0, maxDisplayItems).map((item, index) => {
+              const isItemSelected = selectedItems.has(item.value);
+              const isCurrent = index === selectedIndex;
+
+              return (
+                <Box key={item.value}>
+                  <Text color={isCurrent ? 'cyan' : 'white'}>
+                    {isCurrent ? '▶ ' : '  '}
+                    {isItemSelected ? (
+                      <Text color="green" bold>[x] </Text>
+                    ) : (
+                      <Text color="gray">[ ] </Text>
+                    )}
+                    <Text color={isCurrent ? 'cyan' : 'white'} bold={isCurrent}>
+                      {item.label}
+                    </Text>
+                  </Text>
+                </Box>
+              );
+            })}
+            {filteredItems.length > maxDisplayItems && (
+              <Box marginTop={1}>
+                <Text color="yellow">
+                  ... {filteredItems.length - maxDisplayItems} more
                 </Text>
               </Box>
-            );
-          })}
-          {filteredItems.length > maxDisplayItems && (
-            <Text color="gray">
-              ... and {filteredItems.length - maxDisplayItems} more
-            </Text>
-          )}
-        </Box>
-      )}
-
-      <Box marginTop={1}>
-        <Text color="gray">
-          ↑/↓ to navigate, Space to select, Enter to confirm, Esc to cancel
-        </Text>
+            )}
+          </Box>
+        )}
       </Box>
 
+      {/* Selected Items Preview */}
       {selectedItems.size > 0 && (
-        <Box marginTop={1}>
-          <Text color="yellow">Selected {selectedItems.size} item(s)</Text>
+        <Box marginBottom={1}>
+          <Box flexDirection="column" borderStyle="single" borderColor="green" padding={1}>
+            <Text color="green" bold>
+              Selected ({selectedItems.size} items)
+            </Text>
+            <Box flexDirection="column">
+              {Array.from(selectedItems).slice(0, 5).map((value) => {
+                const item = items.find(i => i.value === value);
+                return item ? (
+                  <Text key={value} color="gray">
+                    • {item.label}
+                  </Text>
+                ) : null;
+              })}
+              {selectedItems.size > 5 && (
+                <Text color="gray">... {selectedItems.size - 5} more</Text>
+              )}
+            </Box>
+          </Box>
         </Box>
       )}
+
+      {/* Help */}
+      <Box>
+        <Box flexDirection="column">
+          <Text color="gray">
+            <Text color="cyan">↑/↓</Text> navigate • <Text color="yellow">Space</Text> toggle • <Text color="green">Enter</Text> confirm • <Text color="red">Esc</Text> cancel
+          </Text>
+          <Text color="gray">
+            <Text color="cyan">Ctrl+A</Text> select all • <Text color="cyan">Ctrl+U</Text> clear search
+          </Text>
+        </Box>
+      </Box>
     </Box>
   );
 };

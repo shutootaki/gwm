@@ -125,21 +125,38 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   };
 
   const handleCancel = () => {
-    setError('Cancelled');
+    setError('Operation cancelled');
   };
 
   if (success) {
     return (
-      <Box>
-        <Text color="green">✓ Worktree created successfully at: {success}</Text>
+      <Box flexDirection="column">
+        <Box marginBottom={1}>
+          <Text color="green" bold>Worktree created successfully!</Text>
+        </Box>
+        <Box flexDirection="column" borderStyle="single" borderColor="green" padding={1}>
+          <Text color="white">Location:</Text>
+          <Text color="cyan" bold>  {success}</Text>
+          <Text color="gray">
+            Use <Text color="cyan">cd &quot;{success}&quot;</Text> to navigate
+          </Text>
+        </Box>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box>
-        <Text color="red">✗ Error: {error}</Text>
+      <Box flexDirection="column">
+        <Box marginBottom={1}>
+          <Text color="red" bold>Failed to create worktree</Text>
+        </Box>
+        <Box flexDirection="column" borderStyle="single" borderColor="red" padding={1}>
+          <Text color="red">{error}</Text>
+          <Text color="gray">
+            Branch may already exist or permission issue
+          </Text>
+        </Box>
       </Box>
     );
   }
@@ -155,14 +172,16 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
         items={items}
         onSelect={handleBranchSelect}
         onCancel={handleCancel}
-        placeholder="Select a remote branch to add worktree:"
+        title="Create worktree from remote branch"
+        placeholder="Search remote branches..."
       />
     );
   }
 
   return (
-    <Box>
-      <Text>Creating worktree...</Text>
+    <Box flexDirection="column">
+      <Text color="cyan">Fetching remote branches...</Text>
+      <Text color="gray">Please wait</Text>
     </Box>
   );
 };
