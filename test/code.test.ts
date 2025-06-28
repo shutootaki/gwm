@@ -37,7 +37,7 @@ describe('gwm code command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL' as const,
@@ -114,7 +114,7 @@ describe('gwm code command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-auth',
+        path: '/Users/test/git-worktrees/project/feature-auth',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-auth',
         status: 'NORMAL' as const,
@@ -122,7 +122,7 @@ describe('gwm code command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/feature-ui',
+        path: '/Users/test/git-worktrees/project/feature-ui',
         head: 'fedcba0987654321',
         branch: 'refs/heads/feature-ui',
         status: 'NORMAL' as const,
@@ -130,7 +130,7 @@ describe('gwm code command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/bugfix-login',
+        path: '/Users/test/git-worktrees/project/bugfix-login',
         head: '123456789abcdef0',
         branch: 'refs/heads/bugfix-login',
         status: 'NORMAL' as const,
@@ -165,7 +165,7 @@ describe('gwm code command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/unique-feature',
+        path: '/Users/test/git-worktrees/project/unique-feature',
         head: 'abcdef1234567890',
         branch: 'refs/heads/unique-feature',
         status: 'NORMAL' as const,
@@ -271,7 +271,7 @@ describe('gwm code command integration tests', () => {
   it('should handle VS Code launch errors gracefully', async () => {
     const mockWorktrees = [
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL' as const,
@@ -306,7 +306,7 @@ describe('gwm code command integration tests', () => {
         isMain: true,
       },
       {
-        path: '/Users/test/worktrees/project/feature-branch',
+        path: '/Users/test/git-worktrees/project/feature-branch',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-branch',
         status: 'ACTIVE' as const,
@@ -358,7 +358,7 @@ describe('gwm code command integration tests', () => {
   it('should allow opening multiple worktrees in separate VS Code instances', async () => {
     const mockWorktrees = [
       {
-        path: '/Users/test/worktrees/project/feature-1',
+        path: '/Users/test/git-worktrees/project/feature-1',
         head: 'abcdef1234567890',
         branch: 'refs/heads/feature-1',
         status: 'NORMAL' as const,
@@ -366,7 +366,7 @@ describe('gwm code command integration tests', () => {
         isMain: false,
       },
       {
-        path: '/Users/test/worktrees/project/feature-2',
+        path: '/Users/test/git-worktrees/project/feature-2',
         head: 'fedcba0987654321',
         branch: 'refs/heads/feature-2',
         status: 'NORMAL' as const,

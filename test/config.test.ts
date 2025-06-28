@@ -39,7 +39,7 @@ describe('loadConfig', () => {
     const result = loadConfig();
 
     expect(result).toEqual({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
 
@@ -183,7 +183,7 @@ worktree_base_path = /invalid/toml/syntax
     const result = loadConfig();
 
     expect(result).toEqual({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
 
@@ -213,7 +213,7 @@ worktree_base_path = /invalid/toml/syntax
     const result = loadConfig();
 
     expect(result).toEqual({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
 
@@ -236,7 +236,7 @@ worktree_base_path = /invalid/toml/syntax
     const result = loadConfig();
 
     expect(result).toEqual({
-      worktree_base_path: '/Users/test/worktrees',
+      worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
     });
   });

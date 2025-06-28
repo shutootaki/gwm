@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
-import { getWorktreesWithStatus, fetchAndPrune, removeWorktree } from '../src/utils/git.js';
+import {
+  getWorktreesWithStatus,
+  fetchAndPrune,
+  removeWorktree,
+} from '../src/utils/git.js';
 import { loadConfig } from '../src/config.js';
 
 // execSyncをモック化
@@ -11,9 +15,9 @@ vi.mock('child_process', () => ({
 // loadConfigをモック化
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
-    worktree_base_path: '/Users/test/worktrees',
-    main_branches: ['main', 'master']
-  }))
+    worktree_base_path: '/Users/test/git-worktrees',
+    main_branches: ['main', 'master'],
+  })),
 }));
 
 const mockExecSync = vi.mocked(execSync);
@@ -63,32 +67,38 @@ describe('Error Handling Tests', () => {
     // リモートリポジトリへの接続タイムアウトエラーのハンドリングをテスト
     it('should handle network timeout during fetch', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: unable to access \'https://github.com/repo.git/\': Failed to connect to github.com port 443: Connection timed out');
+        const error = new Error(
+          "fatal: unable to access 'https://github.com/repo.git/': Failed to connect to github.com port 443: Connection timed out"
+        );
         throw error;
       });
 
       expect(() => fetchAndPrune()).toThrow(
-        'Failed to fetch and prune from remote: fatal: unable to access \'https://github.com/repo.git/\': Failed to connect to github.com port 443: Connection timed out'
+        "Failed to fetch and prune from remote: fatal: unable to access 'https://github.com/repo.git/': Failed to connect to github.com port 443: Connection timed out"
       );
     });
 
     // プライベートリポジトリの認証エラーのハンドリングをテスト
     it('should handle authentication errors during fetch', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: Authentication failed for \'https://github.com/private-repo.git/\'');
+        const error = new Error(
+          "fatal: Authentication failed for 'https://github.com/private-repo.git/'"
+        );
         throw error;
       });
 
       expect(() => fetchAndPrune()).toThrow(
-        'Failed to fetch and prune from remote: fatal: Authentication failed for \'https://github.com/private-repo.git/\''
+        "Failed to fetch and prune from remote: fatal: Authentication failed for 'https://github.com/private-repo.git/'"
       );
     });
 
     // リモートorigin設定なしの場合のエラーハンドリングをテスト
     it('should handle missing remote origin', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: \'origin\' does not appear to be a git repository');
-        error.message = 'No such remote \'origin\'';
+        const error = new Error(
+          "fatal: 'origin' does not appear to be a git repository"
+        );
+        error.message = "No such remote 'origin'";
         throw error;
       });
 
@@ -102,36 +112,42 @@ describe('Error Handling Tests', () => {
     // 未コミット変更があるworktreeの削除エラーのハンドリングをテスト
     it('should handle worktree removal with uncommitted changes', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: \'path/to/worktree\' contains modified or untracked files, use --force to delete it');
+        const error = new Error(
+          "fatal: 'path/to/worktree' contains modified or untracked files, use --force to delete it"
+        );
         throw error;
       });
 
       expect(() => removeWorktree('/path/to/worktree')).toThrow(
-        'Failed to remove worktree /path/to/worktree: fatal: \'path/to/worktree\' contains modified or untracked files, use --force to delete it'
+        "Failed to remove worktree /path/to/worktree: fatal: 'path/to/worktree' contains modified or untracked files, use --force to delete it"
       );
     });
 
     // 存在しないworktreeパスの削除エラーのハンドリングをテスト
     it('should handle worktree removal of non-existent path', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: \'path/to/nonexistent\' is not a working tree');
+        const error = new Error(
+          "fatal: 'path/to/nonexistent' is not a working tree"
+        );
         throw error;
       });
 
       expect(() => removeWorktree('/path/to/nonexistent')).toThrow(
-        'Failed to remove worktree /path/to/nonexistent: fatal: \'path/to/nonexistent\' is not a working tree'
+        "Failed to remove worktree /path/to/nonexistent: fatal: 'path/to/nonexistent' is not a working tree"
       );
     });
 
     // ロックされたworktreeの削除エラーのハンドリングをテスト
     it('should handle worktree removal with locked worktree', () => {
       mockExecSync.mockImplementation(() => {
-        const error = new Error('fatal: \'path/to/worktree\' is locked; use --force to override or unlock first');
+        const error = new Error(
+          "fatal: 'path/to/worktree' is locked; use --force to override or unlock first"
+        );
         throw error;
       });
 
       expect(() => removeWorktree('/path/to/worktree')).toThrow(
-        'Failed to remove worktree /path/to/worktree: fatal: \'path/to/worktree\' is locked; use --force to override or unlock first'
+        "Failed to remove worktree /path/to/worktree: fatal: 'path/to/worktree' is locked; use --force to override or unlock first"
       );
     });
   });
@@ -221,7 +237,7 @@ describe('Error Handling Tests', () => {
     // 無効なパス文字を含むworktree名のエラーハンドリングをテスト
     it('should handle invalid path characters in worktree names', () => {
       const invalidPath = '/path/with/invalid\x00character';
-      
+
       mockExecSync.mockImplementation(() => {
         const error = new Error('fatal: invalid path');
         throw error;
