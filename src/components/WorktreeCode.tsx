@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
 import { WorktreeSelector } from './WorktreeSelector.js';
+import { formatErrorForDisplay } from '../utils/index.js';
 
 interface WorktreeCodeProps {
   query?: string;
@@ -15,17 +16,20 @@ export const WorktreeCode: React.FC<WorktreeCodeProps> = ({ query }) => {
     try {
       // codeコマンドが存在するかチェック
       execSync('which code', { stdio: 'ignore' });
-      
-      // VS Codeでディレクトリを開く
-      execSync(`code "${worktree.path}"`, { stdio: 'inherit' });
-      
+
+      // VS Codeでディレクトリを開く（適切にエスケープ）
+      const escapedPath = `"${worktree.path.replace(/"/g, '\\"')}"`;
+      execSync(`code ${escapedPath}`, { stdio: 'inherit' });
+
       setSuccess(`Opened ${worktree.branch} in VS Code`);
       setTimeout(() => process.exit(0), 1000);
     } catch (err) {
       if (err instanceof Error && err.message.includes('which code')) {
-        setError('VS Code command "code" not found. Please install VS Code and add it to your PATH.');
+        setError(
+          'VS Code command "code" not found. Please install VS Code and add it to your PATH.'
+        );
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to open VS Code');
+        setError(formatErrorForDisplay(err));
       }
     }
   };

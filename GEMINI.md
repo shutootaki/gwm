@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`wtm` (worktree manager) is a CLI tool designed to streamline Git worktree management with an interactive, React-based terminal UI. The project is currently in the specification phase with detailed requirements defined but no implementation yet.
+`gwm` (worktree manager) is a CLI tool designed to streamline Git worktree management with an interactive, React-based terminal UI. The project is currently in the specification phase with detailed requirements defined but no implementation yet.
 
 ## Project Structure
 
@@ -14,7 +14,7 @@ This is a TypeScript-based CLI tool with the following planned architecture:
 - **UI Framework**: React for declarative UI components
 - **CLI Library**: Ink for React-based terminal interfaces
 - **Package Manager**: pnpm
-- **Configuration**: TOML format (`~/.config/wtm/config.toml`)
+- **Configuration**: TOML format (`~/.config/gwm/config.toml`)
 
 ## Core Commands (Planned)
 
@@ -22,17 +22,17 @@ This is a TypeScript-based CLI tool with the following planned architecture:
 
 - `pnpm init` - Initialize project with package.json
 - `pnpm add typescript ink react @types/react` - Install core dependencies
-- `pnpm link --global` - Register wtm command locally for testing
+- `pnpm link --global` - Register gwm command locally for testing
 - `pnpm add -D eslint prettier` - Add code quality tools
 
 ### Main CLI Commands (Specification)
 
-- `wtm list` (alias: `ls`) - Display worktree list with status indicators
-- `wtm create [branch_name]` - Create new worktree interactively or from specified branch
-- `wtm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
-- `wtm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
-- `wtm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
-- `wtm code [query]` - Open selected worktree in VS Code
+- `gwm list` (alias: `ls`) - Display worktree list with status indicators
+- `gwm create [branch_name]` - Create new worktree interactively or from specified branch
+- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
+- `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
+- `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
+- `gwm code [query]` - Open selected worktree in VS Code
 
 ## Key Features
 
@@ -60,14 +60,14 @@ This is a TypeScript-based CLI tool with the following planned architecture:
 The project follows a 5-phase development plan:
 
 1. **Foundation**: Project setup, TypeScript config, basic Ink "Hello World"
-2. **Read-only Features**: `wtm list` implementation, config file handling
+2. **Read-only Features**: `gwm list` implementation, config file handling
 3. **Core Operations**: Interactive UI components, create/remove/go/code commands
-4. **Automation**: `wtm clean` command with merge detection
+4. **Automation**: `gwm clean` command with merge detection
 5. **Distribution**: Error handling, documentation, npm publishing
 
 ## Configuration
 
-Settings file: `~/.config/wtm/config.toml`
+Settings file: `~/.config/gwm/config.toml`
 
 ```toml
 worktree_base_path = "/Users/myuser/dev/worktrees"
@@ -76,13 +76,13 @@ main_branches = ["main", "master", "develop"]
 
 ## Shell Integration
 
-The `wtm go` command is designed to work with a shell function:
+The `gwm go` command is designed to work with a shell function:
 
 ```shell
 # ~/.zshrc or ~/.bashrc
 function wgo() {
   local path
-  path="$(wtm go "$1")"
+  path="$(gwm go "$1")"
   if [ -n "$path" ]; then
     cd "$path"
   fi

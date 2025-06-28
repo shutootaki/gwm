@@ -17,15 +17,15 @@ vi.mock('fs', () => ({
 vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/worktrees',
-    main_branches: ['main', 'master', 'develop']
-  }))
+    main_branches: ['main', 'master', 'develop'],
+  })),
 }));
 
 const mockExecSync = vi.mocked(execSync);
 const mockExistsSync = vi.mocked(existsSync);
 const mockMkdirSync = vi.mocked(mkdirSync);
 
-describe('wtm create command integration tests', () => {
+describe('gwm create command integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -45,7 +45,9 @@ describe('wtm create command integration tests', () => {
       if (command === 'git show-ref --verify --quiet refs/heads/feature-auth') {
         return ''; // ブランチが存在
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature-auth`)) {
+      if (
+        command?.includes(`git worktree add "${expectedPath}" feature-auth`)
+      ) {
         return '';
       }
       return '';
@@ -58,7 +60,9 @@ describe('wtm create command integration tests', () => {
       mockExecSync(`git worktree add "${expectedPath}" ${branchName}`);
     }).not.toThrow();
 
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" ${branchName}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" ${branchName}`
+    );
   });
 
   // 新規ローカルブランチからのworktree作成をテスト
@@ -77,7 +81,11 @@ describe('wtm create command integration tests', () => {
       if (command === 'git show-ref --verify --quiet refs/heads/feature-new') {
         throw new Error('No such branch'); // ブランチが存在しない
       }
-      if (command?.includes(`git worktree add "${expectedPath}" -b feature-new ${fromBranch}`)) {
+      if (
+        command?.includes(
+          `git worktree add "${expectedPath}" -b feature-new ${fromBranch}`
+        )
+      ) {
         return '';
       }
       return '';
@@ -86,10 +94,14 @@ describe('wtm create command integration tests', () => {
     mockExistsSync.mockReturnValue(true);
 
     expect(() => {
-      mockExecSync(`git worktree add "${expectedPath}" -b ${branchName} ${fromBranch}`);
+      mockExecSync(
+        `git worktree add "${expectedPath}" -b ${branchName} ${fromBranch}`
+      );
     }).not.toThrow();
 
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" -b ${branchName} ${fromBranch}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" -b ${branchName} ${fromBranch}`
+    );
   });
 
   // リモートブランチからのworktree作成をテスト（-rフラグ）
@@ -107,13 +119,22 @@ describe('wtm create command integration tests', () => {
       if (command === 'git fetch origin') {
         return '';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-remote') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-remote'
+      ) {
         throw new Error('No such local branch');
       }
-      if (command === 'git show-ref --verify --quiet refs/remotes/origin/feature-remote') {
+      if (
+        command ===
+        'git show-ref --verify --quiet refs/remotes/origin/feature-remote'
+      ) {
         return ''; // リモートブランチが存在
       }
-      if (command?.includes(`git worktree add "${expectedPath}" -b feature-remote origin/feature-remote`)) {
+      if (
+        command?.includes(
+          `git worktree add "${expectedPath}" -b feature-remote origin/feature-remote`
+        )
+      ) {
         return '';
       }
       return '';
@@ -124,11 +145,15 @@ describe('wtm create command integration tests', () => {
     // フェッチとworktree作成をシミュレート
     expect(() => {
       mockExecSync('git fetch origin');
-      mockExecSync(`git worktree add "${expectedPath}" -b ${branchName} origin/${branchName}`);
+      mockExecSync(
+        `git worktree add "${expectedPath}" -b ${branchName} origin/${branchName}`
+      );
     }).not.toThrow();
 
     expect(mockExecSync).toHaveBeenCalledWith('git fetch origin');
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" -b ${branchName} origin/${branchName}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" -b ${branchName} origin/${branchName}`
+    );
   });
 
   // ブランチ名正規化のテスト（スラッシュ→ハイフン）
@@ -144,10 +169,16 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature/user-auth') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature/user-auth'
+      ) {
         return '';
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature/user-auth`)) {
+      if (
+        command?.includes(
+          `git worktree add "${expectedPath}" feature/user-auth`
+        )
+      ) {
         return '';
       }
       return '';
@@ -159,14 +190,16 @@ describe('wtm create command integration tests', () => {
       mockExecSync(`git worktree add "${expectedPath}" ${branchName}`);
     }).not.toThrow();
 
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" ${branchName}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" ${branchName}`
+    );
   });
 
   // 設定ファイルによるカスタムベースパスのテスト
   it('should use custom base path from config', () => {
     vi.mocked(loadConfig).mockReturnValue({
       worktree_base_path: '/Users/test/custom-worktrees',
-      main_branches: ['main']
+      main_branches: ['main'],
     });
 
     const branchName = 'feature-custom';
@@ -179,10 +212,14 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-custom') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-custom'
+      ) {
         return '';
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature-custom`)) {
+      if (
+        command?.includes(`git worktree add "${expectedPath}" feature-custom`)
+      ) {
         return '';
       }
       return '';
@@ -194,7 +231,9 @@ describe('wtm create command integration tests', () => {
       mockExecSync(`git worktree add "${expectedPath}" ${branchName}`);
     }).not.toThrow();
 
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" ${branchName}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" ${branchName}`
+    );
   });
 
   // ディレクトリ作成のテスト
@@ -210,10 +249,14 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-mkdir') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-mkdir'
+      ) {
         return '';
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature-mkdir`)) {
+      if (
+        command?.includes(`git worktree add "${expectedPath}" feature-mkdir`)
+      ) {
         return '';
       }
       return '';
@@ -247,10 +290,16 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-default') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-default'
+      ) {
         throw new Error('No such branch'); // 新規ブランチ
       }
-      if (command?.includes(`git worktree add "${expectedPath}" -b feature-default ${defaultFromBranch}`)) {
+      if (
+        command?.includes(
+          `git worktree add "${expectedPath}" -b feature-default ${defaultFromBranch}`
+        )
+      ) {
         return '';
       }
       return '';
@@ -259,10 +308,14 @@ describe('wtm create command integration tests', () => {
     mockExistsSync.mockReturnValue(true);
 
     expect(() => {
-      mockExecSync(`git worktree add "${expectedPath}" -b ${branchName} ${defaultFromBranch}`);
+      mockExecSync(
+        `git worktree add "${expectedPath}" -b ${branchName} ${defaultFromBranch}`
+      );
     }).not.toThrow();
 
-    expect(mockExecSync).toHaveBeenCalledWith(`git worktree add "${expectedPath}" -b ${branchName} ${defaultFromBranch}`);
+    expect(mockExecSync).toHaveBeenCalledWith(
+      `git worktree add "${expectedPath}" -b ${branchName} ${defaultFromBranch}`
+    );
   });
 
   // ブランチ名なしでの呼び出し（インタラクティブUI想定）をテスト
@@ -278,12 +331,18 @@ describe('wtm create command integration tests', () => {
       return '';
     });
 
-    const remoteBranches = mockExecSync('git branch -r --format="%(refname:short)"')
+    const remoteBranches = mockExecSync(
+      'git branch -r --format="%(refname:short)"'
+    )
       .toString()
       .split('\n')
       .filter(Boolean);
 
-    expect(remoteBranches).toEqual(['origin/feature-1', 'origin/feature-2', 'origin/main']);
+    expect(remoteBranches).toEqual([
+      'origin/feature-1',
+      'origin/feature-2',
+      'origin/main',
+    ]);
   });
 
   // worktree作成エラーのハンドリングをテスト
@@ -298,10 +357,14 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-error') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-error'
+      ) {
         return '';
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature-error`)) {
+      if (
+        command?.includes(`git worktree add "${expectedPath}" feature-error`)
+      ) {
         throw new Error('fatal: worktree already exists');
       }
       return '';
@@ -325,7 +388,10 @@ describe('wtm create command integration tests', () => {
       if (command === 'git fetch origin') {
         return '';
       }
-      if (command === 'git show-ref --verify --quiet refs/remotes/origin/non-existent') {
+      if (
+        command ===
+        'git show-ref --verify --quiet refs/remotes/origin/non-existent'
+      ) {
         throw new Error('No such remote branch');
       }
       return '';
@@ -333,7 +399,9 @@ describe('wtm create command integration tests', () => {
 
     expect(() => {
       mockExecSync('git fetch origin');
-      mockExecSync('git show-ref --verify --quiet refs/remotes/origin/non-existent');
+      mockExecSync(
+        'git show-ref --verify --quiet refs/remotes/origin/non-existent'
+      );
     }).toThrow('No such remote branch');
   });
 
@@ -349,10 +417,14 @@ describe('wtm create command integration tests', () => {
       if (command === 'git rev-parse --show-toplevel') {
         return '/Users/test/project';
       }
-      if (command === 'git show-ref --verify --quiet refs/heads/feature-output') {
+      if (
+        command === 'git show-ref --verify --quiet refs/heads/feature-output'
+      ) {
         return '';
       }
-      if (command?.includes(`git worktree add "${expectedPath}" feature-output`)) {
+      if (
+        command?.includes(`git worktree add "${expectedPath}" feature-output`)
+      ) {
         return `Preparing worktree (new branch 'feature-output')\nHEAD is now at 1234567 Initial commit`;
       }
       return '';
@@ -360,8 +432,10 @@ describe('wtm create command integration tests', () => {
 
     mockExistsSync.mockReturnValue(true);
 
-    const result = mockExecSync(`git worktree add "${expectedPath}" ${branchName}`);
-    
+    const result = mockExecSync(
+      `git worktree add "${expectedPath}" ${branchName}`
+    );
+
     expect(result).toBeTruthy();
     expect(expectedPath).toBe('/Users/test/worktrees/project/feature-output');
   });

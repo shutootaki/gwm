@@ -15,8 +15,8 @@ const DEFAULT_CONFIG: Config = {
 
 export function loadConfig(): Config {
   const configPaths = [
-    join(homedir(), '.config', 'wtm', 'config.toml'),
-    join(homedir(), '.wtmrc'),
+    join(homedir(), '.config', 'gwm', 'config.toml'),
+    join(homedir(), '.gwmrc'),
   ];
 
   for (const configPath of configPaths) {
@@ -24,9 +24,10 @@ export function loadConfig(): Config {
       try {
         const content = readFileSync(configPath, 'utf8');
         const parsed = TOML.parse(content) as Partial<Config>;
-        
+
         return {
-          worktree_base_path: parsed.worktree_base_path || DEFAULT_CONFIG.worktree_base_path,
+          worktree_base_path:
+            parsed.worktree_base_path || DEFAULT_CONFIG.worktree_base_path,
           main_branches: parsed.main_branches || DEFAULT_CONFIG.main_branches,
         };
       } catch (error) {

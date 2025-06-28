@@ -1,10 +1,10 @@
-# CLI ツール `wtm` 開発仕様書
+# CLI ツール `gwm` 開発仕様書
 
 ## 1\. 概要 (Overview)
 
 ### 1.1. ツール名
 
-`wtm` (worktree manager の略)
+`gwm` (worktree manager の略)
 
 ### 1.2. 目的
 
@@ -23,7 +23,7 @@
 
 ### 2.1. コマンド体系
 
-基本的なコマンド体系は `wtm <command> [arguments] [options]` とする。
+基本的なコマンド体系は `gwm <command> [arguments] [options]` とする。
 
 ### 2.2. Worktree の作成場所
 
@@ -34,13 +34,13 @@
 
 ### 2.3. 対話的インターフェース (Interactive UI)
 
-- 各コマンドで worktree の選択が必要な場合（例: `wtm go`, `wtm rm`）、引数がなければ対話的 UI を起動する。
+- 各コマンドで worktree の選択が必要な場合（例: `gwm go`, `gwm rm`）、引数がなければ対話的 UI を起動する。
 - UI には worktree の一覧が整形されて表示され、ユーザーはカーソルキーで選択し、Enter キーで決定する。
 - `fzf`のようなインクリメンタルなファジーサーチ機能を提供する。
 
 ### 2.4. 設定ファイル
 
-- **パス:** `~/.config/wtm/config.toml` または `~/.wtmrc`
+- **パス:** `~/.config/gwm/config.toml` または `~/.gwmrc`
 - **設定項目:**
   - `worktree_base_path`: worktree を作成するベースディレクトリ (例: `"/Users/myuser/dev/worktrees"`)
   - `main_branches`: メインラインとなるブランチ名のリスト (例: `["main", "master", "develop"]`)。`clean`コマンドや`create`コマンドのデフォルト分岐元として使用する。
@@ -49,10 +49,10 @@
 
 ---
 
-### 3.1. `wtm list` (エイリアス: `ls`)
+### 3.1. `gwm list` (エイリアス: `ls`)
 
 - **目的:** 現在のプロジェクトに存在する worktree の一覧を、詳細情報と共に分かりやすく表示する。
-- **構文:** `wtm list`
+- **構文:** `gwm list`
 - **実行フロー:**
   1.  `git worktree list --porcelain` を実行して、マシンリーダブルな形式で worktree 情報を取得する。
   2.  各 worktree について、ブランチがリモートの`main_branches`にマージ済みか判定する。
@@ -68,15 +68,15 @@
   - **STATUS:**
     - `ACTIVE`: 現在のディレクトリが属する worktree。`*` を付ける。
     - `NORMAL`: 通常の worktree。
-    - `PRUNABLE`: `main_branches`にマージ済み、またはリモートでブランチが削除されている。`wtm clean`の削除対象候補。
+    - `PRUNABLE`: `main_branches`にマージ済み、またはリモートでブランチが削除されている。`gwm clean`の削除対象候補。
     - `LOCKED`: `git worktree lock` されている worktree。
 
 ---
 
-### 3.2. `wtm create [branch_name]`
+### 3.2. `gwm create [branch_name]`
 
 - **目的:** 指定されたブランチから新しい worktree を作成する。
-- **構文:** `wtm create [branch_name] [-r | --remote] [--from <base_branch>]`
+- **構文:** `gwm create [branch_name] [-r | --remote] [--from <base_branch>]`
 - **引数:**
   - `branch_name` (任意): 作成する worktree のブランチ名。省略した場合、対話的にリモートブランチを選択する UI を起動する。
 - **オプション:**
@@ -98,10 +98,10 @@
 
 ---
 
-### 3.3. `wtm remove` (エイリアス: `rm`)
+### 3.3. `gwm remove` (エイリアス: `rm`)
 
 - **目的:** 一つまたは複数の worktree を削除する。
-- **構文:** `wtm remove [query]`
+- **構文:** `gwm remove [query]`
 - **引数:**
   - `query` (任意): 削除したい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
 - **オプション:**
@@ -114,10 +114,10 @@
 
 ---
 
-### 3.4. `wtm clean`
+### 3.4. `gwm clean`
 
 - **目的:** リモートでマージ済み、または削除済みの古い worktree を掃除する。
-- **構文:** `wtm clean`
+- **構文:** `gwm clean`
 - **オプション:**
   - `--yes, -y`: **\<ins\>対話的な選択モードをスキップし、\</ins\>** 検出された削除可能な worktree をすべて即座に削除する。
 - **実行フロー:**
@@ -134,10 +134,10 @@
 
 ---
 
-### 3.5. `wtm go`
+### 3.5. `gwm go`
 
 - **目的:** シェルと連携し、選択した worktree のディレクトリに移動 (`cd`) するためのパスを出力する。
-- **構文:** `wtm go [query]`
+- **構文:** `gwm go [query]`
 - **引数:**
   - `query` (任意): 移動したい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
 - **実行フロー:**
@@ -149,7 +149,7 @@
   # ~/.zshrc or ~/.bashrc
   function wgo() {
     local path
-    path="$(wtm go "$1")"
+    path="$(gwm go "$1")"
     if [ -n "$path" ]; then
       cd "$path"
     fi
@@ -158,14 +158,14 @@
 
 ---
 
-### 3.6. `wtm code`
+### 3.6. `gwm code`
 
 - **目的:** 選択した worktree を Visual Studio Code で開く。
-- **構文:** `wtm code [query]`
+- **構文:** `gwm code [query]`
 - **引数:**
   - `query` (任意): 開きたい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
 - **実行フロー:**
-  1.  `wtm go` と同様に、対話的 UI でユーザーに worktree を選択させる。
+  1.  `gwm go` と同様に、対話的 UI でユーザーに worktree を選択させる。
   2.  ユーザーが worktree を選択して決定した場合、`code <selected_path>` コマンドを実行して VSCode でそのディレクトリを開く。
   3.  `code` コマンドが PATH 上に存在しない場合は、エラーメッセージを表示する。
 
@@ -176,14 +176,11 @@
 本 CLI ツールは、モダンで堅牢な開発体験と、リッチな UI を提供するために以下の技術を採用する。
 
 - **言語: TypeScript**
-
   - 静的型付けによるコンパイル時のエラー検出と、エディタの強力な補完サポートにより、開発効率とコードの品質を向上させる。
 
 - **フレームワーク: React**
-
   - 宣言的な UI 記述により、複雑な状態を持つインタラクティブなインターフェースの構築を容易にする。コンポーネントベースの設計は、コードの再利用性とメンテナンス性を高める。
 
 - **CLI ライブラリ: Ink**
-
   - React コンポーネントを用いて CLI の UI を構築するためのライブラリ。これにより、ターミナル上でもリッチでインタラクティブなユーザー体験（例: `fzf`ライクなリスト選択）を提供できる。
   - https://github.com/vadimdemedes/ink

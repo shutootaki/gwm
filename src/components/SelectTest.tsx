@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Text, Box } from 'ink';
-import { SelectList, SelectItem } from './SelectList.js';
+import { SelectList } from './SelectList.js';
+import { SelectItem } from '../types/index.js';
 
 const testItems: SelectItem[] = [
-  { label: 'feature/user-authentication', value: 'feature/user-authentication' },
+  {
+    label: 'feature/user-authentication',
+    value: 'feature/user-authentication',
+  },
   { label: 'fix/login-bug', value: 'fix/login-bug' },
   { label: 'feature/api-cache', value: 'feature/api-cache' },
   { label: 'hotfix/security-patch', value: 'hotfix/security-patch' },

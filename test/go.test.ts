@@ -14,7 +14,7 @@ const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
 
 const mockGetWorktreesWithStatus = vi.mocked(getWorktreesWithStatus);
 
-describe('wtm go command integration tests', () => {
+describe('gwm go command integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConsoleLog.mockClear();
@@ -35,7 +35,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-branch',
@@ -43,7 +43,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/bugfix-login',
@@ -51,19 +51,21 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/bugfix-login',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ユーザーが2番目のworktreeを選択したと仮定
     const selectedWorktree = mockWorktrees[1];
-    
+
     // パスのみを標準出力に出力
     mockConsoleLog(selectedWorktree.path);
 
-    expect(mockConsoleLog).toHaveBeenCalledWith('/Users/test/worktrees/project/feature-branch');
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      '/Users/test/worktrees/project/feature-branch'
+    );
     expect(mockConsoleLog).toHaveBeenCalledTimes(1);
   });
 
@@ -76,7 +78,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-auth',
@@ -84,7 +86,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-auth',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/feature-ui',
@@ -92,7 +94,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-ui',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/bugfix-login',
@@ -100,17 +102,17 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/bugfix-login',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const query = 'feature';
-    
+
     // クエリ "feature" でフィルタリング
-    const filteredWorktrees = mockWorktrees.filter(w => 
-      w.branch.includes(query) || w.path.includes(query)
+    const filteredWorktrees = mockWorktrees.filter(
+      (w) => w.branch.includes(query) || w.path.includes(query)
     );
 
     expect(filteredWorktrees).toHaveLength(2);
@@ -127,7 +129,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-user-authentication',
@@ -135,7 +137,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-user-authentication',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/fix-user-login',
@@ -143,22 +145,27 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/fix-user-login',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const query = 'usr';
-    
+
     // ファジーサーチ（部分一致で "usr" -> "user"）
-    const fuzzyMatches = mockWorktrees.filter(w => 
-      w.branch.toLowerCase().includes('user') || 
-      w.path.toLowerCase().includes('user')
-    ).filter(w => !w.isMain);
+    const fuzzyMatches = mockWorktrees
+      .filter(
+        (w) =>
+          w.branch.toLowerCase().includes('user') ||
+          w.path.toLowerCase().includes('user')
+      )
+      .filter((w) => !w.isMain);
 
     expect(fuzzyMatches).toHaveLength(2);
-    expect(fuzzyMatches[0].branch).toBe('refs/heads/feature-user-authentication');
+    expect(fuzzyMatches[0].branch).toBe(
+      'refs/heads/feature-user-authentication'
+    );
     expect(fuzzyMatches[1].branch).toBe('refs/heads/fix-user-login');
   });
 
@@ -171,15 +178,15 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
-      }
+        isMain: true,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ユーザーがESCキーでキャンセルしたと仮定
     const userCancelled = true;
-    
+
     if (userCancelled) {
       // 何も出力せずに終了
     } else {
@@ -208,7 +215,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/unique-branch',
@@ -216,16 +223,16 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/unique-branch',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const query = 'unique';
-    
-    const matches = mockWorktrees.filter(w => 
-      w.branch.includes(query) || w.path.includes(query)
+
+    const matches = mockWorktrees.filter(
+      (w) => w.branch.includes(query) || w.path.includes(query)
     );
 
     // 1つしかマッチしない場合は自動選択
@@ -234,7 +241,9 @@ describe('wtm go command integration tests', () => {
     }
 
     expect(matches).toHaveLength(1);
-    expect(mockConsoleLog).toHaveBeenCalledWith('/Users/test/worktrees/project/unique-branch');
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      '/Users/test/worktrees/project/unique-branch'
+    );
   });
 
   // ブランチ名の表示形式をテスト
@@ -246,7 +255,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-branch',
@@ -254,7 +263,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       },
       {
         path: '/Users/test/worktrees/project/detached-head',
@@ -262,18 +271,18 @@ describe('wtm go command integration tests', () => {
         branch: '(detached)',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ブランチ名の表示形式を正規化
-    const displayWorktrees = mockWorktrees.map(w => ({
+    const displayWorktrees = mockWorktrees.map((w) => ({
       ...w,
-      displayBranch: w.branch.startsWith('refs/heads/') 
-        ? w.branch.replace('refs/heads/', '') 
-        : w.branch
+      displayBranch: w.branch.startsWith('refs/heads/')
+        ? w.branch.replace('refs/heads/', '')
+        : w.branch,
     }));
 
     expect(displayWorktrees[0].displayBranch).toBe('main');
@@ -290,7 +299,7 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/main',
         status: 'NORMAL',
         isActive: false,
-        isMain: true
+        isMain: true,
       },
       {
         path: '/Users/test/worktrees/project/feature-branch',
@@ -298,16 +307,16 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-branch',
         status: 'ACTIVE',
         isActive: true,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     // ACTIVE状態のworktreeをマーク
-    const displayWorktrees = mockWorktrees.map(w => ({
+    const displayWorktrees = mockWorktrees.map((w) => ({
       ...w,
-      displayText: w.status === 'ACTIVE' ? `* ${w.branch}` : w.branch
+      displayText: w.status === 'ACTIVE' ? `* ${w.branch}` : w.branch,
     }));
 
     expect(displayWorktrees[0].displayText).toBe('refs/heads/main');
@@ -323,18 +332,20 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-branch-with-very-long-descriptive-name',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const selectedWorktree = mockWorktrees[0];
-    
+
     // 長いパスでも正確に出力
     mockConsoleLog(selectedWorktree.path);
 
-    expect(mockConsoleLog).toHaveBeenCalledWith('/Users/test/very/long/nested/directory/structure/worktrees/project-with-very-long-name/feature-branch-with-very-long-descriptive-name');
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      '/Users/test/very/long/nested/directory/structure/worktrees/project-with-very-long-name/feature-branch-with-very-long-descriptive-name'
+    );
   });
 
   // シェル関数との連携をテスト
@@ -346,14 +357,14 @@ describe('wtm go command integration tests', () => {
         branch: 'refs/heads/feature-branch',
         status: 'NORMAL',
         isActive: false,
-        isMain: false
-      }
+        isMain: false,
+      },
     ];
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
     const selectedWorktree = mockWorktrees[0];
-    
+
     // パスのみを出力（cdコマンドは実行しない）
     mockConsoleLog(selectedWorktree.path);
 

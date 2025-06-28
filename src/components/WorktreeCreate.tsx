@@ -3,7 +3,14 @@ import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
 import { join, basename } from 'path';
 import { loadConfig } from '../config.js';
-import { SelectList, SelectItem } from './SelectList.js';
+import { SelectList } from './SelectList.js';
+import { SelectItem } from '../types/index.js';
+import { formatErrorForDisplay } from '../utils/index.js';
+
+// シェルエスケープ用のヘルパー関数
+function escapeShellArg(arg: string): string {
+  return `"${arg.replace(/"/g, '\\"')}"`;
+}
 
 interface WorktreeCreateProps {
   branchName?: string;
@@ -28,68 +35,78 @@ export const WorktreeCreate: React.FC<WorktreeCreateProps> = ({
 
   const config = loadConfig();
 
-  const createWorktree = useCallback((branch: string, remote: boolean) => {
-    try {
-      const repoName = basename(process.cwd());
-      const sanitizedBranch = branch.replace(/\//g, '-');
-      const worktreePath = join(config.worktree_base_path, repoName, sanitizedBranch);
+  const createWorktree = useCallback(
+    (branch: string, remote: boolean) => {
+      try {
+        const repoName = basename(process.cwd());
+        const sanitizedBranch = branch.replace(/\//g, '-');
+        const worktreePath = join(
+          config.worktree_base_path,
+          repoName,
+          sanitizedBranch
+        );
 
-      let command: string;
+        let command: string;
 
-      if (remote) {
-        // リモートブランチの場合
-        command = `git worktree add "${worktreePath}" -b "${branch}" "origin/${branch}"`;
-      } else {
-        // ローカルブランチまたは新規作成の場合
-        const baseBranch = fromBranch || config.main_branches[0];
-        
-        // ローカルブランチが存在するかチェック
-        try {
-          execSync(`git show-ref --verify --quiet refs/heads/${branch}`, { 
-            cwd: process.cwd() 
-          });
-          // 存在する場合、そのブランチで作成
-          command = `git worktree add "${worktreePath}" "${branch}"`;
-        } catch {
-          // 存在しない場合、新規作成
-          command = `git worktree add "${worktreePath}" -b "${branch}" "${baseBranch}"`;
+        if (remote) {
+          // リモートブランチの場合
+          command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(`origin/${branch}`)}`;
+        } else {
+          // ローカルブランチまたは新規作成の場合
+          const baseBranch = fromBranch || config.main_branches[0];
+
+          // ローカルブランチが存在するかチェック
+          try {
+            execSync(
+              `git show-ref --verify --quiet ${escapeShellArg(`refs/heads/${branch}`)}`,
+              {
+                cwd: process.cwd(),
+              }
+            );
+            // 存在する場合、そのブランチで作成
+            command = `git worktree add ${escapeShellArg(worktreePath)} ${escapeShellArg(branch)}`;
+          } catch {
+            // 存在しない場合、新規作成
+            command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
+          }
         }
-      }
 
-      execSync(command, { cwd: process.cwd() });
-      setSuccess(worktreePath);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create worktree');
-    }
-  }, [config, fromBranch]);
+        execSync(command, { cwd: process.cwd() });
+        setSuccess(worktreePath);
+      } catch (err) {
+        setError(formatErrorForDisplay(err));
+      }
+    },
+    [config, fromBranch]
+  );
 
   const fetchRemoteBranches = async () => {
     try {
       // リモートの最新情報を取得
       execSync('git fetch origin', { cwd: process.cwd() });
-      
+
       // リモートブランチ一覧を取得
-      const output = execSync('git branch -r', { 
+      const output = execSync('git branch -r', {
         cwd: process.cwd(),
-        encoding: 'utf8'
+        encoding: 'utf8',
       });
-      
+
       const branches = output
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line && !line.includes('HEAD'))
-        .map(line => {
+        .map((line) => line.trim())
+        .filter((line) => line && !line.includes('HEAD'))
+        .map((line) => {
           const fullName = line.replace('origin/', '');
           return {
             name: fullName,
-            fullName: line
+            fullName: line,
           };
         });
 
       setRemoteBranches(branches);
       setShowBranchSelection(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch remote branches');
+      setError(formatErrorForDisplay(err));
     }
   };
 
@@ -128,9 +145,9 @@ export const WorktreeCreate: React.FC<WorktreeCreateProps> = ({
   }
 
   if (showBranchSelection) {
-    const items: SelectItem[] = remoteBranches.map(branch => ({
+    const items: SelectItem[] = remoteBranches.map((branch) => ({
       label: branch.name,
-      value: branch.name
+      value: branch.name,
     }));
 
     return (

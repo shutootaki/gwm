@@ -11,12 +11,16 @@ import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeCode } from './components/WorktreeCode.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
 import { WorktreeClean } from './components/WorktreeClean.js';
-import { parseCreateArgs, parseRemoveArgs, parseCleanArgs, isHelpRequested } from './utils/cli.js';
+import {
+  parseCreateArgs,
+  parseRemoveArgs,
+  parseCleanArgs,
+  isHelpRequested,
+} from './utils/index.js';
 
 const App: React.FC = () => {
   const args = process.argv.slice(2);
   const command = args[0];
-
 
   // ヘルプオプションのチェック
   if (isHelpRequested(args, command)) {
@@ -29,7 +33,13 @@ const App: React.FC = () => {
       return <WorktreeList />;
     case 'create': {
       const { branchName, isRemote, fromBranch } = parseCreateArgs(args);
-      return <WorktreeCreate branchName={branchName} isRemote={isRemote} fromBranch={fromBranch} />;
+      return (
+        <WorktreeCreate
+          branchName={branchName}
+          isRemote={isRemote}
+          fromBranch={fromBranch}
+        />
+      );
     }
     case 'remove':
     case 'rm': {

@@ -27,7 +27,7 @@ export function parseWorktrees(output: string): Worktree[] {
         path: line.substring(9),
         status: 'NORMAL',
         isActive: false,
-        isMain: false
+        isMain: false,
       };
     } else if (line.startsWith('HEAD ')) {
       currentWorktree.head = line.substring(5);
@@ -50,13 +50,13 @@ export function parseWorktrees(output: string): Worktree[] {
   }
 
   // 最初のworktreeをメインとしてマーク（通常の場合）
-  if (worktrees.length > 0 && !worktrees.some(w => w.isMain)) {
+  if (worktrees.length > 0 && !worktrees.some((w) => w.isMain)) {
     worktrees[0].isMain = true;
   }
 
   // 現在のディレクトリと一致するworktreeをACTIVEにする
   const currentDir = process.cwd();
-  worktrees.forEach(worktree => {
+  worktrees.forEach((worktree) => {
     if (worktree.path === currentDir) {
       worktree.isActive = true;
       worktree.status = 'ACTIVE';
@@ -73,32 +73,38 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
   try {
     // Gitリポジトリかどうかチェック
     try {
-      execSync('git rev-parse --git-dir', { 
+      execSync('git rev-parse --git-dir', {
         stdio: 'ignore',
-        cwd: process.cwd()
+        cwd: process.cwd(),
       });
     } catch {
-      throw new Error('Not a git repository. Please run this command from within a git repository.');
+      throw new Error(
+        'Not a git repository. Please run this command from within a git repository.'
+      );
     }
 
-    const output = execSync('git worktree list --porcelain', { 
+    const output = execSync('git worktree list --porcelain', {
       encoding: 'utf8',
-      cwd: process.cwd()
+      cwd: process.cwd(),
     });
-    
+
     const worktrees = parseWorktrees(output);
-    
+
     // PRUNABLE状態を判定
     for (const worktree of worktrees) {
-      if (worktree.status === 'LOCKED' || worktree.status === 'ACTIVE' || worktree.isMain) {
+      if (
+        worktree.status === 'LOCKED' ||
+        worktree.status === 'ACTIVE' ||
+        worktree.isMain
+      ) {
         continue; // LOCKEDやACTIVE、メインworktreeはスキップ
       }
-      
+
       if (await isPrunableWorktree(worktree)) {
         worktree.status = 'PRUNABLE';
       }
     }
-    
+
     return worktrees;
   } catch (err) {
     if (err instanceof Error) {
@@ -117,7 +123,7 @@ async function isPrunableWorktree(worktree: Worktree): Promise<boolean> {
   }
 
   try {
-    const config = await loadConfig();
+    const config = loadConfig();
     const mainBranches = config.main_branches;
 
     // リモート追跡ブランチが存在しない場合はPRUNABLE
@@ -134,7 +140,10 @@ async function isPrunableWorktree(worktree: Worktree): Promise<boolean> {
 
     return false;
   } catch (err) {
-    console.error(`Error checking prunable status for ${worktree.branch}:`, err);
+    console.error(
+      `Error checking prunable status for ${worktree.branch}:`,
+      err
+    );
     return false;
   }
 }
@@ -144,10 +153,13 @@ async function isPrunableWorktree(worktree: Worktree): Promise<boolean> {
  */
 function hasRemoteTrackingBranch(branchName: string): boolean {
   try {
-    execSync(`git show-ref --verify --quiet refs/remotes/origin/${branchName}`, {
-      stdio: 'ignore',
-      cwd: process.cwd()
-    });
+    execSync(
+      `git show-ref --verify --quiet refs/remotes/origin/${branchName}`,
+      {
+        stdio: 'ignore',
+        cwd: process.cwd(),
+      }
+    );
     return true;
   } catch {
     return false;
@@ -161,7 +173,7 @@ function isMergedToMainBranch(branchName: string, mainBranch: string): boolean {
   try {
     execSync(`git merge-base --is-ancestor ${branchName} ${mainBranch}`, {
       stdio: 'ignore',
-      cwd: process.cwd()
+      cwd: process.cwd(),
     });
     return true;
   } catch {
@@ -176,13 +188,17 @@ export function fetchAndPrune(): void {
   try {
     execSync('git fetch --prune origin', {
       stdio: 'ignore',
-      cwd: process.cwd()
+      cwd: process.cwd(),
     });
   } catch (err) {
     if (err instanceof Error && err.message.includes('No such remote')) {
-      throw new Error('No remote named "origin" found. Please configure a remote repository.');
+      throw new Error(
+        'No remote named "origin" found. Please configure a remote repository.'
+      );
     }
-    throw new Error(`Failed to fetch and prune from remote: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to fetch and prune from remote: ${err instanceof Error ? err.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -192,10 +208,12 @@ export function fetchAndPrune(): void {
 export function removeWorktree(path: string, force: boolean = false): void {
   try {
     const forceFlag = force ? ' --force' : '';
-    execSync(`git worktree remove "${path}"${forceFlag}`, { 
-      cwd: process.cwd() 
+    execSync(`git worktree remove "${path}"${forceFlag}`, {
+      cwd: process.cwd(),
     });
   } catch (err) {
-    throw new Error(`Failed to remove worktree ${path}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to remove worktree ${path}: ${err instanceof Error ? err.message : 'Unknown error'}`
+    );
   }
 }

@@ -44,19 +44,21 @@ describe('loadConfig', () => {
     });
 
     // 両方のパスをチェックしているか確認
-    expect(mockExistsSync).toHaveBeenCalledWith('/Users/test/.config/wtm/config.toml');
-    expect(mockExistsSync).toHaveBeenCalledWith('/Users/test/.wtmrc');
+    expect(mockExistsSync).toHaveBeenCalledWith(
+      '/Users/test/.config/gwm/config.toml'
+    );
+    expect(mockExistsSync).toHaveBeenCalledWith('/Users/test/.gwmrc');
   });
 
-  // ~/.config/wtm/config.tomlからの設定読み込みをテスト
-  it('should load config from ~/.config/wtm/config.toml', () => {
+  // ~/.config/gwm/config.tomlからの設定読み込みをテスト
+  it('should load config from ~/.config/gwm/config.toml', () => {
     const configContent = `
 worktree_base_path = "/Users/test/my-worktrees"
 main_branches = ["main", "development"]
 `;
 
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.config/wtm/config.toml';
+      return path === '/Users/test/.config/gwm/config.toml';
     });
 
     mockReadFileSync.mockReturnValue(configContent);
@@ -72,19 +74,22 @@ main_branches = ["main", "development"]
       main_branches: ['main', 'development'],
     });
 
-    expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.config/wtm/config.toml', 'utf8');
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      '/Users/test/.config/gwm/config.toml',
+      'utf8'
+    );
     expect(mockTOMLParse).toHaveBeenCalledWith(configContent);
   });
 
-  // ~/.config/wtm/config.tomlが存在しない場合の~/.wtmrcからの設定読み込みをテスト
-  it('should load config from ~/.wtmrc when ~/.config/wtm/config.toml does not exist', () => {
+  // ~/.config/gwm/config.tomlが存在しない場合の~/.gwmrcからの設定読み込みをテスト
+  it('should load config from ~/.gwmrc when ~/.config/gwm/config.toml does not exist', () => {
     const configContent = `
 worktree_base_path = "/Users/test/alternative-worktrees"
 main_branches = ["master"]
 `;
 
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.wtmrc';
+      return path === '/Users/test/.gwmrc';
     });
 
     mockReadFileSync.mockReturnValue(configContent);
@@ -100,11 +105,11 @@ main_branches = ["master"]
       main_branches: ['master'],
     });
 
-    expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.wtmrc', 'utf8');
+    expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.gwmrc', 'utf8');
   });
 
   // 両方の設定ファイルが存在する場合の優先度をテスト
-  it('should prefer ~/.config/wtm/config.toml over ~/.wtmrc when both exist', () => {
+  it('should prefer ~/.config/gwm/config.toml over ~/.gwmrc when both exist', () => {
     const primaryConfigContent = `
 worktree_base_path = "/Users/test/primary-worktrees"
 main_branches = ["main"]
@@ -126,7 +131,10 @@ main_branches = ["main"]
 
     // 最初のファイルのみ読み込まれることを確認
     expect(mockReadFileSync).toHaveBeenCalledTimes(1);
-    expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.config/wtm/config.toml', 'utf8');
+    expect(mockReadFileSync).toHaveBeenCalledWith(
+      '/Users/test/.config/gwm/config.toml',
+      'utf8'
+    );
   });
 
   // 部分的な設定とデフォルト値のマージをテスト
@@ -136,7 +144,7 @@ worktree_base_path = "/Users/test/custom-worktrees"
 `;
 
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.config/wtm/config.toml';
+      return path === '/Users/test/.config/gwm/config.toml';
     });
 
     mockReadFileSync.mockReturnValue(partialConfigContent);
@@ -159,7 +167,7 @@ worktree_base_path = /invalid/toml/syntax
 `;
 
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.config/wtm/config.toml';
+      return path === '/Users/test/.config/gwm/config.toml';
     });
 
     mockReadFileSync.mockReturnValue(invalidConfigContent);
@@ -168,7 +176,9 @@ worktree_base_path = /invalid/toml/syntax
     });
 
     // console.errorをモック化してエラーログを検証
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     const result = loadConfig();
 
@@ -178,7 +188,7 @@ worktree_base_path = /invalid/toml/syntax
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error reading config file /Users/test/.config/wtm/config.toml:',
+      'Error reading config file /Users/test/.config/gwm/config.toml:',
       expect.any(Error)
     );
 
@@ -188,7 +198,7 @@ worktree_base_path = /invalid/toml/syntax
   // ファイル読み込み失敗時のデフォルト設定フォールバックをテスト
   it('should fallback to default config when file reading fails', () => {
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.config/wtm/config.toml';
+      return path === '/Users/test/.config/gwm/config.toml';
     });
 
     mockReadFileSync.mockImplementation(() => {
@@ -196,7 +206,9 @@ worktree_base_path = /invalid/toml/syntax
     });
 
     // console.errorをモック化
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     const result = loadConfig();
 
@@ -206,7 +218,7 @@ worktree_base_path = /invalid/toml/syntax
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error reading config file /Users/test/.config/wtm/config.toml:',
+      'Error reading config file /Users/test/.config/gwm/config.toml:',
       expect.any(Error)
     );
 
@@ -215,7 +227,7 @@ worktree_base_path = /invalid/toml/syntax
 
   it('should handle empty config file gracefully', () => {
     mockExistsSync.mockImplementation((path) => {
-      return path === '/Users/test/.config/wtm/config.toml';
+      return path === '/Users/test/.config/gwm/config.toml';
     });
 
     mockReadFileSync.mockReturnValue('');
