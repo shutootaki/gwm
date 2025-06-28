@@ -57,8 +57,10 @@ const App: React.FC = () => {
       return <WorktreeRemove query={query} force={force} />;
     }
     case 'go': {
-      const { query, openCode } = parseGoArgs(args);
-      return <WorktreeGo query={query} openCode={openCode} />;
+      const { query, openCode, openCursor } = parseGoArgs(args);
+      return (
+        <WorktreeGo query={query} openCode={openCode} openCursor={openCursor} />
+      );
     }
     case 'clean': {
       const { yes } = parseCleanArgs(args);

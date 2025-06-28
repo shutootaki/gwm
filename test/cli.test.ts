@@ -293,6 +293,7 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: 'feature',
       openCode: false,
+      openCursor: false,
     });
   });
 
@@ -304,6 +305,7 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: 'feature',
       openCode: true,
+      openCursor: false,
     });
   });
 
@@ -315,6 +317,7 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: 'feature',
       openCode: true,
+      openCursor: false,
     });
   });
 
@@ -326,6 +329,7 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: undefined,
       openCode: true,
+      openCursor: false,
     });
   });
 
@@ -337,6 +341,7 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: undefined,
       openCode: false,
+      openCursor: false,
     });
   });
 
@@ -348,6 +353,43 @@ describe('parseGoArgs', () => {
     expect(result).toEqual({
       query: 'feature',
       openCode: true,
+      openCursor: false,
+    });
+  });
+
+  // --cursor フラグの解析をテスト
+  it('should parse cursor flag (--cursor)', () => {
+    const args = ['go', 'bugfix', '--cursor'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'bugfix',
+      openCode: false,
+      openCursor: true,
+    });
+  });
+
+  // --code と --cursor の組み合わせをテスト
+  it('should parse combination of --code and --cursor flags', () => {
+    const args = ['go', 'hotfix', '--code', '--cursor'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: 'hotfix',
+      openCode: true,
+      openCursor: true,
+    });
+  });
+
+  // フラグのみでクエリなしのケースをテスト
+  it('should handle flags only without query', () => {
+    const args = ['go', '--cursor', '--code'];
+    const result = parseGoArgs(args);
+
+    expect(result).toEqual({
+      query: undefined,
+      openCode: true,
+      openCursor: true,
     });
   });
 });
