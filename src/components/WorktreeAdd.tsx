@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
 import { SelectList } from './SelectList.js';
@@ -38,16 +38,39 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [remoteBranches, setRemoteBranches] = useState<RemoteBranch[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('input');
   const [isRemoteBranchesLoaded, setIsRemoteBranchesLoaded] = useState(false);
+
+  // 初期表示モードは引数有無に応じて決定する
+  //   * branchName 指定あり → すぐに worktree 作成するので "loading" 表示のみ
+  //   * -r 指定でリモート一覧を取りに行く場合も "loading"
+  //   * それ以外は新規ブランチ入力モード
+  const initialViewMode: ViewMode = branchName
+    ? 'loading'
+    : isRemote
+      ? 'loading'
+      : 'input';
+
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+
+  // onSuccess / onError の参照が毎レンダー変わらないように useCallback でメモ化
+  const handleSuccess = useCallback(
+    (data: { path: string; actions: string[] }) => {
+      setSuccess(JSON.stringify(data));
+    },
+    []
+  );
+
+  const handleError = useCallback((message: string) => {
+    setError(message);
+  }, []);
 
   const { createWorktree } = useWorktree({
     fromBranch,
     openCode,
     openCursor,
     outputPath,
-    onSuccess: (data) => setSuccess(JSON.stringify(data)),
-    onError: setError,
+    onSuccess: handleSuccess,
+    onError: handleError,
   });
 
   const fetchRemoteBranches = async () => {
@@ -133,7 +156,37 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     }
   };
 
+  // 成功してエディタを開いた場合は 1 秒後に自動で CLI を終了する
+  useEffect(() => {
+    if (success && (openCode || openCursor)) {
+      const timer = setTimeout(() => process.exit(0), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, openCode, openCursor]);
+
   if (success) {
+    // エディタを開くオプションが指定されている場合は簡易表示
+    if (openCode || openCursor) {
+      let worktreePath: string;
+
+      try {
+        const parsed = JSON.parse(success);
+        worktreePath = parsed.path;
+      } catch {
+        worktreePath = success;
+      }
+
+      const editorName = openCode ? 'VS Code' : 'Cursor';
+
+      return (
+        <Box>
+          <Text color="green">
+            ✓ Worktree created and opened in {editorName}: {worktreePath}
+          </Text>
+        </Box>
+      );
+    }
+
     let worktreePath: string;
     let actions: string[] = [];
 
