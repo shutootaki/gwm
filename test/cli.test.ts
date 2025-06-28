@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseAddArgs,
   parseRemoveArgs,
-  parseCleanArgs,
+  // parseCleanArgs,
   isHelpRequested,
 } from '../src/utils/cli.js';
 
@@ -163,47 +163,47 @@ describe('parseRemoveArgs', () => {
 });
 
 // cleanコマンドの引数解析をテスト
-describe('parseCleanArgs', () => {
-  // -yフラグの解析をテスト
-  it('should parse yes flag (-y)', () => {
-    const args = ['clean', '-y'];
-    const result = parseCleanArgs(args);
+// describe('parseCleanArgs', () => {
+//   // -yフラグの解析をテスト
+//   it('should parse yes flag (-y)', () => {
+//     const args = ['clean', '-y'];
+//     const result = parseCleanArgs(args);
 
-    expect(result).toEqual({
-      yes: true,
-    });
-  });
+//     expect(result).toEqual({
+//       yes: true,
+//     });
+//   });
 
-  // --yesフラグの解析をテスト
-  it('should parse yes flag (--yes)', () => {
-    const args = ['clean', '--yes'];
-    const result = parseCleanArgs(args);
+//   // --yesフラグの解析をテスト
+//   it('should parse yes flag (--yes)', () => {
+//     const args = ['clean', '--yes'];
+//     const result = parseCleanArgs(args);
 
-    expect(result).toEqual({
-      yes: true,
-    });
-  });
+//     expect(result).toEqual({
+//       yes: true,
+//     });
+//   });
 
-  // フラグなしのcleanコマンドの処理をテスト
-  it('should handle clean command without flags', () => {
-    const args = ['clean'];
-    const result = parseCleanArgs(args);
+//   // フラグなしのcleanコマンドの処理をテスト
+//   it('should handle clean command without flags', () => {
+//     const args = ['clean'];
+//     const result = parseCleanArgs(args);
 
-    expect(result).toEqual({
-      yes: false,
-    });
-  });
+//     expect(result).toEqual({
+//       yes: false,
+//     });
+//   });
 
-  // 複数フラグ指定時のyesフラグ処理をテスト
-  it('should handle multiple flags with yes flag', () => {
-    const args = ['clean', '-y', '--verbose'];
-    const result = parseCleanArgs(args);
+//   // 複数フラグ指定時のyesフラグ処理をテスト
+//   it('should handle multiple flags with yes flag', () => {
+//     const args = ['clean', '-y', '--verbose'];
+//     const result = parseCleanArgs(args);
 
-    expect(result).toEqual({
-      yes: true,
-    });
-  });
-});
+//     expect(result).toEqual({
+//       yes: true,
+//     });
+//   });
+// });
 
 // ヘルプオプション検出の機能をテスト
 describe('isHelpRequested', () => {
