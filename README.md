@@ -126,7 +126,7 @@ Create a new worktree. Comes with an interactive UI.
   - `--from <base_branch>`: Base branch for new branches (default: `main` or `master`).
   - `--code`: Open in VS Code after creation.
   - `--cursor`: Open in Cursor after creation.
-  - `--cd`: Output only the path after creation.
+  - `--cd`: After creation, go to the directory where the corresponding work tree exists.
 
 ---
 
