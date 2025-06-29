@@ -1,6 +1,6 @@
 {
   "name": "@shutootaki/gwm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "git worktree manager CLI",
   "author": {
     "name": "shutootaki",
