@@ -5,7 +5,7 @@ export interface Worktree {
   path: string;
   branch: string;
   head: string;
-  status: 'ACTIVE' | 'MAIN' | 'OTHER';
+  status: string;
   isActive: boolean;
   isMain: boolean;
 }

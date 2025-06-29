@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getWorktreesWithStatus } from '../src/utils/git.js';
 
 // 依存関数をモック化
@@ -7,7 +7,9 @@ vi.mock('../src/utils/git.js', () => ({
 }));
 
 // コンソール出力をモック化（パス出力用）
-const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+const mockConsoleLog = vi
+  .spyOn(console, 'log')
+  .mockImplementation(() => {}) as any;
 const mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit called');
 });
