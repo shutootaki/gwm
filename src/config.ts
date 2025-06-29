@@ -6,11 +6,17 @@ import TOML from '@ltd/j-toml';
 export interface Config {
   worktree_base_path: string;
   main_branches: string[];
+  /**
+   * worktree 削除後に同名ローカルブランチを掃除するかどうか
+   * "auto" | "ask" | "never" (既定: "ask")
+   */
+  clean_branch: 'auto' | 'ask' | 'never';
 }
 
 const DEFAULT_CONFIG: Config = {
   worktree_base_path: join(homedir(), 'git-worktrees'),
   main_branches: ['main', 'master', 'develop'],
+  clean_branch: 'ask',
 };
 
 export function loadConfig(): Config {
@@ -37,12 +43,19 @@ export function loadConfig(): Config {
             )
           : DEFAULT_CONFIG.main_branches;
 
+        const cleanBranchRaw = parsed.clean_branch;
+        const cleanBranch =
+          cleanBranchRaw === 'auto' || cleanBranchRaw === 'never'
+            ? cleanBranchRaw
+            : 'ask';
+
         return {
           worktree_base_path: worktreeBasePath,
           main_branches:
             mainBranches.length > 0
               ? mainBranches
               : DEFAULT_CONFIG.main_branches,
+          clean_branch: cleanBranch,
         };
       } catch (error) {
         console.error(`Error reading config file ${configPath}:`, error);

@@ -17,7 +17,8 @@ A modern CLI tool for efficient Git worktree management with an interactive, Rea
 - **Simple Status Classification**: 3-category status system (Active/Main/Other)
 - **Shell Integration**: Seamless directory navigation with shell functions
 - **VS Code Integration**: Open worktrees directly in your editor
-- **Flexible Configuration**: Customize base paths and main branches via TOML configuration
+- **Flexible Configuration**: Customize base paths, main branches, and branch cleanup behavior via TOML
+- **Automatic Branch Cleanup**: Optionally delete unused local branches when their worktrees are removed
 - **TypeScript & React**: Built with modern technologies for maintainable, extensible code
 
 ## Installation
@@ -95,11 +96,15 @@ gwm remove feature
 
 # Force removal
 gwm remove -f
+
+# Remove and automatically delete local branches
+gwm remove --clean-branch=auto
 ```
 
 **Options:**
 
 - `-f, --force`: Force removal even with uncommitted changes
+- `--clean-branch <mode>`: `auto` / `ask` / `never` (default from config). Controls whether to delete the matching local branch after the worktree is removed.
 
 ### `gwm go [query]`
 
@@ -146,6 +151,9 @@ worktree_base_path = "/Users/myuser/dev/worktrees"
 
 # Main branches for merge detection and default base (default: ["main", "master", "develop"])
 main_branches = ["main", "master", "develop"]
+
+# Branch cleanup mode: "auto" | "ask" | "never" (default: "ask")
+clean_branch = "ask"
 ```
 
 ### Worktree Path Convention
