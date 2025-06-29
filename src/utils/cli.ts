@@ -14,7 +14,8 @@ export interface RemoveArgs {
 }
 
 export interface CleanArgs {
-  yes: boolean;
+  dryRun: boolean;
+  force: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -86,7 +87,17 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
 }
 
 export function parseCleanArgs(args: string[]): CleanArgs {
-  return { yes: hasFlag(args, ['-y', '--yes']) };
+  // 廃止されたオプションチェック
+  if (hasFlag(args, ['-y', '--yes', '-i', '--interactive'])) {
+    throw new Error(
+      'Error: --yes/-y および --interactive/-i は廃止されました。代わりに --force を使用してください。'
+    );
+  }
+
+  return {
+    dryRun: hasFlag(args, ['-n', '--dry-run']),
+    force: hasFlag(args, ['--force']),
+  };
 }
 
 export function parseGoArgs(args: string[]): {

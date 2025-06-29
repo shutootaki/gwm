@@ -6,3 +6,4 @@ export * from './errors.js';
 export * from './formatting.js';
 export * from './shell.js';
 export * from './editor.js';
+export * from './presentation.js';

@@ -6,26 +6,34 @@ import {
   removeWorktree,
   CleanableWorktree,
 } from '../utils/index.js';
-import { MultiSelectList } from './MultiSelectList.js';
-import { SelectItem } from '../types/index.js';
 import Spinner from 'ink-spinner';
+import { WorktreeTable } from './WorktreeTable.js';
 
 interface WorktreeCleanProps {
-  yes?: boolean;
+  dryRun?: boolean;
+  force?: boolean;
 }
 
 export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
-  yes = false,
+  dryRun = false,
+  force = false,
 }) => {
   const [loading, setLoading] = useState(true);
   const [cleanables, setCleanables] = useState<CleanableWorktree[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [success, setSuccess] = useState<string[]>([]);
-  const [stage, setStage] = useState<'list' | 'confirm' | 'done'>('list');
+  const [stage, setStage] = useState<'confirm' | 'done'>('done');
 
   // すでに削除処理が走っているかを保持するフラグ
   const isProcessing = useRef(false);
+
+  // アンマウント時に処理中フラグをリセット
+  useEffect(() => {
+    return () => {
+      isProcessing.current = false;
+    };
+  }, []);
 
   // ローディングフェーズを段階的に追跡
   const [loadingStage, setLoadingStage] = useState<'fetch' | 'scan'>('fetch');
@@ -36,6 +44,9 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     total: number;
     path?: string;
   } | null>(null);
+
+  // レンダリング頻度を抑えるための待機時間(ms)
+  const YIELD_INTERVAL = 16; // 約60fps 相当
 
   useEffect(() => {
     const init = async () => {
@@ -49,8 +60,22 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
         setCleanables(list);
         setLoading(false);
 
-        // --yes オプション時は確認ステージへ直接移行
-        if (yes && list.length > 0) {
+        // --dry-run: 一覧表示のみ
+        if (dryRun) {
+          setStage('done');
+          return;
+        }
+
+        // --force: 即削除
+        if (force && list.length > 0) {
+          await handleRemoveAll(list);
+          return;
+        }
+
+        // 通常モード: 確認ステージ
+        if (list.length === 0) {
+          setStage('done');
+        } else {
           setStage('confirm');
         }
       } catch (e) {
@@ -59,7 +84,8 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
       }
     };
     init();
-  }, [yes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dryRun, force]);
 
   // 確認プロンプト用
   useInput(
@@ -84,6 +110,7 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     const list = targets ?? cleanables;
     if (list.length === 0) {
       setError('No worktrees selected');
+      isProcessing.current = false;
       return;
     }
 
@@ -91,47 +118,39 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     setProgress({ current: 0, total: list.length });
     const removed: string[] = [];
     const errs: string[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
-      setProgress({
-        current: i + 1,
-        total: list.length,
-        path: item.worktree.path,
-      });
-      try {
-        removeWorktree(item.worktree.path, true);
-        removed.push(item.worktree.path);
-      } catch (e) {
-        errs.push(
-          `${item.worktree.path}: ${e instanceof Error ? e.message : String(e)}`
-        );
+
+    try {
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        setProgress({
+          current: i + 1,
+          total: list.length,
+          path: item.worktree.path,
+        });
+        try {
+          removeWorktree(item.worktree.path, true);
+          removed.push(item.worktree.path);
+        } catch (e) {
+          errs.push(
+            `${item.worktree.path}: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+
+        // レンダリングのためにイベントループを解放
+        await new Promise((r) => setTimeout(r, YIELD_INTERVAL));
       }
 
-      // レンダリングのためにイベントループを解放
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 0));
+      // 進捗リセット
+      setProgress(null);
+
+      if (errs.length > 0) setError(errs.join('\n'));
+      if (removed.length > 0) setSuccess(removed);
+    } finally {
+      // 後片付けを確実に実行
+      setRemoving(false);
+      setStage('done');
+      isProcessing.current = false;
     }
-
-    // 進捗リセット
-    setProgress(null);
-
-    if (errs.length > 0) setError(errs.join('\n'));
-    if (removed.length > 0) setSuccess(removed);
-    setRemoving(false);
-    setStage('done');
-    isProcessing.current = false;
-  };
-
-  const handleConfirmSelected = async (selected: SelectItem[]) => {
-    const targets = cleanables.filter((c) =>
-      selected.some((s) => s.value === c.worktree.path)
-    );
-    await handleRemoveAll(targets);
-  };
-
-  const handleCancel = () => {
-    setError('Cancelled');
-    setStage('done');
   };
 
   // --------------- RENDERING -----------------
@@ -207,8 +226,8 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     );
   }
 
-  // --yes オプション: 確認ステージ
-  if (stage === 'confirm' && yes) {
+  // 確認ステージ
+  if (stage === 'confirm') {
     return (
       <Box flexDirection="column">
         <Text color="yellow" bold>
@@ -228,31 +247,22 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
     );
   }
 
-  // 通常対話モード
-  const items: SelectItem[] = cleanables.map((c) => {
-    const reasonText =
-      c.reason === 'remote_deleted'
-        ? 'Remote branch deleted'
-        : `Merged into ${c.mergedIntoBranch ?? 'main'}`;
-    return {
-      label: `${c.worktree.branch.padEnd(30)} ${c.worktree.path} → ${reasonText}`,
-      value: c.worktree.path,
-    };
-  });
-
-  return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text color="yellow">
-          Found {cleanables.length} cleanable worktree(s):
-        </Text>
-      </Box>
-      <MultiSelectList
-        items={items}
-        onConfirm={handleConfirmSelected}
-        onCancel={handleCancel}
-        placeholder="Select worktrees to clean (Space to toggle)"
+  // --dry-run モード: 候補一覧のみ表示して終了
+  if (dryRun && stage === 'done') {
+    return (
+      <WorktreeTable
+        worktrees={cleanables.map((c) => c.worktree)}
+        title={`Found ${cleanables.length} cleanable worktree(s) (dry-run)`}
+        footer={
+          <Text color="gray">
+            No changes will be made. Remove <Text color="cyan">--dry-run</Text>{' '}
+            to actually clean.
+          </Text>
+        }
       />
-    </Box>
-  );
+    );
+  }
+
+  // interactive MultiSelectList は削除済みのため、ここには到達しない
+  return null;
 };

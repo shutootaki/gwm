@@ -469,3 +469,15 @@ export async function getCleanableWorktrees(): Promise<CleanableWorktree[]> {
 
   return results;
 }
+
+export function getRepoRoot(): string {
+  try {
+    return execSync('git rev-parse --show-toplevel', {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // 取得できない場合はカレントディレクトリを返す
+    return process.cwd();
+  }
+}
