@@ -46,6 +46,7 @@ The CLI follows a component-based architecture:
 - `gwm clean` - Currently disabled (PRUNABLE auto-detection removed)
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
 - `gwm pull-main` - Update main branch worktrees to latest state from any directory
+- `gwm help [command]` - Show help for gwm or a specific command
 
 ## Key Features
 

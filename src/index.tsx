@@ -4,6 +4,7 @@ import { ConfigTest } from './components/ConfigTest.js';
 import { render } from 'ink';
 import { SelectTest } from './components/SelectTest.js';
 import { Welcome } from './components/Welcome.js';
+import { Help } from './components/Help.js';
 import { WorktreeAdd } from './components/WorktreeAdd.js';
 // import { WorktreeClean } from './components/WorktreeClean.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
@@ -17,6 +18,7 @@ import {
   // parseCleanArgs,
   parseGoArgs,
   parsePullMainArgs,
+  parseHelpArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -26,7 +28,14 @@ const App: React.FC = () => {
 
   // ヘルプオプションのチェック
   if (isHelpRequested(args, command)) {
-    return <Welcome />;
+    if (command === 'help') {
+      // `gwm help [command]` の場合
+      const { command: helpCommand } = parseHelpArgs(args);
+      return <Help command={helpCommand} />;
+    } else {
+      // `gwm <command> --help` の場合
+      return <Help command={command} />;
+    }
   }
 
   switch (command) {
@@ -73,6 +82,10 @@ const App: React.FC = () => {
     case 'pull-main': {
       parsePullMainArgs(args); // 将来の拡張用
       return <WorktreePullMain />;
+    }
+    case 'help': {
+      const { command: helpCommand } = parseHelpArgs(args);
+      return <Help command={helpCommand} />;
     }
     case 'config':
       return <ConfigTest />;
