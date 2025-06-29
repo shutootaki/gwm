@@ -161,6 +161,35 @@ gwm pull-main
 
 - worktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接mainブランチを最新状態に更新できない場合
 
+### `gwm help [command]`
+
+gwmの使い方や各コマンドの詳細情報を表示します。
+
+```bash
+# 全般的なヘルプを表示
+gwm help
+gwm --help
+gwm -h
+
+# 特定のコマンドのヘルプを表示
+gwm help add
+gwm add --help
+gwm add -h
+```
+
+**使用例:**
+
+```bash
+# gwmで利用可能なすべてのコマンドを表示
+gwm help
+
+# addコマンドの詳細な使い方とオプションを表示
+gwm help add
+
+# removeコマンドのヘルプを表示
+gwm help remove
+```
+
 ## 設定
 
 `~/.config/gwm/config.toml`に設定ファイルを作成してください：
