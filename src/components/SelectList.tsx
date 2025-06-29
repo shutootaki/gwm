@@ -24,11 +24,9 @@ export const SelectList: React.FC<SelectListProps> = ({
   title = 'Select',
   showStats = true,
 }) => {
-  const {
-    value: query,
-    setValue: setQuery,
-    cursorPosition,
-  } = useEditableText({ initialValue: initialQuery });
+  const { value: query, cursorPosition } = useEditableText({
+    initialValue: initialQuery,
+  });
 
   /*
    * selectedIndex と scrollOffset をまとめて 1 つの useReducer で管理することで、
@@ -155,14 +153,6 @@ export const SelectList: React.FC<SelectListProps> = ({
       moveSelection(1);
       return;
     }
-
-    // Ctrl+U: クエリ消去 & スクロール位置リセット
-    if (key.ctrl && input === 'u') {
-      setQuery('');
-      // 一括リセット（scrollOffset も含む）
-      dispatch({ type: 'RESET' });
-      return;
-    }
   });
 
   const currentItem = filteredItems[selectedIndex];
@@ -226,11 +216,6 @@ export const SelectList: React.FC<SelectListProps> = ({
         {filteredItems.length === 0 ? (
           <Box flexDirection="column">
             <Text color="red">No matches found</Text>
-            {query && (
-              <Text color="gray">
-                Press <Text color="cyan">Ctrl+U</Text> to clear search
-              </Text>
-            )}
           </Box>
         ) : (
           <Box flexDirection="column">
@@ -297,7 +282,7 @@ export const SelectList: React.FC<SelectListProps> = ({
         <Text color="gray">
           <Text color="cyan">↑/↓</Text> navigate •{' '}
           <Text color="green">Enter</Text> select • <Text color="red">Esc</Text>{' '}
-          cancel • <Text color="yellow">Ctrl+U</Text> clear
+          cancel
         </Text>
       </Box>
     </Box>

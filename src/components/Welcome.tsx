@@ -14,6 +14,7 @@ export const Welcome: React.FC = () => {
       <Text> list, ls List all worktrees with status</Text>
       <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
       <Text>
+        {' '}
         remove, rm [query] [-f] [--clean-branch &lt;mode&gt;] Remove worktrees
         (interactive)
       </Text>
@@ -27,6 +28,7 @@ export const Welcome: React.FC = () => {
       <Text> --from &lt;branch&gt; Specify base branch for new worktree</Text>
       <Text> -f, --force Force remove worktree</Text>
       <Text>
+        {' '}
         --clean-branch &lt;mode&gt; auto | ask | never (local branch cleanup)
       </Text>
       <Text> --code Open selected worktree in VS Code</Text>
