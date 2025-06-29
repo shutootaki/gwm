@@ -1,0 +1,32 @@
+name: 'Common setup (checkout + pnpm + node + install)'
+description: 'Reusable composite action to perform repository checkout, pnpm & Node.js setup, and dependency installation.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.4.1
+        cache: true
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '${{ inputs.node-version }}'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
