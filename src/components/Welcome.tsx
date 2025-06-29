@@ -13,7 +13,11 @@ export const Welcome: React.FC = () => {
       <Text bold>Commands:</Text>
       <Text> list, ls List all worktrees with status</Text>
       <Text> add [branch] [-r] [--from branch] Add new worktree</Text>
-      <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
+      <Text>
+        remove, rm [query] [-f] [--clean-branch &lt;mode&gt;] Remove worktrees
+        (interactive)
+      </Text>
+      <Text> pull-main Update main branch worktree(s)</Text>
       {/* <Text> clean [-y] Clean merged/deleted worktrees</Text> */}
       <Text> go [query] [--code] [--cursor] Navigate or open worktree</Text>
       <Text> help [command] Show help for gwm or specific command</Text>
@@ -22,7 +26,9 @@ export const Welcome: React.FC = () => {
       <Text> -r, --remote Add from remote branch</Text>
       <Text> --from &lt;branch&gt; Specify base branch for new worktree</Text>
       <Text> -f, --force Force remove worktree</Text>
-      <Text> -y, --yes Skip confirmation prompts</Text>
+      <Text>
+        --clean-branch &lt;mode&gt; auto | ask | never (local branch cleanup)
+      </Text>
       <Text> --code Open selected worktree in VS Code</Text>
       <Text> --cursor Open selected worktree in Cursor</Text>
       <Text></Text>

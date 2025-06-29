@@ -44,6 +44,7 @@
 - **設定項目:**
   - `worktree_base_path`: worktree を作成するベースディレクトリ (例: `"/Users/myuser/dev/git-worktrees"`)
   - `main_branches`: メインラインとなるブランチ名のリスト (例: `["main", "master", "develop"]`)。`clean`コマンドや`add`コマンドのデフォルト分岐元として使用する。
+  - `clean_branch`: worktree 削除後にローカルブランチを自動整理するモード。`"auto"`, `"ask"`, `"never"` から選択 (デフォルト: `"ask"`)。
 
 ## 3\. コマンド仕様 (Command Specifications)
 
@@ -163,11 +164,13 @@
   - `query` (任意): 削除したい worktree のブランチ名を指定する。ファジーサーチの初期クエリとして使用される。
 - **オプション:**
   - `--force, -f`: 未コミットの変更があっても強制的に削除する。
+  - `--clean-branch <mode>`: worktree 削除後にローカルブランチも整理するかを指定する。`mode` は `auto` / `ask` / `never`。
 - **実行フロー:**
   1.  現在のプロジェクトの worktree 一覧を取得する（メインの worktree は除く）。
   2.  対話的 UI を起動する。`query`引数があれば、それで初期フィルタリングする。
   3.  ユーザーが削除対象の worktree を（複数選択可能にして）選択する。
   4.  選択された各 worktree に対して `git worktree remove` を実行する。`--force` オプションが指定されていれば、コマンドにも付与する。
+  5.  `--clean-branch` または設定 `clean_branch` が `auto` の場合、削除した worktree と同名のローカルブランチをスキャンし、他の worktree で未使用かつ未マージコミットが無い場合に自動削除する（未マージがある場合は `git branch -D` を使用）。`ask` の場合は候補を通知のみ行う。
 
 ---
 
@@ -199,7 +202,7 @@
 
 - **目的:** カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新する。
 - **構文:** `gwm pull-main`
-- **背景:** 
+- **背景:**
   - ユーザーのworktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接移動できない場合がある
   - このコマンドにより、任意のディレクトリからメインブランチの更新が可能になる
 - **実行フロー:**
@@ -208,15 +211,17 @@
   3. 各メインブランチのworktreeで `git pull` を実行
   4. 各worktreeの更新結果（成功/失敗）を表示
 - **出力例:**
+
   ```
   ✅ メインブランチの更新が完了しました
-  
+
   ✅ refs/heads/main (/Users/user/worktrees/project/main)
      Updating a1b2c3d..e4f5g6h
      Fast-forward
       src/utils/git.ts | 10 ++++++++++
       1 file changed, 10 insertions(+)
   ```
+
 - **エラーハンドリング:**
   - メインブランチのworktreeが見つからない場合: 該当ブランチ名を含むエラーメッセージを表示
   - 個別のpull処理でエラーが発生した場合: そのworktreeのみ失敗として記録し、他の処理は継続

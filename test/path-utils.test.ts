@@ -12,6 +12,7 @@ vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
+    clean_branch: 'ask',
   })),
 }));
 
@@ -64,6 +65,7 @@ describe('Path Generation and Normalization Tests', () => {
     mockLoadConfig.mockReturnValue({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
   });
 
@@ -122,6 +124,7 @@ describe('Path Generation and Normalization Tests', () => {
       mockLoadConfig.mockReturnValue({
         worktree_base_path: '/Users/test/my-custom-worktrees',
         main_branches: ['main'],
+        clean_branch: 'ask',
       });
 
       const basePath = getWorktreeBasePath();
@@ -133,6 +136,7 @@ describe('Path Generation and Normalization Tests', () => {
       mockLoadConfig.mockReturnValue({
         worktree_base_path: '~/dev/worktrees',
         main_branches: ['main'],
+        clean_branch: 'ask',
       });
 
       const basePath = expandTildePath(getWorktreeBasePath());
@@ -193,6 +197,7 @@ describe('Path Generation and Normalization Tests', () => {
       mockLoadConfig.mockReturnValue({
         worktree_base_path: '/custom/path/worktrees',
         main_branches: ['main'],
+        clean_branch: 'ask',
       });
 
       const repositoryPath = '/Users/test/projects/my-app';
@@ -312,6 +317,7 @@ describe('Path Generation and Normalization Tests', () => {
       mockLoadConfig.mockReturnValue({
         worktree_base_path: '/different/path',
         main_branches: ['main'],
+        clean_branch: 'ask',
       });
 
       generatedPath = generateWorktreePath(
@@ -326,6 +332,7 @@ describe('Path Generation and Normalization Tests', () => {
       mockLoadConfig.mockReturnValue({
         worktree_base_path: 'relative/worktrees',
         main_branches: ['main'],
+        clean_branch: 'ask',
       });
 
       const generatedPath = generateWorktreePath(

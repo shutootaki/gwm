@@ -15,6 +15,7 @@ vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main'],
+    clean_branch: 'ask',
   })),
 }));
 

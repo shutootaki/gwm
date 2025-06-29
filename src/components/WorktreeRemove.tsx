@@ -5,21 +5,30 @@ import { SelectItem } from '../types/index.js';
 import {
   getWorktreesWithStatus,
   removeWorktree,
+  deleteLocalBranch,
+  localBranchExists,
+  hasUnmergedCommits,
   Worktree,
 } from '../utils/index.js';
+import { loadConfig } from '../config.js';
 
 interface WorktreeRemoveProps {
   query?: string;
   force?: boolean;
+  cleanBranch?: 'auto' | 'ask' | 'never';
 }
 
 export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
   query = '',
   force = false,
+  cleanBranch,
 }) => {
+  const config = loadConfig();
+  const cleanMode = cleanBranch || config.clean_branch;
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string[]>([]);
+  const [branchSuccess, setBranchSuccess] = useState<string[]>([]);
   const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
@@ -46,14 +55,51 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
     setRemoving(true);
     const removedPaths: string[] = [];
     const errors: string[] = [];
+    const removedBranches: Set<string> = new Set();
 
     for (const item of selectedItems) {
       try {
         removeWorktree(item.value, force);
         removedPaths.push(item.value);
+
+        const wt = worktrees.find((w) => w.path === item.value);
+        if (wt) removedBranches.add(wt.branch);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         errors.push(`${item.value}: ${errorMsg}`);
+      }
+    }
+
+    // ブランチクリーンアップ処理
+    if (removedBranches.size > 0 && cleanMode !== 'never') {
+      const remaining = await getWorktreesWithStatus();
+
+      const candidateBranches = Array.from(removedBranches).filter(
+        (br) => !remaining.some((w) => w.branch === br) && localBranchExists(br)
+      );
+
+      if (cleanMode === 'auto') {
+        const deleted: string[] = [];
+        candidateBranches.forEach((br) => {
+          const unmerged = hasUnmergedCommits(br);
+          try {
+            deleteLocalBranch(br, unmerged);
+            deleted.push(br + (unmerged ? ' (forced)' : ''));
+          } catch (e) {
+            errors.push(`branch ${br}: ${e instanceof Error ? e.message : e}`);
+          }
+        });
+        if (deleted.length > 0) {
+          setBranchSuccess(deleted);
+        }
+      }
+      // "ask" モードは未実装。スキップして注意喚起
+      if (cleanMode === 'ask') {
+        if (candidateBranches.length > 0) {
+          errors.push(
+            `Branches ${candidateBranches.join(', ')} remain locally. Re-run with --clean-branch=auto to remove.`
+          );
+        }
       }
     }
 
@@ -87,6 +133,12 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
           <Text key={path} color="gray">
             {' '}
             ✓ {path}
+          </Text>
+        ))}
+        {branchSuccess.map((b) => (
+          <Text key={b} color="gray">
+            {' '}
+            ✓ cleaned branch {b}
           </Text>
         ))}
       </Box>

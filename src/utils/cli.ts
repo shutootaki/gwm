@@ -10,6 +10,7 @@ export interface AddArgs {
 export interface RemoveArgs {
   query?: string;
   force: boolean;
+  cleanBranch?: 'auto' | 'ask' | 'never';
 }
 
 export interface CleanArgs {
@@ -68,6 +69,19 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
   return {
     query: getFirstPositional(args, 1),
     force: hasFlag(args, ['-f', '--force']),
+    cleanBranch: (() => {
+      let raw = getOptionValue(args, '--clean-branch');
+      if (!raw) {
+        const withEq = args.find((a) => a.startsWith('--clean-branch='));
+        if (withEq) {
+          raw = withEq.split('=')[1];
+        }
+      }
+
+      if (raw === 'auto' || raw === 'never') return raw;
+      if (raw === 'ask') return 'ask';
+      return undefined;
+    })(),
   };
 }
 

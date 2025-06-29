@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { validateBranchName, generateWorktreePreview } from '../src/components/TextInput.js';
+import {
+  validateBranchName,
+  generateWorktreePreview,
+} from '../src/components/TextInput.js';
 
 // React InkのUIコンポーネントをモック化
 vi.mock('ink', () => ({
@@ -15,6 +18,7 @@ vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/worktrees',
     main_branches: ['main', 'master', 'develop'],
+    clean_branch: 'ask',
   })),
 }));
 
@@ -65,9 +69,15 @@ describe('TextInput Component Tests', () => {
     });
 
     it('should reject branch names starting or ending with dots', () => {
-      expect(validateBranchName('.branch')).toContain('cannot start or end with a dot');
-      expect(validateBranchName('branch.')).toContain('cannot start or end with a dot');
-      expect(validateBranchName('.branch.')).toContain('cannot start or end with a dot');
+      expect(validateBranchName('.branch')).toContain(
+        'cannot start or end with a dot'
+      );
+      expect(validateBranchName('branch.')).toContain(
+        'cannot start or end with a dot'
+      );
+      expect(validateBranchName('.branch.')).toContain(
+        'cannot start or end with a dot'
+      );
     });
 
     it('should reject branch names with consecutive dots', () => {
@@ -76,8 +86,12 @@ describe('TextInput Component Tests', () => {
     });
 
     it('should reject branch names with spaces', () => {
-      expect(validateBranchName('branch with spaces')).toContain('cannot contain spaces');
-      expect(validateBranchName('feature auth')).toContain('cannot contain spaces');
+      expect(validateBranchName('branch with spaces')).toContain(
+        'cannot contain spaces'
+      );
+      expect(validateBranchName('feature auth')).toContain(
+        'cannot contain spaces'
+      );
     });
 
     it('should reject branch names that are too long', () => {
@@ -95,15 +109,24 @@ describe('TextInput Component Tests', () => {
     it('should generate correct worktree path', () => {
       const branchName = 'feature/user-auth';
       const preview = generateWorktreePreview(branchName);
-      
+
       expect(preview).toBe('/Users/test/worktrees/test-repo/feature-user-auth');
     });
 
     it('should sanitize branch names by replacing slashes', () => {
       const testCases = [
-        { input: 'feature/auth', expected: '/Users/test/worktrees/test-repo/feature-auth' },
-        { input: 'release/v1.0.0', expected: '/Users/test/worktrees/test-repo/release-v1.0.0' },
-        { input: 'hotfix/critical/fix', expected: '/Users/test/worktrees/test-repo/hotfix-critical-fix' },
+        {
+          input: 'feature/auth',
+          expected: '/Users/test/worktrees/test-repo/feature-auth',
+        },
+        {
+          input: 'release/v1.0.0',
+          expected: '/Users/test/worktrees/test-repo/release-v1.0.0',
+        },
+        {
+          input: 'hotfix/critical/fix',
+          expected: '/Users/test/worktrees/test-repo/hotfix-critical-fix',
+        },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -119,7 +142,7 @@ describe('TextInput Component Tests', () => {
     it('should handle special characters in branch names', () => {
       const branchName = 'feature_auth-v2';
       const preview = generateWorktreePreview(branchName);
-      
+
       expect(preview).toBe('/Users/test/worktrees/test-repo/feature_auth-v2');
     });
   });
@@ -130,11 +153,12 @@ describe('TextInput Component Tests', () => {
       const value = 'hello world';
       const cursorPosition = 5; // 'hello|world'
       const newChar = ' ';
-      
+
       // カーソル位置に文字を挿入
-      const newValue = value.slice(0, cursorPosition) + newChar + value.slice(cursorPosition);
+      const newValue =
+        value.slice(0, cursorPosition) + newChar + value.slice(cursorPosition);
       const newCursorPosition = cursorPosition + 1;
-      
+
       expect(newValue).toBe('hello  world');
       expect(newCursorPosition).toBe(6);
     });
@@ -142,11 +166,12 @@ describe('TextInput Component Tests', () => {
     it('should handle backspace correctly', () => {
       const value = 'hello world';
       const cursorPosition = 5; // 'hello|world'
-      
+
       if (cursorPosition > 0) {
-        const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
+        const newValue =
+          value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
         const newCursorPosition = cursorPosition - 1;
-        
+
         expect(newValue).toBe('hell world');
         expect(newCursorPosition).toBe(4);
       }
@@ -155,10 +180,11 @@ describe('TextInput Component Tests', () => {
     it('should handle delete key correctly', () => {
       const value = 'hello world';
       const cursorPosition = 5; // 'hello|world'
-      
+
       if (cursorPosition < value.length) {
-        const newValue = value.slice(0, cursorPosition) + value.slice(cursorPosition + 1);
-        
+        const newValue =
+          value.slice(0, cursorPosition) + value.slice(cursorPosition + 1);
+
         expect(newValue).toBe('helloworld');
       }
     });
@@ -166,16 +192,16 @@ describe('TextInput Component Tests', () => {
     it('should handle word deletion (Ctrl+W)', () => {
       const value = 'hello beautiful world';
       const cursorPosition = 15; // 'hello beautiful|world'
-      
+
       // カーソル位置から左の単語境界を見つける
       let wordStart = cursorPosition;
       while (wordStart > 0 && value[wordStart - 1] !== ' ') {
         wordStart--;
       }
-      
+
       const newValue = value.slice(0, wordStart) + value.slice(cursorPosition);
       const newCursorPosition = wordStart;
-      
+
       expect(newValue).toBe('hello  world');
       expect(newCursorPosition).toBe(6);
     });
@@ -184,7 +210,7 @@ describe('TextInput Component Tests', () => {
       const value = 'hello world';
       const newValue = '';
       const newCursorPosition = 0;
-      
+
       expect(newValue).toBe('');
       expect(newCursorPosition).toBe(0);
     });
@@ -192,20 +218,20 @@ describe('TextInput Component Tests', () => {
     it('should handle cursor movement boundaries', () => {
       const value = 'hello';
       let cursorPosition = 2;
-      
+
       // 左矢印キー
       cursorPosition = Math.max(0, cursorPosition - 1);
       expect(cursorPosition).toBe(1);
-      
+
       // 左端での左矢印
       cursorPosition = 0;
       cursorPosition = Math.max(0, cursorPosition - 1);
       expect(cursorPosition).toBe(0);
-      
+
       // 右矢印キー
       cursorPosition = Math.min(value.length, cursorPosition + 1);
       expect(cursorPosition).toBe(1);
-      
+
       // 右端での右矢印
       cursorPosition = value.length;
       cursorPosition = Math.min(value.length, cursorPosition + 1);
@@ -217,10 +243,10 @@ describe('TextInput Component Tests', () => {
     it('should split text correctly for cursor display', () => {
       const value = 'hello world';
       const cursorPosition = 5;
-      
+
       const beforeCursor = value.slice(0, cursorPosition);
       const afterCursor = value.slice(cursorPosition);
-      
+
       expect(beforeCursor).toBe('hello');
       expect(afterCursor).toBe(' world');
     });
@@ -228,10 +254,10 @@ describe('TextInput Component Tests', () => {
     it('should handle cursor at beginning', () => {
       const value = 'hello';
       const cursorPosition = 0;
-      
+
       const beforeCursor = value.slice(0, cursorPosition);
       const afterCursor = value.slice(cursorPosition);
-      
+
       expect(beforeCursor).toBe('');
       expect(afterCursor).toBe('hello');
     });
@@ -239,10 +265,10 @@ describe('TextInput Component Tests', () => {
     it('should handle cursor at end', () => {
       const value = 'hello';
       const cursorPosition = 5;
-      
+
       const beforeCursor = value.slice(0, cursorPosition);
       const afterCursor = value.slice(cursorPosition);
-      
+
       expect(beforeCursor).toBe('hello');
       expect(afterCursor).toBe('');
     });
@@ -250,10 +276,10 @@ describe('TextInput Component Tests', () => {
     it('should handle empty string', () => {
       const value = '';
       const cursorPosition = 0;
-      
+
       const beforeCursor = value.slice(0, cursorPosition);
       const afterCursor = value.slice(cursorPosition);
-      
+
       expect(beforeCursor).toBe('');
       expect(afterCursor).toBe('');
     });
@@ -261,7 +287,11 @@ describe('TextInput Component Tests', () => {
 
   describe('Keyboard Event Handling Logic', () => {
     it('should handle keyboard navigation state', () => {
-      const simulateKeyPress = (key: string, value: string, cursorPosition: number) => {
+      const simulateKeyPress = (
+        key: string,
+        value: string,
+        cursorPosition: number
+      ) => {
         switch (key) {
           case 'leftArrow':
             return {
@@ -276,7 +306,9 @@ describe('TextInput Component Tests', () => {
           case 'backspace':
             if (cursorPosition > 0) {
               return {
-                value: value.slice(0, cursorPosition - 1) + value.slice(cursorPosition),
+                value:
+                  value.slice(0, cursorPosition - 1) +
+                  value.slice(cursorPosition),
                 cursorPosition: cursorPosition - 1,
               };
             }
@@ -284,7 +316,9 @@ describe('TextInput Component Tests', () => {
           case 'delete':
             if (cursorPosition < value.length) {
               return {
-                value: value.slice(0, cursorPosition) + value.slice(cursorPosition + 1),
+                value:
+                  value.slice(0, cursorPosition) +
+                  value.slice(cursorPosition + 1),
                 cursorPosition,
               };
             }
@@ -316,8 +350,13 @@ describe('TextInput Component Tests', () => {
     });
 
     it('should handle character input at cursor position', () => {
-      const insertCharacter = (value: string, cursorPosition: number, char: string) => {
-        const newValue = value.slice(0, cursorPosition) + char + value.slice(cursorPosition);
+      const insertCharacter = (
+        value: string,
+        cursorPosition: number,
+        char: string
+      ) => {
+        const newValue =
+          value.slice(0, cursorPosition) + char + value.slice(cursorPosition);
         return {
           value: newValue,
           cursorPosition: cursorPosition + 1,
@@ -325,7 +364,7 @@ describe('TextInput Component Tests', () => {
       };
 
       let state = { value: 'hello', cursorPosition: 2 };
-      
+
       state = insertCharacter(state.value, state.cursorPosition, 'x');
       expect(state.value).toBe('hexllo');
       expect(state.cursorPosition).toBe(3);

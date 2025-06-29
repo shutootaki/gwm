@@ -64,8 +64,10 @@ const App: React.FC = () => {
     }
     case 'remove':
     case 'rm': {
-      const { query, force } = parseRemoveArgs(args);
-      return <WorktreeRemove query={query} force={force} />;
+      const { query, force, cleanBranch } = parseRemoveArgs(args);
+      return (
+        <WorktreeRemove query={query} force={force} cleanBranch={cleanBranch} />
+      );
     }
     case 'go': {
       const { query, openCode, openCursor } = parseGoArgs(args);

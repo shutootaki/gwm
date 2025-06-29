@@ -39,23 +39,28 @@ export function useWorktree({
 
         let command: string;
 
-        if (isRemote) {
-          // リモートブランチから作成
-          command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(`origin/${branch}`)}`;
-        } else {
-          // ローカルブランチまたは新規ブランチ
-          const baseBranch = fromBranch || config.main_branches[0];
-
+        // まずローカルブランチの存在を確認（isRemote= true の場合も含む）
+        const localExists = (() => {
           try {
             execSync(
               `git show-ref --verify --quiet ${escapeShellArg(`refs/heads/${branch}`)}`
             );
-            // 既存ローカルブランチ
-            command = `git worktree add ${escapeShellArg(worktreePath)} ${escapeShellArg(branch)}`;
+            return true;
           } catch {
-            // 新規ブランチ
-            command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
+            return false;
           }
+        })();
+
+        if (localExists) {
+          // 既存ブランチをそのまま利用
+          command = `git worktree add ${escapeShellArg(worktreePath)} ${escapeShellArg(branch)}`;
+        } else if (isRemote) {
+          // リモートブランチからチェックアウト
+          command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(`origin/${branch}`)}`;
+        } else {
+          // 新規ローカルブランチとして baseBranch から作成
+          const baseBranch = fromBranch || config.main_branches[0];
+          command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
         }
 
         execSync(command);

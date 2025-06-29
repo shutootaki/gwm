@@ -13,6 +13,7 @@ vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
+    clean_branch: 'ask',
   })),
 }));
 
@@ -310,6 +311,7 @@ bare`;
     vi.mocked(loadConfig).mockReturnValue({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
 
     const porcelainOutput = `worktree /Users/test/project

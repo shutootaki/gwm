@@ -42,7 +42,7 @@ The CLI follows a component-based architecture:
 
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
 - `gwm add [branch_name]` - Add new worktree interactively or from specified branch
-- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
+- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection and optional local branch cleanup (`--clean-branch`)
 - `gwm clean` - Currently disabled (PRUNABLE auto-detection removed)
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
 - `gwm pull-main` - Update main branch worktrees to latest state from any directory
@@ -75,7 +75,7 @@ The project follows a 5-phase development plan:
 1. **Foundation**: Project setup, TypeScript config, basic Ink "Hello World"
 2. **Read-only Features**: `gwm list` implementation, config file handling
 3. **Core Operations**: Interactive UI components, add/remove/go/code commands
-4. **Automation**: ~~`gwm clean` command with merge detection~~ (simplified to 3-status system)
+4. **Automation**: Added automatic local branch cleanup via `--clean-branch` / `clean_branch` config
 5. **Distribution**: Error handling, documentation, npm publishing
 
 ## Configuration
@@ -85,6 +85,8 @@ Settings file: `~/.config/gwm/config.toml`
 ```toml
 worktree_base_path = "/Users/myuser/dev/worktrees"
 main_branches = ["main", "master", "develop"]
+# Branch cleanup mode: "auto" | "ask" | "never"
+clean_branch = "ask"
 ```
 
 ## Shell Integration
