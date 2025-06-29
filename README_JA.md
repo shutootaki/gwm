@@ -126,7 +126,7 @@ M       main              ~/git-worktrees/project/main      123abc4
   - `--from <base_branch>`: 新規ブランチを作成する際の分岐元を指定します (デフォルト: `main` または `master`)。
   - `--code`: 作成後に VS Code で開きます。
   - `--cursor`: 作成後に Cursor で開きます。
-  - `--cd`: 作成後にパスのみを出力します。
+  - `--cd`: 作成後に該当のワークツリーが存在するディレクトリに移動します。
 
 ---
 
