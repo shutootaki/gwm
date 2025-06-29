@@ -17,7 +17,7 @@ export function getOptimalColumnWidths(
     ...items.map((item) => item.branch.length)
   );
   const maxPathLength = Math.max(
-    'PATH'.length,
+    'DIR_PATH'.length,
     ...items.map((item) => item.path.length)
   );
 

@@ -4,6 +4,7 @@ import { Worktree, getOptimalColumnWidths } from '../utils/index.js';
 import { getRepoRoot } from '../utils/git.js';
 import { useTerminalWidth } from '../hooks/useTerminalWidth.js';
 import { WorktreeRow } from './WorktreeRow.js';
+import { loadConfig } from '../config.js';
 
 interface WorktreeTableProps {
   /** 一覧に表示するワークツリー */
@@ -28,6 +29,11 @@ export const WorktreeTable: React.FC<WorktreeTableProps> = ({
   // Git リポジトリのルート (不変)
   const repoRoot = useMemo(() => getRepoRoot(), []);
 
+  // 設定ファイル (不変)
+  const { worktree_base_path: WORKTREE_BASE_PATH } = loadConfig();
+
+  const BASE_TOKEN = '${B}';
+
   // 統計情報をメモ化
   const stats = useMemo(() => {
     return {
@@ -40,14 +46,22 @@ export const WorktreeTable: React.FC<WorktreeTableProps> = ({
 
   // 列幅計算（ターミナル幅依存）
   const columnWidths = useMemo(() => {
-    const displayItems = worktrees.map((w) => ({
-      branch: w.branch,
-      path: w.path.startsWith(repoRoot)
-        ? w.path.substring(repoRoot.length + 1)
-        : w.path,
-    }));
+    const displayItems = worktrees.map((w) => {
+      let pathStr: string;
+      if (w.path.startsWith(WORKTREE_BASE_PATH)) {
+        pathStr = `${BASE_TOKEN}/${w.path.substring(
+          WORKTREE_BASE_PATH.length + 1
+        )}`;
+      } else if (w.path.startsWith(repoRoot)) {
+        pathStr = w.path.substring(repoRoot.length + 1);
+      } else {
+        pathStr = w.path;
+      }
+
+      return { branch: w.branch, path: pathStr };
+    });
     return getOptimalColumnWidths(displayItems, terminalWidth);
-  }, [worktrees, repoRoot, terminalWidth]);
+  }, [worktrees, repoRoot, terminalWidth, WORKTREE_BASE_PATH]);
 
   const isEmpty = worktrees.length === 0;
 
@@ -81,6 +95,13 @@ export const WorktreeTable: React.FC<WorktreeTableProps> = ({
                   {stats.other}
                 </Text>
               </Text>
+
+              {/* Legend for base path */}
+              {WORKTREE_BASE_PATH && (
+                <Text color="gray">
+                  {'${B}'} = {WORKTREE_BASE_PATH}
+                </Text>
+              )}
             </Box>
           </Box>
 
@@ -89,7 +110,7 @@ export const WorktreeTable: React.FC<WorktreeTableProps> = ({
             <Text color="cyan" bold>
               {'   STATUS'.padEnd(14)}{' '}
               {`BRANCH`.padEnd(columnWidths.branchWidth)}{' '}
-              {`PATH`.padEnd(columnWidths.pathWidth)} {'HEAD'.padEnd(10)}
+              {`DIR_PATH`.padEnd(columnWidths.pathWidth)} {'HEAD'.padEnd(10)}
             </Text>
           </Box>
 
