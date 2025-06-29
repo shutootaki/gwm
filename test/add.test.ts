@@ -18,6 +18,7 @@ vi.mock('../src/config.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],
+    clean_branch: 'ask',
   })),
 }));
 
@@ -200,6 +201,7 @@ describe('gwm add command integration tests', () => {
     vi.mocked(loadConfig).mockReturnValue({
       worktree_base_path: '/Users/test/custom-worktrees',
       main_branches: ['main'],
+      clean_branch: 'ask',
     });
 
     const branchName = 'feature-custom';
