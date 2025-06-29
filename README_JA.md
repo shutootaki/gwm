@@ -1,334 +1,176 @@
-# gwm - Git Worktree Manager
+# gwm – Git Worktree Manager
 
-InkベースのインタラクティブなReact端末UIを備えた、効率的なGit worktree管理のためのモダンなCLIツールです。
+> Git のコンテキストをゼロフリクションで切り替え。PR のレビュー、フィーチャーブランチの作成、ワークスペースのクリーンアップまで、すべてを 1 つの対話型 CLI で。
 
-## 概要
+[![npm version](https://img.shields.io/npm/v/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/gwm)
+[![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![CI](https://github.com/your-org/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/gwm/actions/workflows/ci.yml)
 
-`gwm`は以下のニーズを持つ開発者のためのGit worktree管理を簡素化します：
+## gwm が便利な理由
 
-- GitHub プルリクエストのローカルでのレビューとテストを、素早いコンテキスト切り替えで実現
-- クリーンで独立した環境で複数の機能開発やバグ修正を並行して実行
-- リモートブランチからのworktree作成とマージされたブランチのクリーンアップを自動化
+複数のプルリクエストやホットフィックスを同時に進めていると、`git checkout` や `git pull` を何度も実行したり、ローカルクローンが散在してしまいがちです。**gwm** は Git のネイティブ機能 _worktree_ を活用し、心地よい UI を提供することで次のことを実現します:
 
-## 特徴
+- **ミリ秒でタスクを切り替え** — stash/checkout のダンスは不要。
+- **任意のリモートブランチからワークツリーを一発生成**。
+- **ノート PC を常にクリーンに保つ** — 古いブランチを検出し安全に削除。
+- **すべてターミナル内で完結** — Ink 製のファジーファインダーを採用。
 
-- **インタラクティブUI**: すべての操作でfzfライクなファジーサーチと複数選択機能
-- **直感的なコマンド**: 一貫した動作を持つシンプルで単一目的のコマンド
-- **ステータス分類**: 3分類ステータスシステム（Active/Main/Other）
-- **シェル統合**: シェル関数によるシームレスなディレクトリナビゲーション
-- **VS Code統合**: エディタでworktreeを直接開く機能
-- **柔軟な設定**: TOMLファイルでベースパスとメインブランチをカスタマイズ
-- **TypeScript & React**: 保守可能で拡張可能なコードのためのモダンな技術
+## 主なコマンド一覧
+
+| コマンド                | 役割                                               | ハイライト                                     |
+| ----------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| `gwm list` / `gwm ls`   | 現在のリポジトリにあるワークツリーを一覧表示       | ステータスの色分け、HEAD ハッシュ              |
+| `gwm add`               | 新しいワークツリーを作成                           | 新規ブランチ/リモート PR、対話的バリデーション |
+| `gwm go`                | ワークツリーに移動、または VS Code / Cursor で開く | サブシェル起動、エディタフラグ                 |
+| `gwm remove` / `gwm rm` | ワークツリーを削除                                 | 複数選択、強制モード、ブランチの後始末         |
+| `gwm clean`             | マージ/削除済みブランチを自動クリーン              | 安全チェック & 確認                            |
+| `gwm pull-main`         | すべての main 系ワークツリーで `git pull` を実行   | ベースを最新状態に保つ                         |
+
+_注: `gwm help <command>` で各コマンドの詳細を確認できます。_
 
 ## インストール
 
-### 前提条件
-
-- Node.js 16+
-- Git 2.25+
-
-### npmから（近日公開予定）
+### npm (グローバル)
 
 ```bash
 npm install -g gwm
 ```
 
-### ソースから
+## クイックスタート
 
 ```bash
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-pnpm install
-pnpm build
-pnpm link --global
+# Git リポジトリで
+$ gwm add                   # 対話形式: ブランチ名入力 → Enter
+$ gwm go feature/my-branch  # ワークツリーにジャンプ
+$ code .                    # または `gwm go --code` で VS Code を即起動
 ```
 
-## コマンド
-
-### `gwm list`（エイリアス: `ls`）
-
-すべてのworktreeをステータス、ブランチ、パス、コミット情報と共に表示します。
+プルリクをレビューする場合:
 
 ```bash
-gwm list
+$ gwm add 1234-fix-layout -r  # リモートブランチからワークツリーを作成
+$ gwm go                      # ファジー検索して瞬間移動 🚀
 ```
 
-**ステータスインジケータ:**
+週末の大掃除:
 
-- `* ACTIVE`: 現在アクティブなworktree（黄色）
-- `M MAIN`: ベースとなるメインworktree（シアン）
-- `- OTHER`: その他のすべてのworktree（白）
+```bash
+$ gwm clean --yes             # マージ/削除済みワークツリーを安全に一括削除
+```
+
+## デフォルトディレクトリ構成
+
+```
+~/git-worktrees/
+└─ <repo-name>/
+   ├─ main/
+   ├─ feature-user-auth/
+   └─ hotfix-critical-bug/
+```
+
+ベースパスは `~/.config/gwm/config.toml`（または `~/.gwmrc`）で変更できます。
+
+## 設定ファイル
+
+`~/.config/gwm/config.toml` を作成して動作を調整できます:
+
+```toml
+# ワークツリーのベースパス（デフォルト: ~/git-worktrees）
+worktree_base_path = "/Users/me/dev/worktrees"
+
+# ワークツリー削除時のローカルブランチの扱い
+#   "auto"  – 安全なら自動削除
+#   "ask"   – 確認プロンプト（デフォルト）
+#   "never" – 削除しない
+clean_branch = "ask"
+```
+
+## コマンドリファレンス
+
+以下は主要なコマンドの詳細です。各コマンドで `gwm <command> --help` を実行すると、さらに詳しい情報が確認できます。
+
+### `gwm list` (エイリアス: `ls`)
+
+現在のプロジェクトに存在する worktree を一覧表示します。
+
+```text
+STATUS  BRANCH            PATH                              HEAD
+*       feature/new-ui    /Users/me/project                 a1b2c3d
+M       main              ~/git-worktrees/project/main      123abc4
+-       hotfix/logfix     ~/git-worktrees/project/logfix    c7d8e9f
+```
+
+- **STATUS の意味:**
+  - `* ACTIVE`: あなたが現在いる worktree
+  - `M MAIN`: `main` や `master` などのメインブランチ
+  - `- OTHER`: その他の worktree
+
+---
 
 ### `gwm add [branch_name]`
 
-ブランチから新しいworktreeを作成します。引数なしの場合、インタラクティブなリモートブランチ選択を起動します。
+新しい worktree を作成します。対話的な UI が特徴です。
 
-```bash
-# インタラクティブモード - リモートブランチから選択
-gwm add
+- **引数なしで実行 (`gwm add`):**
+  - 新規ブランチ名を入力する UI が起動します。リアルタイムでブランチ名の妥当性検証とパスのプレビューが表示されます。
+  - `Tab` キーを押すと、リモートブランチを選択して worktree を作成するモードに切り替わります（PR のレビューに便利です）。
+  - オプションを指定すると、VS Code や Cursor で開くことができます。
 
-# ローカルブランチから作成（存在しない場合は新規ブランチ）
-gwm add feature/new-ui
+- **引数を指定して実行:**
+  - `gwm add feature/new-login`: `feature/new-login` という名前で新しいブランチと worktree を作成します。
+  - `gwm add existing-branch`: 既存のローカルブランチ `existing-branch` から worktree を作成します。
+  - `gwm add pr-branch -r`: リモートブランチ `origin/pr-branch` から worktree を作成します。
 
-# リモートブランチから作成
-gwm add -r feature/api-update
+- **主なオプション:**
+  - `-r, --remote`: リモートブランチから worktree を作成するモードに切り替えます。
+  - `--from <base_branch>`: 新規ブランチを作成する際の分岐元を指定します (デフォルト: `main` または `master`)。
+  - `--code`: 作成後に VS Code で開きます。
+  - `--cursor`: 作成後に Cursor で開きます。
+  - `--cd`: 作成後にパスのみを出力します。
 
-# 特定のベースから新しいブランチを作成
-gwm add new-feature --from main
-```
-
-**オプション:**
-
-- `-r, --remote`: branch_nameをリモートブランチとして扱う（フェッチして追跡）
-- `--from <branch>`: 新規ブランチ作成の基点ブランチを指定（デフォルトはmain）
-
-### `gwm remove`（エイリアス: `rm`）
-
-インタラクティブな複数選択で1つまたは複数のworktreeを削除します。
-
-```bash
-# インタラクティブ選択
-gwm remove
-
-# クエリで事前フィルタリング
-gwm remove feature
-
-# 強制削除
-gwm remove -f
-```
-
-**オプション:**
-
-- `-f, --force`: 未コミットの変更があっても強制削除
+---
 
 ### `gwm go [query]`
 
-worktreeディレクトリに移動します。シェル統合用に設計されています。
+ファジー検索で worktree を選択し、そのディレクトリに移動（サブシェルを起動）します。
 
-```bash
-# インタラクティブ選択
-gwm go
+- `gwm go` で対話的に選択するか、`gwm go feat` のように初期クエリを指定して絞り込めます。
+- **主なオプション:**
+  - `--code`, `-c`: 選択した worktree を Visual Studio Code で開きます。
+  - `--cursor`: 選択した worktree を Cursor で開きます。
 
-# 事前フィルタリング選択
-gwm go feature
+---
 
-# VS Codeでworktreeを開く
-gwm go api-refactor --code
+### `gwm remove [query]` (エイリアス: `rm`)
 
-# Cursorでworktreeを開く
-gwm go bugfix/login --cursor
-```
+一つまたは複数の worktree を対話的に選択して削除します。
+
+- `gwm remove` で一覧から複数選択して削除できます。
+- **主なオプション:**
+  - `-f, --force`: 未コミットの変更があっても強制的に削除します。
+  - `--clean-branch <mode>`: worktree と一緒にローカルブランチも削除するかを指定します (`auto` / `ask` / `never`)。
+
+---
 
 ### `gwm clean`
 
-マージ済みまたはリモートで削除されたworktreeを安全に削除します。削除対象はすべての条件を満たすworktreeのみです。
+安全に削除できる worktree を自動で検出してクリーンアップします。
 
-```bash
-# インタラクティブクリーンアップ
-gwm clean
+**削除対象となる worktree の条件:**
 
-# 確認をスキップ（ただし削除前に最終確認を表示）
-gwm clean -y
-```
+1.  リモートブランチが削除済み、またはメインブランチにマージ済み
+2.  ローカルでの変更（未コミットや未プッシュのコミット）がない
+3.  メインブランチや現在いるブランチではない
 
-**削除条件:**
+- **主なオプション:**
+  - `-y, --yes`: 削除前に表示される確認プロンプトをスキップします。
 
-1. **リモートブランチが削除されている** または **メインブランチにマージされている**
-2. **ローカル変更がない**（未ステージング、未追跡、ステージング済み、ローカル限定コミットなし）
-3. **MAIN/ACTIVEステータスではない**
-
-**オプション:**
-
-- `-y, --yes`: 確認プロンプトをスキップ（削除対象表示後に最終確認）
-
-**安全機能:**
-
-- 自動的に `git fetch --prune origin` でリモート状態を更新
-- 各worktreeの削除理由を明確に表示
-- ACTIVE/MAINワークツリーは自動的に除外
-- 未コミットの変更があるworktreeは除外
+---
 
 ### `gwm pull-main`
 
-カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新します。
-
-```bash
-# メインブランチの更新
-gwm pull-main
-```
-
-**使用ケース:**
-
-- worktreeファイルが特定のディレクトリ（例: `~/username/git-worktree`）にあり、ベースのworktreeに直接mainブランチを最新状態に更新できない場合
-
-### `gwm help [command]`
-
-gwmの使い方や各コマンドの詳細情報を表示します。
-
-```bash
-# 全般的なヘルプを表示
-gwm help
-gwm --help
-gwm -h
-
-# 特定のコマンドのヘルプを表示
-gwm help add
-gwm add --help
-gwm add -h
-```
-
-**使用例:**
-
-```bash
-# gwmで利用可能なすべてのコマンドを表示
-gwm help
-
-# addコマンドの詳細な使い方とオプションを表示
-gwm help add
-
-# removeコマンドのヘルプを表示
-gwm help remove
-```
-
-## 設定
-
-`~/.config/gwm/config.toml`に設定ファイルを作成してください：
-
-```toml
-# worktreeのベースディレクトリ（デフォルト: ~/worktrees）
-worktree_base_path = "/Users/myuser/dev/worktrees"
-
-# マージ検出とデフォルトベース用のメインブランチ（デフォルト: ["main", "master", "develop"]）
-main_branches = ["main", "master", "develop"]
-```
-
-### Worktreeパス規則
-
-Worktreeは以下のパターンで作成されます：
-
-```
-<worktree_base_path>/<repository-name>/<normalized-branch-name>
-```
-
-**ブランチ名の正規化:**
-
-- ファイルシステム互換性のためスラッシュがハイフンに変換されます
-- 例:
-  - `feature/user-auth` → `feature-user-auth`
-  - `hotfix/critical-bug` → `hotfix-critical-bug`
-
-**パス例:**
-
-```
-~/worktrees/myproject/main
-~/worktrees/myproject/feature-user-auth
-~/worktrees/myproject/hotfix-critical-bug
-```
-
-## 使用例
-
-### 典型的なワークフロー
-
-```bash
-# 現在のworktreeを一覧表示
-gwm list
-
-# PRレビュー用のworktreeを作成
-gwm add -r feature/new-dashboard
-
-# 機能の作業...
-
-# worktree間をナビゲート
-wgo main        # mainブランチに切り替え
-wgo dashboard   # 機能ブランチに戻る
-
-# VS Codeで別のworktreeを開く
-gwm go api-refactor --code
-
-# 完了時のクリーンアップ
-gwm clean       # インタラクティブクリーンアップ
-gwm remove      # 特定のworktreeを削除
-```
-
-### コマンド例
-
-```bash
-# 新しいworktree用のインタラクティブブランチ選択
-gwm add
-
-# リモートブランチからworktreeを作成
-gwm add -r hotfix/critical-bug
-
-# mainから新しい機能ブランチを作成
-gwm add new-feature --from main
-
-# 複数選択によるworktree削除
-gwm remove feature
-
-# マージ済みブランチの自動クリーンアップ
-gwm clean -y
-
-# メインブランチの更新
-gwm pull-main
-
-# ファジーサーチによる素早いナビゲーション
-wgo dash        # "feature-dashboard"にマッチ
-```
-
-## 開発
-
-### セットアップ
-
-```bash
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-pnpm install
-```
-
-### 利用可能なスクリプト
-
-```bash
-pnpm dev                # ウォッチモードコンパイル
-pnpm build              # TypeScriptコンパイル
-pnpm start              # コンパイル済みCLIを実行
-pnpm test               # Vitestでテスト実行
-pnpm test:coverage      # カバレッジレポート生成
-pnpm test:ui            # Vitest UIを起動
-pnpm lint               # ESLintチェック
-pnpm lint:fix           # ESLint修正
-pnpm format             # Prettierフォーマット
-```
-
-### ローカルテスト
-
-```bash
-pnpm build
-pnpm link --global
-gwm --help              # CLIをテスト
-```
-
-### アーキテクチャ
-
-- **エントリーポイント**: `src/index.tsx` - コマンドルーティングと引数パース
-- **コンポーネント**: `src/components/` - 各コマンドのUI用Reactコンポーネント
-- **ユーティリティ**: `src/utils/` - Git操作、CLI解析、フォーマットヘルパー
-- **型定義**: `src/types/` - TypeScript型定義
-- **設定**: `src/config.ts` - 設定ファイル処理
-- **テスト**: `test/` - ユーティリティとコンポーネントのユニットテスト
-
-## 貢献
-
-1. リポジトリをフォーク
-2. 機能ブランチを作成（`git checkout -b feature/amazing-feature`）
-3. 変更をコミット（`git commit -m 'Add amazing feature'`）
-4. ブランチにプッシュ（`git push origin feature/amazing-feature`）
-5. プルリクエストを開く
+現在地に関わらず、プロジェクトのメインブランチ (`main`, `master` など) の worktree を探し、`git pull` を実行して最新の状態に更新します。
 
 ## ライセンス
 
-MIT License - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
-
-## 謝辞
-
-- React ベースCLIインターフェース用の[Ink](https://github.com/vadimdemedes/ink)で構築
-- モダンなGitワークフローツールと`fzf`のユーザーエクスペリエンスにインスパイア
+MIT © 2024 Shuto Otaki and contributors
