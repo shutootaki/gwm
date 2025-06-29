@@ -17,14 +17,14 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 
 ## Command overview
 
-| Command                 | Purpose                                         | Highlights                                     |
-| ----------------------- | ----------------------------------------------- | ---------------------------------------------- |
-| `gwm list` / `gwm ls`   | List worktrees in the current repository        | Colored status, HEAD hash                      |
-| `gwm add`               | Create a new worktree                           | New branch / remote PR, interactive validation |
-| `gwm go`                | Jump to a worktree or open it in VS Code/Cursor | Launch subshell, editor flags                  |
-| `gwm remove` / `gwm rm` | Remove worktrees                                | Multi-select, force mode, branch cleanup       |
-| `gwm clean`             | Auto-clean merged/deleted branches              | Safety checks & confirmation                   |
-| `gwm pull-main`         | Run `git pull` in all main worktrees            | Keep bases up to date                          |
+| Command                 | Purpose                                             | Highlights                                     |
+| ----------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| `gwm list` / `gwm ls`   | List worktrees in the current repository            | Colored status, HEAD hash                      |
+| `gwm add`               | Create a new worktree                               | New branch / remote PR, interactive validation |
+| `gwm go`                | Jump to a worktree or open it in VS Code/Cursor     | Launch subshell, editor flags                  |
+| `gwm remove` / `gwm rm` | Remove worktrees                                    | Multi-select, force mode, branch cleanup       |
+| `gwm clean`             | Auto-detect safe-to-delete worktrees and clean them | Enter deletes all / -n dry-run                 |
+| `gwm pull-main`         | Run `git pull` in all main worktrees                | Keep bases up to date                          |
 
 _Note: Run `gwm help <command>` for details on each command._
 
@@ -55,7 +55,7 @@ $ gwm go                      # Fuzzy search and teleport 🚀
 Weekend cleanup:
 
 ```bash
-$ gwm clean --yes             # Bulk-delete merged/deleted worktrees safely
+$ gwm clean             # Clean up safe-to-delete worktrees interactively
 ```
 
 ## Default directory layout
@@ -163,7 +163,8 @@ A worktree is eligible if:
 3. It is not the main branch or the worktree you're currently in
 
 - **Key options:**
-  - `-y, --yes`: Skip the confirmation prompt before deletion.
+  - `-n, --dry-run`: Show the list only; don't delete.
+  - `--force`: Skip confirmation and delete immediately.
 
 ---
 

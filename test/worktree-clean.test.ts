@@ -81,37 +81,26 @@ describe('WorktreeClean', () => {
     });
   });
 
-  it('yes mode should remove all listed worktrees on Enter', async () => {
+  it('force mode should remove all listed worktrees on Enter', async () => {
     mockGetCleanableWorktrees.mockResolvedValue(sampleCleanables);
     mockRemoveWorktree.mockReturnValue(undefined);
 
-    const { stdin, lastFrame } = render(
-      React.createElement(WorktreeClean, { yes: true })
+    const { lastFrame } = render(
+      React.createElement(WorktreeClean, { force: true })
     );
-
-    // "Press Enter" の表示を待つ
-    await vi.waitFor(() => {
-      expect(lastFrame()).toMatch(/Press Enter to delete/);
-    });
-
-    // Enter を送信
-    stdin.write('\r');
 
     await vi.waitFor(() => {
       // removeWorktree が2件呼ばれる
       expect(mockRemoveWorktree).toHaveBeenCalledTimes(2);
+      // 成功メッセージを確認
+      expect(lastFrame()).toMatch(/Successfully cleaned 2 worktree\(s\)/);
     });
-
-    // 成功メッセージを確認
-    expect(lastFrame()).toMatch(/Successfully cleaned 2 worktree\(s\)/);
   });
 
-  it('yes mode should cancel on Esc without removing', async () => {
+  it('confirm mode should cancel on Esc without removing', async () => {
     mockGetCleanableWorktrees.mockResolvedValue(sampleCleanables);
 
-    const { stdin, lastFrame } = render(
-      React.createElement(WorktreeClean, { yes: true })
-    );
+    const { stdin, lastFrame } = render(React.createElement(WorktreeClean));
 
     // "Press Enter" の表示を待って Esc
     await vi.waitFor(() => {

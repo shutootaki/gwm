@@ -76,8 +76,8 @@ const App: React.FC = () => {
       );
     }
     case 'clean': {
-      const { yes } = parseCleanArgs(args);
-      return <WorktreeClean yes={yes} />;
+      const { dryRun, force } = parseCleanArgs(args);
+      return <WorktreeClean dryRun={dryRun} force={force} />;
     }
     case 'pull-main': {
       parsePullMainArgs(args); // 将来の拡張用

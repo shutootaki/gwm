@@ -18,6 +18,7 @@ const GlobalHelp: React.FC = () => (
     <Text> list (ls) List all worktrees for the current project</Text>
     <Text> pull-main Update the main branch worktree</Text>
     <Text> remove (rm) Remove one or more worktrees</Text>
+    <Text> clean Clean up safe-to-delete worktrees</Text>
     <Text> help Show help for gwm or a specific command</Text>
     <Text />
     <Text>
@@ -210,12 +211,33 @@ const HelpHelp: React.FC = () => (
   </Box>
 );
 
+const CleanHelp: React.FC = () => (
+  <Box flexDirection="column">
+    <Text>Detect and remove worktrees that are safe to delete.</Text>
+    <Text />
+    <Text bold>USAGE:</Text>
+    <Text> gwm clean [-n] [--force]</Text>
+    <Text />
+    <Text bold>OPTIONS:</Text>
+    <Text> -n, --dry-run Show candidates only, do not delete</Text>
+    <Text> --force Skip confirmation and delete immediately</Text>
+    <Text />
+    <Text bold>EXAMPLES:</Text>
+    <Text> # Preview cleanable worktrees</Text>
+    <Text> $ gwm clean -n</Text>
+    <Text />
+    <Text> # Force clean without confirmation (CI etc.)</Text>
+    <Text> $ gwm clean --force</Text>
+  </Box>
+);
+
 const UnknownCommandHelp: React.FC<{ command: string }> = ({ command }) => (
   <Box flexDirection="column">
     <Text color="red">Unknown command: {command}</Text>
     <Text />
     <Text>
-      Available commands: add, list (ls), remove (rm), go, pull-main, help
+      Available commands: add, list (ls), remove (rm), clean, go, pull-main,
+      help
     </Text>
     <Text />
     <Text>Use &quot;gwm help&quot; to see all available commands.</Text>
@@ -228,6 +250,7 @@ const commandHelpComponents: { [key: string]: React.FC } = {
   ls: ListHelp,
   remove: RemoveHelp,
   rm: RemoveHelp,
+  clean: CleanHelp,
   go: GoHelp,
   'pull-main': PullMainHelp,
   help: HelpHelp,

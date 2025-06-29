@@ -29,6 +29,10 @@ export const Welcome: React.FC = () => {
       label: 'remove, rm [query] [-f] [--clean-branch <mode>]',
       desc: 'Remove worktrees (interactive)',
     },
+    {
+      label: 'clean [-n] [--force]',
+      desc: 'Clean up safe-to-delete worktrees',
+    },
     { label: 'pull-main', desc: 'Update main branch worktree(s)' },
     {
       label: 'go [query] [--code] [--cursor]',
@@ -41,6 +45,14 @@ export const Welcome: React.FC = () => {
     { label: '-r, --remote', desc: 'Add from remote branch' },
     { label: '--from <branch>', desc: 'Specify base branch for new worktree' },
     { label: '-f, --force', desc: 'Force remove worktree' },
+    {
+      label: '-n, --dry-run',
+      desc: 'Preview cleanable worktrees',
+    },
+    {
+      label: '--force',
+      desc: 'Skip confirmation on clean',
+    },
     {
       label: '--clean-branch <mode>',
       desc: 'auto | ask | never (local branch cleanup)',
@@ -91,6 +103,11 @@ export const Welcome: React.FC = () => {
         />
         <Row label="gwm add -r origin/main" desc="Add from remote branch" />
         <Row label="gwm remove" desc="Interactive worktree removal" />
+        <Row label="gwm clean -n" desc="Dry-run clean" />
+        <Row
+          label="gwm clean --force"
+          desc="Force clean without confirmation"
+        />
       </Box>
 
       {/* Config */}
