@@ -29,6 +29,10 @@ jobs:
     name: ESLint
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Common setup
         uses: ./.github/actions/setup
         with:
@@ -41,6 +45,10 @@ jobs:
     name: Prettier
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Common setup
         uses: ./.github/actions/setup
         with:
@@ -60,6 +68,10 @@ jobs:
     needs: [lint, format]
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Common setup
         uses: ./.github/actions/setup
         with:
@@ -83,6 +95,10 @@ jobs:
       contents: read
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Common setup
         uses: ./.github/actions/setup
         with:
