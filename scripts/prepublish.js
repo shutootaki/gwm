@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
             await fs.access(path.join(root, file));
         }
     } catch (err) {
-        console.error(`❌ Missing required file: ${err.path}`);
+        console.error(`❌ Missing required file: ${err.path || 'unknown file'}`);
         process.exit(1);
     }
 
