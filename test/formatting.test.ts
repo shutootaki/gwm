@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { truncateAndPad, getOptimalColumnWidths } from '../src/utils/formatting.js';
+import {
+  truncateAndPad,
+  getOptimalColumnWidths,
+} from '../src/utils/formatting.js';
 
 describe('formatting utilities', () => {
   describe('truncateAndPad', () => {
@@ -90,10 +93,10 @@ describe('formatting utilities', () => {
       it('短いアイテムリストの場合', () => {
         const items = [
           { branch: 'main', path: '/home/user/project' },
-          { branch: 'feature', path: '/home/user/dev' }
+          { branch: 'feature', path: '/home/user/dev' },
         ];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         expect(result.branchWidth).toBeGreaterThanOrEqual(15);
         expect(result.pathWidth).toBeGreaterThanOrEqual(20);
         expect(result.branchWidth + result.pathWidth).toBeLessThanOrEqual(90); // 120 - 30(余白)
@@ -101,13 +104,13 @@ describe('formatting utilities', () => {
 
       it('長いブランチ名とパスの場合', () => {
         const items = [
-          { 
-            branch: 'feature/very-long-branch-name-that-exceeds-normal-length', 
-            path: '/very/long/path/to/project/directory/that/also/exceeds/normal/length'
-          }
+          {
+            branch: 'feature/very-long-branch-name-that-exceeds-normal-length',
+            path: '/very/long/path/to/project/directory/that/also/exceeds/normal/length',
+          },
         ];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         expect(result.branchWidth).toBeGreaterThanOrEqual(15);
         expect(result.pathWidth).toBeGreaterThanOrEqual(20);
       });
@@ -115,94 +118,87 @@ describe('formatting utilities', () => {
       it('空のアイテムリストの場合', () => {
         const items: Array<{ branch: string; path: string }> = [];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         expect(result.branchWidth).toBe(37); // 実際の結果に合わせる
-        expect(result.pathWidth).toBe(53);   // 実際の結果に合わせる
+        expect(result.pathWidth).toBe(53); // 実際の結果に合わせる
       });
     });
 
     describe('ターミナル幅に基づく調整', () => {
       it('狭いターミナルでの幅計算', () => {
-        const items = [
-          { branch: 'main', path: '/home/user/project' }
-        ];
+        const items = [{ branch: 'main', path: '/home/user/project' }];
         const result = getOptimalColumnWidths(items, 60);
-        
+
         expect(result.branchWidth).toBe(15); // 最小幅
-        expect(result.pathWidth).toBe(20);   // 最小幅
+        expect(result.pathWidth).toBe(20); // 最小幅
       });
 
       it('広いターミナルでの幅計算', () => {
-        const items = [
-          { branch: 'main', path: '/home/user/project' }
-        ];
+        const items = [{ branch: 'main', path: '/home/user/project' }];
         const result = getOptimalColumnWidths(items, 200);
-        
+
         expect(result.branchWidth).toBeGreaterThan(15);
         expect(result.pathWidth).toBeGreaterThan(20);
         expect(result.branchWidth + result.pathWidth).toBeLessThanOrEqual(170); // 200 - 30
       });
 
       it('極端に狭いターミナルでの最小幅保証', () => {
-        const items = [
-          { branch: 'main', path: '/home/user/project' }
-        ];
+        const items = [{ branch: 'main', path: '/home/user/project' }];
         const result = getOptimalColumnWidths(items, 20);
-        
+
         expect(result.branchWidth).toBe(15); // 最小幅が保たれる
-        expect(result.pathWidth).toBe(20);   // 最小幅が保たれる
+        expect(result.pathWidth).toBe(20); // 最小幅が保たれる
       });
     });
 
     describe('幅配分のロジック', () => {
       it('長いブランチ名がある場合の最適化', () => {
         const items = [
-          { 
-            branch: 'feature/very-long-branch-name-for-testing-width-calculation',
-            path: '/short'
-          }
+          {
+            branch:
+              'feature/very-long-branch-name-for-testing-width-calculation',
+            path: '/short',
+          },
         ];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         // ブランチ名が長い場合の実際の動作を確認
         expect(result.branchWidth).toBe(46); // 実際の結果
       });
 
       it('長いパスがある場合の最適化', () => {
         const items = [
-          { 
+          {
             branch: 'main',
-            path: '/very/long/path/structure/that/should/be/handled/properly/in/the/formatting/function'
-          }
+            path: '/very/long/path/structure/that/should/be/handled/properly/in/the/formatting/function',
+          },
         ];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         // パスが長い場合の実際の動作を確認
         expect(result.pathWidth).toBe(65); // 実際の結果
       });
 
       it('ヘッダー文字列の最小幅考慮', () => {
         const items = [
-          { branch: 'a', path: 'b' } // 極端に短いアイテム
+          { branch: 'a', path: 'b' }, // 極端に短いアイテム
         ];
         const result = getOptimalColumnWidths(items, 120);
-        
+
         // 'BRANCH'(6文字)と'PATH'(4文字)の長さは考慮される
         expect(result.branchWidth).toBeGreaterThanOrEqual(15); // Math.max(15, Math.min(6, 30))
-        expect(result.pathWidth).toBeGreaterThanOrEqual(20);   // Math.max(20, Math.min(4, 50))
+        expect(result.pathWidth).toBeGreaterThanOrEqual(20); // Math.max(20, Math.min(4, 50))
       });
     });
 
     describe('幅配分の比率テスト', () => {
       it('余白がある場合の4:6配分', () => {
-        const items = [
-          { branch: 'main', path: '/home/user' }
-        ];
+        const items = [{ branch: 'main', path: '/home/user' }];
         const result = getOptimalColumnWidths(items, 100);
         const totalMinWidth = 35; // 15 + 20
         const remainingWidth = 70; // 100 - 30
         const extraWidth = remainingWidth - totalMinWidth; // 35
-        
+
         expect(result.branchWidth).toBe(15 + Math.floor(extraWidth * 0.4));
         expect(result.pathWidth).toBe(20 + Math.floor(extraWidth * 0.6));
       });

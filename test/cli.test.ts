@@ -430,7 +430,7 @@ describe('isHelpRequested', () => {
 
   // 引数なしのhelpコマンドのtrueリターンをテスト
   it('should return true when help command is used without other args', () => {
-    const args = [];
+    const args: string[] = [];
     const result = isHelpRequested(args, 'help');
 
     expect(result).toBe(true);
