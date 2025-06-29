@@ -5,7 +5,7 @@ export interface Worktree {
   path: string;
   branch: string;
   head: string;
-  status: 'ACTIVE' | 'MAIN' | 'OTHER';
+  status: string;
   isActive: boolean;
   isMain: boolean;
 }
@@ -239,5 +239,245 @@ export async function pullMainBranch(): Promise<PullResult[]> {
     throw new Error(
       `Failed to pull main branches: ${err instanceof Error ? err.message : 'Unknown error'}`
     );
+  }
+}
+
+/**
+ * ローカルブランチが存在するか確認
+ */
+export function localBranchExists(branch: string): boolean {
+  try {
+    execSync(`git show-ref --verify --quiet refs/heads/${branch}`, {
+      stdio: 'ignore',
+      cwd: process.cwd(),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ブランチに未マージコミットがあるかを簡易判定
+ * origin/<branch> が存在する場合に限り git cherry で差分を確認。
+ * 取得に失敗した場合は true を返し、安全側で未マージとみなす。
+ */
+export function hasUnmergedCommits(branch: string): boolean {
+  try {
+    // origin/<branch> が無い場合は fetch を試みない
+    try {
+      execSync(`git show-ref --verify --quiet refs/remotes/origin/${branch}`, {
+        stdio: 'ignore',
+        cwd: process.cwd(),
+      });
+    } catch {
+      // upstream がない = 既に削除 or push していない -> 安全のため未マージと判定しない
+      return false;
+    }
+
+    const output = execSync(`git cherry origin/${branch} ${branch}`, {
+      encoding: 'utf8',
+      cwd: process.cwd(),
+    }).trim();
+
+    return output.length > 0;
+  } catch {
+    // 何らかのエラー時は安全側で未マージと見なす
+    return true;
+  }
+}
+
+/**
+ * ローカルブランチを削除する (未マージコミットがある場合は -D を要求)
+ */
+export function deleteLocalBranch(
+  branch: string,
+  force: boolean = false
+): void {
+  try {
+    const flag = force ? '-D' : '-d';
+    execSync(`git branch ${flag} ${branch}`, {
+      stdio: 'ignore',
+      cwd: process.cwd(),
+    });
+  } catch (err) {
+    throw new Error(
+      `Failed to delete branch ${branch}: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+export interface CleanableWorktree {
+  worktree: Worktree;
+  reason: 'remote_deleted' | 'merged';
+  mergedIntoBranch?: string;
+}
+
+/**
+ * リモートブランチの状態を確認
+ * - isDeleted: origin/<branch> が存在しない
+ * - isMerged : ブランチがいずれかの mainBranch にマージ済み
+ */
+export function checkRemoteBranchStatus(
+  branch: string,
+  mainBranches: string[]
+): {
+  isDeleted: boolean;
+  isMerged: boolean;
+  mergedIntoBranch?: string;
+} {
+  // sanitize branch (refs/heads/... を取り除く)
+  const branchName = branch.replace(/^refs\/heads\//, '');
+  let isDeleted = false;
+  let isMerged = false;
+  let mergedIntoBranch: string | undefined;
+
+  // リモートブランチの存在は fetch/prune 済みのローカル追跡リファレンスを確認する
+  // ネットワークアクセスを伴う `git ls-remote` はコストが高いため使用しない。
+  try {
+    execSync(
+      `git show-ref --verify --quiet refs/remotes/origin/${branchName}`,
+      {
+        cwd: process.cwd(),
+        stdio: 'ignore',
+      }
+    );
+    // 参照が見つかった = ブランチは存在
+  } catch {
+    // 参照が無い = origin にブランチが存在しない（削除済み）
+    isDeleted = true;
+  }
+
+  // マージ判定 (origin にブランチがある場合のみチェック)
+  if (!isDeleted) {
+    for (const mainBr of mainBranches) {
+      try {
+        execSync(
+          `git merge-base --is-ancestor origin/${branchName} origin/${mainBr}`,
+          { cwd: process.cwd(), stdio: 'ignore' }
+        );
+        // exit code 0 なら ancestor
+        isMerged = true;
+        mergedIntoBranch = mainBr;
+        break;
+      } catch {
+        // exit code 1 -> not ancestor, その他 -> 無視
+        continue;
+      }
+    }
+  }
+
+  return { isDeleted, isMerged, mergedIntoBranch };
+}
+
+/**
+ * ワークツリーパスでローカル変更を確認
+ */
+export function checkLocalChanges(worktreePath: string): {
+  hasUnstagedChanges: boolean;
+  hasUntrackedFiles: boolean;
+  hasStagedChanges: boolean;
+  hasLocalCommits: boolean;
+} {
+  let statusLines: string[] = [];
+  try {
+    const output = execSync('git status --porcelain', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    });
+    statusLines = output.split('\n').filter((l) => l.trim() !== '');
+  } catch {
+    // ignore, treat as no changes
+  }
+
+  let hasUnstagedChanges = false;
+  let hasUntrackedFiles = false;
+  let hasStagedChanges = false;
+
+  statusLines.forEach((line) => {
+    if (line.startsWith('??')) hasUntrackedFiles = true;
+    else {
+      const [x, y] = line.split('');
+      if (x && x !== ' ') hasStagedChanges = true;
+      if (y && y !== ' ') hasUnstagedChanges = true;
+    }
+  });
+
+  // 未プッシュコミット
+  let hasLocalCommits = false;
+  try {
+    // upstream が無い場合エラーになる
+    execSync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', {
+      cwd: worktreePath,
+      stdio: 'ignore',
+    });
+
+    const cherry = execSync('git cherry -v', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim();
+    if (cherry.length > 0) hasLocalCommits = true;
+  } catch {
+    // upstreamが無い -> リモートに存在しない or 削除済み。未プッシュコミットは無視
+    hasLocalCommits = false;
+  }
+
+  return {
+    hasUnstagedChanges,
+    hasUntrackedFiles,
+    hasStagedChanges,
+    hasLocalCommits,
+  };
+}
+
+/**
+ * 削除可能なワークツリーを取得
+ */
+export async function getCleanableWorktrees(): Promise<CleanableWorktree[]> {
+  const config = loadConfig();
+  const worktrees = await getWorktreesWithStatus();
+
+  const results: CleanableWorktree[] = [];
+
+  for (const wt of worktrees) {
+    // MAIN / ACTIVE を除外
+    if (wt.isMain || wt.isActive) continue;
+
+    const { isDeleted, isMerged, mergedIntoBranch } = checkRemoteBranchStatus(
+      wt.branch,
+      config.main_branches
+    );
+
+    // 1. リモート削除 または マージ済み
+    if (!isDeleted && !isMerged) continue;
+
+    // 2. ローカル変更なし
+    const local = checkLocalChanges(wt.path);
+    const hasChanges =
+      local.hasLocalCommits ||
+      local.hasStagedChanges ||
+      local.hasUnstagedChanges ||
+      local.hasUntrackedFiles;
+    if (hasChanges) continue;
+
+    results.push({
+      worktree: wt,
+      reason: isDeleted ? 'remote_deleted' : 'merged',
+      mergedIntoBranch,
+    });
+  }
+
+  return results;
+}
+
+export function getRepoRoot(): string {
+  try {
+    return execSync('git rev-parse --show-toplevel', {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // 取得できない場合はカレントディレクトリを返す
+    return process.cwd();
   }
 }

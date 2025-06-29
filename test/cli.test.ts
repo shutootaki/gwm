@@ -4,6 +4,7 @@ import {
   parseRemoveArgs,
   // parseCleanArgs,
   parseGoArgs,
+  parseHelpArgs,
   isHelpRequested,
 } from '../src/utils/cli.js';
 
@@ -394,6 +395,69 @@ describe('parseGoArgs', () => {
   });
 });
 
+// helpコマンドの引数解析をテスト
+describe('parseHelpArgs', () => {
+  // 位置引数からのコマンド名解析をテスト
+  it('should parse command from positional arguments', () => {
+    const args = ['help', 'add'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: 'add',
+    });
+  });
+
+  // 複数の引数がある場合の最初の引数取得をテスト
+  it('should parse first command when multiple arguments', () => {
+    const args = ['help', 'list', 'extra'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: 'list',
+    });
+  });
+
+  // コマンド引数なしのhelpコマンドの処理をテスト
+  it('should handle help command without arguments', () => {
+    const args = ['help'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: undefined,
+    });
+  });
+
+  // 各コマンドのヘルプ呼び出しをテスト
+  it('should parse help for remove command', () => {
+    const args = ['help', 'remove'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: 'remove',
+    });
+  });
+
+  // エイリアスコマンドのヘルプ呼び出しをテスト
+  it('should parse help for command aliases', () => {
+    const args = ['help', 'ls'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: 'ls',
+    });
+  });
+
+  // 存在しないコマンドのヘルプ要求をテスト
+  it('should parse help for non-existent command', () => {
+    const args = ['help', 'unknown-command'];
+    const result = parseHelpArgs(args);
+
+    expect(result).toEqual({
+      command: 'unknown-command',
+    });
+  });
+});
+
 // ヘルプオプション検出の機能をテスト
 describe('isHelpRequested', () => {
   // --helpフラグが存在する場合のtrueリターンをテスト
@@ -430,7 +494,7 @@ describe('isHelpRequested', () => {
 
   // 引数なしのhelpコマンドのtrueリターンをテスト
   it('should return true when help command is used without other args', () => {
-    const args = [];
+    const args: string[] = [];
     const result = isHelpRequested(args, 'help');
 
     expect(result).toBe(true);

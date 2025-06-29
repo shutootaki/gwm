@@ -1,277 +1,177 @@
-# gwm - Git Worktree Manager
+# gwm – Git Worktree Manager
 
-A modern CLI tool for efficient Git worktree management with an interactive, React-based terminal UI built with Ink.
+> Switch Git contexts with zero friction. Review pull requests, create feature branches, and clean up your workspace—all from a single interactive CLI.
 
-## Overview
+[![npm version](https://img.shields.io/npm/v/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/gwm)
+[![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![CI](https://github.com/your-org/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/gwm/actions/workflows/ci.yml)
 
-`gwm` simplifies Git worktree management for developers who need to:
+## Why gwm?
 
-- Review and test GitHub pull requests locally with quick context switching
-- Work on multiple features or bug fixes in parallel while maintaining clean, isolated environments
-- Automate worktree creation from remote branches and cleanup of merged branches
+When you're juggling multiple pull requests or hotfixes at once, running `git checkout` and `git pull` over and over or keeping multiple local clones around can slow you down. **gwm** leverages Git's native _worktree_ feature and a pleasant UI to:
 
-## Features
+- **Swap tasks in milliseconds** — no more stash/checkout dance.
+- **Spin up a worktree from any remote branch in one go**.
+- **Keep your laptop squeaky-clean** — detect and safely remove stale branches.
+- **Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder.
 
-- **Interactive UI**: fzf-like fuzzy search and multi-selection for all operations
-- **Intuitive Commands**: Simple, single-purpose commands with consistent behavior
-- **Simple Status Classification**: 3-category status system (Active/Main/Other)
-- **Shell Integration**: Seamless directory navigation with shell functions
-- **VS Code Integration**: Open worktrees directly in your editor
-- **Flexible Configuration**: Customize base paths and main branches via TOML configuration
-- **TypeScript & React**: Built with modern technologies for maintainable, extensible code
+## Command overview
+
+| Command                 | Purpose                                             | Highlights                                     |
+| ----------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| `gwm list` / `gwm ls`   | List worktrees in the current repository            | Colored status, HEAD hash                      |
+| `gwm add`               | Create a new worktree                               | New branch / remote PR, interactive validation |
+| `gwm go`                | Jump to a worktree or open it in VS Code/Cursor     | Launch subshell, editor flags                  |
+| `gwm remove` / `gwm rm` | Remove worktrees                                    | Multi-select, force mode, branch cleanup       |
+| `gwm clean`             | Auto-detect safe-to-delete worktrees and clean them | Enter deletes all / -n dry-run                 |
+| `gwm pull-main`         | Run `git pull` in all main worktrees                | Keep bases up to date                          |
+
+_Note: Run `gwm help <command>` for details on each command._
 
 ## Installation
 
-### Prerequisites
-
-- Node.js 16+
-- Git 2.25+
-
-### From npm (Coming Soon)
+### npm (global)
 
 ```bash
 npm install -g gwm
 ```
 
-### From Source
+## Quick start
 
 ```bash
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-pnpm install
-pnpm build
-pnpm link --global
+# Inside a Git repo
+$ gwm add                   # Interactive: type branch name → Enter
+$ gwm go feature/my-branch  # Jump into the worktree
+$ code .                    # or use `gwm go --code` to open VS Code right away
 ```
 
-## Commands
+Reviewing a pull request:
+
+```bash
+$ gwm add 1234-fix-layout -r  # Create a worktree from a remote branch
+$ gwm go                      # Fuzzy search and teleport 🚀
+```
+
+Weekend cleanup:
+
+```bash
+$ gwm clean             # Clean up safe-to-delete worktrees interactively
+```
+
+## Default directory layout
+
+```
+~/git-worktrees/
+└─ <repo-name>/
+   ├─ main/
+   ├─ feature-user-auth/
+   └─ hotfix-critical-bug/
+```
+
+You can change the base path in `~/.config/gwm/config.toml` (or `~/.gwmrc`).
+
+## Configuration file
+
+Create `~/.config/gwm/config.toml` to fine-tune behavior:
+
+```toml
+# Base path for worktrees (default: ~/git-worktrees)
+worktree_base_path = "/Users/me/dev/worktrees"
+
+# What to do with the local branch when deleting a worktree
+#   "auto"  – delete automatically when safe
+#   "ask"   – prompt for confirmation (default)
+#   "never" – never delete
+clean_branch = "ask"
+```
+
+## Command reference
+
+Below are the main commands. Run `gwm <command> --help` for more information.
 
 ### `gwm list` (alias: `ls`)
 
-Display all worktrees with their status, branch, path, and commit information.
+List worktrees that belong to the current project.
 
-```bash
-gwm list
+```text
+STATUS  BRANCH            PATH                              HEAD
+*       feature/new-ui    /Users/me/project                 a1b2c3d
+M       main              ~/git-worktrees/project/main      123abc4
+-       hotfix/logfix     ~/git-worktrees/project/logfix    c7d8e9f
 ```
 
-**Status Indicators:**
+- **STATUS meanings:**
+  - `* ACTIVE`: The worktree you're currently in
+  - `M MAIN`: Main branches such as `main` or `master`
+  - `- OTHER`: Any other worktree
 
-- `* ACTIVE`: Currently active worktree (yellow)
-- `M MAIN`: Base main worktree (cyan)
-- `- OTHER`: All other worktrees (white)
+---
 
 ### `gwm add [branch_name]`
 
-Add a new worktree from a branch. Without arguments, launches interactive remote branch selection.
+Create a new worktree. Comes with an interactive UI.
 
-```bash
-# Interactive mode - select from remote branches
-gwm add
+- **Run without arguments (`gwm add`):**
+  - Launches a UI to type a new branch name. Branch names are validated in real time and the path preview is shown.
+  - Press `Tab` to switch to mode for selecting a remote branch to create a worktree from—perfect for reviewing PRs.
+  - You can pass flags to immediately open the worktree in VS Code or Cursor.
 
-# Add from local branch (or new branch if doesn't exist)
-gwm add feature/new-ui
+- **Run with arguments:**
+  - `gwm add feature/new-login`: Create a new branch and worktree named `feature/new-login`.
+  - `gwm add existing-branch`: Create a worktree from an existing local branch `existing-branch`.
+  - `gwm add pr-branch -r`: Create a worktree from the remote branch `origin/pr-branch`.
 
-# Add from remote branch
-gwm add -r feature/api-update
+- **Key options:**
+  - `-r, --remote`: Switch to mode for creating from a remote branch.
+  - `--from <base_branch>`: Base branch for new branches (default: `main` or `master`).
+  - `--code`: Open in VS Code after creation.
+  - `--cursor`: Open in Cursor after creation.
+  - `--cd`: Output only the path after creation.
 
-# Add new branch from specific base
-gwm add new-feature --from main
-```
-
-**Options:**
-
-- `-r, --remote`: Treat branch_name as remote branch (fetch and track)
-- `--from <branch>`: Specify base branch for new branch creation (defaults to main)
-
-### `gwm remove` (alias: `rm`)
-
-Remove one or more worktrees with interactive multi-selection.
-
-```bash
-# Interactive selection
-gwm remove
-
-# Pre-filter with query
-gwm remove feature
-
-# Force removal
-gwm remove -f
-```
-
-**Options:**
-
-- `-f, --force`: Force removal even with uncommitted changes
+---
 
 ### `gwm go [query]`
 
-Navigate to or open a worktree directory.
+Fuzzy-find a worktree and jump into it (launches a subshell).
 
-- Without options: Starts a subshell **already located** at the selected worktree path. When the subshell exits, `gwm` also終了します。
-- `--code`: Open the selected worktree in **VS Code** and exit.
-- `--cursor`: Open the selected worktree in **Cursor** and exit.
+- Run `gwm go` for interactive selection or supply an initial query, e.g., `gwm go feat`.
+- **Key options:**
+  - `--code`, `-c`: Open the selected worktree in Visual Studio Code.
+  - `--cursor`: Open the selected worktree in Cursor.
 
-```bash
-# Interactive selection & move into the **directory** (subshell)
-gwm go
+---
 
-# Pre-filter selection with a query string
-gwm go feature
+### `gwm remove [query]` (alias: `rm`)
 
-# Open the worktree directly in VS Code
-gwm go api-refactor --code
+Interactively select and delete one or more worktrees.
 
-# Open the worktree in Cursor editor
-gwm go bugfix/login --cursor
-```
+- Run `gwm remove` to choose from a list and delete.
+- **Key options:**
+  - `-f, --force`: Delete even if there are uncommitted changes.
+  - `--clean-branch <mode>`: Decide whether to delete the local branch along with the worktree (`auto` / `ask` / `never`).
+
+---
+
+### `gwm clean`
+
+Automatically detect and clean up worktrees that are safe to delete.
+
+A worktree is eligible if:
+
+1. The remote branch has been deleted or merged into the main branch
+2. There are no local changes (uncommitted or unpushed commits)
+3. It is not the main branch or the worktree you're currently in
+
+- **Key options:**
+  - `-n, --dry-run`: Show the list only; don't delete.
+  - `--force`: Skip confirmation and delete immediately.
+
+---
 
 ### `gwm pull-main`
 
-Updates the worktree for the main branch to its latest state, even when your current directory is outside of the worktree directory.
-
-```bash
-# Update the main branch
-gwm pull-main
-```
-
-**Use cases:**
-
-- Your worktree directories live in a specific folder (e.g., `~/username/git-worktree`) and you can't easily update the main branch.
-
-## Configuration
-
-Add a configuration file at `~/.config/gwm/config.toml`:
-
-```toml
-# Base directory for worktrees (default: ~/worktrees)
-worktree_base_path = "/Users/myuser/dev/worktrees"
-
-# Main branches for merge detection and default base (default: ["main", "master", "develop"])
-main_branches = ["main", "master", "develop"]
-```
-
-### Worktree Path Convention
-
-Worktrees are created following this pattern:
-
-```
-<worktree_base_path>/<repository-name>/<normalized-branch-name>
-```
-
-**Branch Name Normalization:**
-
-- Slashes are converted to hyphens for filesystem compatibility
-- Examples:
-  - `feature/user-auth` → `feature-user-auth`
-  - `hotfix/critical-bug` → `hotfix-critical-bug`
-
-**Example Paths:**
-
-```
-~/worktrees/myproject/main
-~/worktrees/myproject/feature-user-auth
-~/worktrees/myproject/hotfix-critical-bug
-```
-
-## Usage Examples
-
-### Typical Workflow
-
-```bash
-# List current worktrees
-gwm list
-
-# Add worktree for PR review
-gwm add -r feature/new-dashboard
-
-# Work on the feature...
-
-# Navigate between worktrees via interactive selector
-gwm go main        # Switch to main branch (interactive if multiple match)
-gwm go dashboard   # Switch back to feature
-
-# Open different worktree in VS Code
-gwm go api-refactor --code
-
-# Clean up when done
-gwm clean       # Interactive cleanup
-gwm remove      # Remove specific worktrees
-```
-
-### Command Examples
-
-```bash
-# Interactive branch selection for new worktree
-gwm add
-
-# Add worktree from remote branch
-gwm add -r hotfix/critical-bug
-
-# Add new feature branch from main
-gwm add new-feature --from main
-
-# Multi-select worktree removal
-gwm remove feature
-
-# Auto-cleanup merged branches
-gwm clean -y
-
-# Quick navigation with fuzzy search
-gwm go dash        # Matches "feature-dashboard"
-```
-
-## Development
-
-### Setup
-
-```bash
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-pnpm install
-```
-
-### Available Scripts
-
-```bash
-pnpm dev                # Watch mode compilation
-pnpm build              # Compile TypeScript
-pnpm start              # Run compiled CLI
-pnpm test               # Run tests with Vitest
-pnpm test:coverage      # Generate coverage report
-pnpm test:ui            # Launch Vitest UI
-pnpm lint               # ESLint check
-pnpm lint:fix           # ESLint fix
-pnpm format             # Prettier format
-```
-
-### Testing Locally
-
-```bash
-pnpm build
-pnpm link --global
-gwm --help              # Test the CLI
-```
-
-### Architecture
-
-- **Entry Point**: `src/index.tsx` - Command routing and argument parsing
-- **Components**: `src/components/` - React components for each command's UI
-- **Utilities**: `src/utils/` - Git operations, CLI parsing, formatting helpers
-- **Types**: `src/types/` - TypeScript type definitions
-- **Config**: `src/config.ts` - Configuration file handling
-- **Tests**: `test/` - Unit tests for utilities and components
-
-## Contributing
-
-1. Fork the repository
-2. Add your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Regardless of where you are, find worktrees of main branches (`main`, `master`, etc.) and run `git pull` to bring them up to date.
 
 ## License
 
-MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with [Ink](https://github.com/vadimdemedes/ink) for React-based CLI interfaces
-- Inspired by modern Git workflow tools and `fzf`'s user experience
+MIT © 2024 Shuto Otaki and contributors

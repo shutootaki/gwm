@@ -4,8 +4,9 @@ import { ConfigTest } from './components/ConfigTest.js';
 import { render } from 'ink';
 import { SelectTest } from './components/SelectTest.js';
 import { Welcome } from './components/Welcome.js';
+import { Help } from './components/Help.js';
 import { WorktreeAdd } from './components/WorktreeAdd.js';
-// import { WorktreeClean } from './components/WorktreeClean.js';
+import { WorktreeClean } from './components/WorktreeClean.js';
 import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
@@ -14,9 +15,10 @@ import React from 'react';
 import {
   parseAddArgs,
   parseRemoveArgs,
-  // parseCleanArgs,
+  parseCleanArgs,
   parseGoArgs,
   parsePullMainArgs,
+  parseHelpArgs,
   isHelpRequested,
 } from './utils/index.js';
 
@@ -26,7 +28,14 @@ const App: React.FC = () => {
 
   // ヘルプオプションのチェック
   if (isHelpRequested(args, command)) {
-    return <Welcome />;
+    if (command === 'help') {
+      // `gwm help [command]` の場合
+      const { command: helpCommand } = parseHelpArgs(args);
+      return <Help command={helpCommand} />;
+    } else {
+      // `gwm <command> --help` の場合
+      return <Help command={command} />;
+    }
   }
 
   switch (command) {
@@ -55,8 +64,10 @@ const App: React.FC = () => {
     }
     case 'remove':
     case 'rm': {
-      const { query, force } = parseRemoveArgs(args);
-      return <WorktreeRemove query={query} force={force} />;
+      const { query, force, cleanBranch } = parseRemoveArgs(args);
+      return (
+        <WorktreeRemove query={query} force={force} cleanBranch={cleanBranch} />
+      );
     }
     case 'go': {
       const { query, openCode, openCursor } = parseGoArgs(args);
@@ -64,13 +75,17 @@ const App: React.FC = () => {
         <WorktreeGo query={query} openCode={openCode} openCursor={openCursor} />
       );
     }
-    // case 'clean': {
-    //   const { yes } = parseCleanArgs(args);
-    //   return <WorktreeClean yes={yes} />;
-    // }
+    case 'clean': {
+      const { dryRun, force } = parseCleanArgs(args);
+      return <WorktreeClean dryRun={dryRun} force={force} />;
+    }
     case 'pull-main': {
       parsePullMainArgs(args); // 将来の拡張用
       return <WorktreePullMain />;
+    }
+    case 'help': {
+      const { command: helpCommand } = parseHelpArgs(args);
+      return <Help command={helpCommand} />;
     }
     case 'config':
       return <ConfigTest />;

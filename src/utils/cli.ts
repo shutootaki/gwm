@@ -10,15 +10,21 @@ export interface AddArgs {
 export interface RemoveArgs {
   query?: string;
   force: boolean;
+  cleanBranch?: 'auto' | 'ask' | 'never';
 }
 
 export interface CleanArgs {
-  yes: boolean;
+  dryRun: boolean;
+  force: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface PullMainArgs {
   // 将来の拡張用 (例: --remote=origin)
+}
+
+export interface HelpArgs {
+  command?: string;
 }
 
 function hasFlag(args: string[], flags: string[]): boolean {
@@ -64,12 +70,35 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
   return {
     query: getFirstPositional(args, 1),
     force: hasFlag(args, ['-f', '--force']),
+    cleanBranch: (() => {
+      let raw = getOptionValue(args, '--clean-branch');
+      if (!raw) {
+        const withEq = args.find((a) => a.startsWith('--clean-branch='));
+        if (withEq) {
+          raw = withEq.split('=')[1];
+        }
+      }
+
+      if (raw === 'auto' || raw === 'never') return raw;
+      if (raw === 'ask') return 'ask';
+      return undefined;
+    })(),
   };
 }
 
-// export function parseCleanArgs(args: string[]): CleanArgs {
-//   return { yes: hasFlag(args, ['-y', '--yes']) };
-// }
+export function parseCleanArgs(args: string[]): CleanArgs {
+  // 廃止されたオプションチェック
+  if (hasFlag(args, ['-y', '--yes', '-i', '--interactive'])) {
+    throw new Error(
+      'Error: --yes/-y および --interactive/-i は廃止されました。代わりに --force を使用してください。'
+    );
+  }
+
+  return {
+    dryRun: hasFlag(args, ['-n', '--dry-run']),
+    force: hasFlag(args, ['--force']),
+  };
+}
 
 export function parseGoArgs(args: string[]): {
   query?: string;
@@ -100,6 +129,12 @@ export function parseGoArgs(args: string[]): {
 export function parsePullMainArgs(_args: string[]): PullMainArgs {
   // 現在はオプションなし、将来の拡張用
   return {};
+}
+
+export function parseHelpArgs(args: string[]): HelpArgs {
+  // help コマンドの後の最初の位置引数を取得
+  const command = getFirstPositional(args, 1);
+  return { command };
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {
