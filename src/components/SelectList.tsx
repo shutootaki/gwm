@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useCallback, useReducer } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
 import { useEditableText } from '../hooks/useEditableText.js';
@@ -30,45 +30,108 @@ export const SelectList: React.FC<SelectListProps> = ({
     cursorPosition,
   } = useEditableText({ initialValue: initialQuery });
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  /*
+   * selectedIndex と scrollOffset をまとめて 1 つの useReducer で管理することで、
+   * ↑/↓ キー押下時の setState 呼び出し回数を 1 回に抑え、
+   * レンダリング回数を最小限にする。
+   */
 
-  // フィルタリングされた項目
-  const filteredItems = items.filter((item) =>
-    item.label.toLowerCase().includes(query.toLowerCase())
-  );
+  interface ListState {
+    selectedIndex: number;
+    scrollOffset: number;
+  }
+
+  type Action =
+    | { type: 'RESET' }
+    | {
+        type: 'MOVE';
+        delta: number;
+        listLength: number;
+        maxDisplayItems: number;
+      };
+
+  const listReducer = (state: ListState, action: Action): ListState => {
+    switch (action.type) {
+      case 'RESET':
+        return { selectedIndex: 0, scrollOffset: 0 };
+      case 'MOVE': {
+        if (action.listLength === 0) return state;
+
+        let nextIndex = state.selectedIndex + action.delta;
+        nextIndex = Math.max(0, Math.min(action.listLength - 1, nextIndex));
+
+        // スクロール位置を調整してカーソルを可視範囲内へ
+        let nextScrollOffset = state.scrollOffset;
+        if (nextIndex < nextScrollOffset) {
+          nextScrollOffset = nextIndex;
+        } else if (nextIndex >= nextScrollOffset + action.maxDisplayItems) {
+          nextScrollOffset = nextIndex - action.maxDisplayItems + 1;
+        }
+
+        // 変更がなければ同じオブジェクトを返して React の再レンダリングを防ぐ
+        if (
+          nextIndex === state.selectedIndex &&
+          nextScrollOffset === state.scrollOffset
+        ) {
+          return state;
+        }
+
+        return { selectedIndex: nextIndex, scrollOffset: nextScrollOffset };
+      }
+      default:
+        return state;
+    }
+  };
+
+  const [{ selectedIndex, scrollOffset }, dispatch] = useReducer(listReducer, {
+    selectedIndex: 0,
+    scrollOffset: 0,
+  });
+
+  // フィルタリングされた項目をメモ化して無駄な再計算を防ぐ
+  const filteredItems = useMemo(() => {
+    const lower = query.toLowerCase();
+    return items.filter((item) => item.label.toLowerCase().includes(lower));
+  }, [items, query]);
 
   // 選択インデックスを範囲内に調整
   useEffect(() => {
     const maxIndex = Math.max(0, filteredItems.length - 1);
     if (selectedIndex > maxIndex) {
-      setSelectedIndex(maxIndex);
+      dispatch({
+        type: 'MOVE',
+        delta: -1,
+        listLength: filteredItems.length,
+        maxDisplayItems,
+      });
     }
-  }, [filteredItems.length, selectedIndex]);
+  }, [filteredItems.length, selectedIndex, maxDisplayItems]);
 
   // スクロール位置を項目数の範囲内に収める
   useEffect(() => {
     const maxScroll = Math.max(0, filteredItems.length - maxDisplayItems);
     if (scrollOffset > maxScroll) {
-      setScrollOffset(Math.max(0, Math.min(maxScroll, selectedIndex)));
+      dispatch({
+        type: 'MOVE',
+        delta: -1,
+        listLength: filteredItems.length,
+        maxDisplayItems,
+      });
     }
-  }, [filteredItems.length, maxDisplayItems, scrollOffset, selectedIndex]);
+  }, [filteredItems.length, maxDisplayItems, scrollOffset]);
 
-  // ↓/↑ で選択を移動する共通ロジック
-  const moveSelection = (delta: number) => {
-    if (filteredItems.length === 0) return;
-    let nextIndex = selectedIndex + delta;
-    nextIndex = Math.max(0, Math.min(filteredItems.length - 1, nextIndex));
-
-    // スクロール位置を調整してカーソルを可視範囲内へ
-    if (nextIndex < scrollOffset) {
-      setScrollOffset(nextIndex);
-    } else if (nextIndex >= scrollOffset + maxDisplayItems) {
-      setScrollOffset(nextIndex - maxDisplayItems + 1);
-    }
-
-    setSelectedIndex(nextIndex);
-  };
+  // ↓/↑ で選択を移動する共通ロジック（useCallback でメモ化）
+  const moveSelection = useCallback(
+    (delta: number) => {
+      dispatch({
+        type: 'MOVE',
+        delta,
+        listLength: filteredItems.length,
+        maxDisplayItems,
+      });
+    },
+    [filteredItems.length, maxDisplayItems]
+  );
 
   useInput((input, key) => {
     if (key.escape) {
@@ -96,7 +159,8 @@ export const SelectList: React.FC<SelectListProps> = ({
     // Ctrl+U: クエリ消去 & スクロール位置リセット
     if (key.ctrl && input === 'u') {
       setQuery('');
-      setScrollOffset(0);
+      // 一括リセット（scrollOffset も含む）
+      dispatch({ type: 'RESET' });
       return;
     }
   });
@@ -104,16 +168,19 @@ export const SelectList: React.FC<SelectListProps> = ({
   const currentItem = filteredItems[selectedIndex];
   const hasSelection = filteredItems.length > 0;
 
-  // 可視アイテム計算
-  const visibleItems = filteredItems.slice(
-    scrollOffset,
-    scrollOffset + maxDisplayItems
-  );
-  const hiddenAbove = scrollOffset;
-  const hiddenBelow = Math.max(
-    0,
-    filteredItems.length - (scrollOffset + visibleItems.length)
-  );
+  // 可視アイテム計算（メモ化）
+  const { visibleItems, hiddenAbove, hiddenBelow } = useMemo(() => {
+    const vis = filteredItems.slice(
+      scrollOffset,
+      scrollOffset + maxDisplayItems
+    );
+    const above = scrollOffset;
+    const below = Math.max(
+      0,
+      filteredItems.length - (scrollOffset + vis.length)
+    );
+    return { visibleItems: vis, hiddenAbove: above, hiddenBelow: below };
+  }, [filteredItems, scrollOffset, maxDisplayItems]);
 
   return (
     <Box flexDirection="column">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
 import { SelectList } from './SelectList.js';
@@ -128,6 +128,16 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
       setViewMode('input');
     }
   }, [branchName, isRemote, createWorktree]);
+
+  // remoteBranches の SelectList 用変換をメモ化
+  const selectItems: SelectItem[] = useMemo(
+    () =>
+      remoteBranches.map((branch) => ({
+        label: branch.name,
+        value: branch.name,
+      })),
+    [remoteBranches]
+  );
 
   const handleBranchSelect = (item: SelectItem) => {
     createWorktree(item.value, true);
@@ -274,14 +284,9 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   }
 
   if (viewMode === 'select') {
-    const items: SelectItem[] = remoteBranches.map((branch) => ({
-      label: branch.name,
-      value: branch.name,
-    }));
-
     return (
       <SelectList
-        items={items}
+        items={selectItems}
         onSelect={handleBranchSelect}
         onCancel={handleCancel}
         title="Create worktree from remote branch"
