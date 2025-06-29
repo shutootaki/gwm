@@ -198,6 +198,87 @@
 
 ---
 
+### 3.5. `gwm clean`
+
+- **目的:** 安全にworktreeを削除する。削除対象は以下の条件を**すべて**満たすworktreeのみ：
+  1. **リモートブランチが削除されている** または **メインブランチにマージされている**
+  2. **ローカルでの変更がない**（未ステージング、未追跡、ステージング済み、ローカル限定コミットがすべて存在しない）
+  3. **MAIN/ACTIVEステータスではない**
+
+- **構文:** `gwm clean [-y | --yes]`
+
+- **オプション:**
+  - `-y, --yes`: 確認プロンプトをスキップする（ただし削除対象を表示してから最終確認を行う）
+
+- **実行フロー:**
+  1. **リモート情報の更新**
+     - `git fetch --prune origin` を実行してリモートブランチの最新状態を取得
+  
+  2. **削除可能なworktreeの特定**
+     - 各worktreeについて以下をチェック：
+       - **リモートブランチステータス**: `git ls-remote` でリモートブランチの存在確認
+       - **マージ状態**: `git merge-base --is-ancestor` でメインブランチへのマージ状態確認
+       - **ローカル変更**: `git status --porcelain` で未コミット変更確認
+       - **ローカル限定コミット**: `git log` でリモートにプッシュされていないコミット確認
+     - MAIN/ACTIVEステータスのworktreeは除外
+
+  3. **対話的選択**
+     - 削除可能なworktreeがない場合: 「クリーンアップ不要」メッセージを表示
+     - 削除可能なworktreeがある場合: 各worktreeの削除理由と共に一覧表示
+     - 複数選択可能なインターフェースでユーザーが削除対象を選択
+
+  4. **確認と削除実行**
+     - 通常モード: 選択後に即座に削除実行
+     - `--yes` モード: 削除対象を表示してから最終確認（Enter=実行、Escape=キャンセル）
+     - 各worktreeに対して `git worktree remove --force` を実行
+     - 成功/失敗の詳細結果を表示
+
+- **安全性の確保:**
+  - **二重チェック**: リモート状態とローカル変更の両方を確認
+  - **除外対象**: MAIN/ACTIVEワークツリーは対象外
+  - **詳細表示**: 削除理由を明確に表示（「Remote branch deleted」「Merged into main」など）
+  - **確認フロー**: `--yes` オプションでも最終確認を実施
+
+- **削除条件の詳細:**
+
+  **削除対象となる条件:**
+  ```
+  (リモートブランチが削除されている OR メインブランチにマージされている)
+  AND
+  (ローカル変更がない)
+  AND
+  (MAIN/ACTIVEステータスではない)
+  ```
+
+  **削除対象外となる条件:**
+  - 未ステージングの変更がある
+  - 未追跡ファイルがある
+  - ステージング済みの変更がある
+  - リモートにプッシュされていないローカルコミットがある
+  - MAINまたはACTIVEステータスのworktree
+
+- **出力例:**
+  ```
+  🔍 Found 2 cleanable worktree(s):
+
+  📁 feature/user-auth        ~/worktrees/project/feature-user-auth
+   → Merged into main
+
+  📁 hotfix/critical-bug      ~/worktrees/project/hotfix-critical-bug
+   → Remote branch deleted
+
+  ✓ Successfully cleaned 2 worktree(s):
+  ~/worktrees/project/feature-user-auth
+  ~/worktrees/project/hotfix-critical-bug
+  ```
+
+- **エラーハンドリング:**
+  - Git操作エラー: 詳細なエラーメッセージを表示
+  - 削除失敗: 失敗したworktreeと理由を個別に表示
+  - ネットワークエラー: フェッチ失敗時の適切なメッセージ
+
+---
+
 ### 3.6. `gwm pull-main`
 
 - **目的:** カレントディレクトリがworktreeディレクトリ以外の場所にある場合でも、メインブランチのworktreeを最新の状態に更新する。

@@ -128,6 +128,35 @@ gwm go api-refactor --code
 gwm go bugfix/login --cursor
 ```
 
+### `gwm clean`
+
+Safely remove merged or deleted worktrees. Only removes worktrees that meet all safety criteria.
+
+```bash
+# Interactive cleanup
+gwm clean
+
+# Skip confirmation prompts (still shows final confirmation)
+gwm clean -y
+```
+
+**Removal Criteria:**
+
+1. **Remote branch is deleted** OR **merged into main branches**
+2. **No local changes** (no unstaged, untracked, staged, or local-only commits)
+3. **Not MAIN/ACTIVE status**
+
+**Options:**
+
+- `-y, --yes`: Skip confirmation prompts (shows targets then final confirmation)
+
+**Safety Features:**
+
+- Automatically runs `git fetch --prune origin` to update remote status
+- Clearly displays deletion reason for each worktree
+- Automatically excludes ACTIVE/MAIN worktrees
+- Excludes worktrees with any uncommitted changes
+
 ### `gwm pull-main`
 
 Updates the worktree for the main branch to its latest state, even when your current directory is outside of the worktree directory.

@@ -24,11 +24,10 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
   title = 'Multi-select',
   showStats = true,
 }) => {
-  const {
-    value: query,
-    setValue: setQuery,
-    cursorPosition,
-  } = useEditableText({ initialValue: initialQuery, skipChars: [' '] });
+  const { value: query, cursorPosition } = useEditableText({
+    initialValue: initialQuery,
+    skipChars: [' '],
+  });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -81,6 +80,22 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
       return;
     }
 
+    if (key.ctrl && input === 'a') {
+      if (filteredItems.length > 0) {
+        const newSelected = new Set(selectedItems);
+        const allVisibleSelected = filteredItems.every((item) =>
+          newSelected.has(item.value)
+        );
+        if (allVisibleSelected) {
+          filteredItems.forEach((item) => newSelected.delete(item.value));
+        } else {
+          filteredItems.forEach((item) => newSelected.add(item.value));
+        }
+        setSelectedItems(newSelected);
+      }
+      return;
+    }
+
     if (key.upArrow || (key.ctrl && input === 'p')) {
       moveSelection(-1);
       return;
@@ -88,12 +103,6 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
 
     if (key.downArrow || (key.ctrl && input === 'n')) {
       moveSelection(1);
-      return;
-    }
-
-    if (key.ctrl && input === 'u') {
-      setQuery('');
-      setScrollOffset(0);
       return;
     }
 
@@ -168,11 +177,6 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
         {!hasItems ? (
           <Box flexDirection="column">
             <Text color="red">No matches found</Text>
-            {query && (
-              <Text color="gray">
-                Press <Text color="cyan">Ctrl+U</Text> to clear search
-              </Text>
-            )}
           </Box>
         ) : (
           <Box flexDirection="column">
@@ -257,7 +261,7 @@ export const MultiSelectList: React.FC<MultiSelectListProps> = ({
             <Text color="red">Esc</Text> cancel
           </Text>
           <Text color="gray">
-            <Text color="cyan">Ctrl+U</Text> clear search
+            <Text color="cyan">Ctrl+A</Text> select all / clear all
           </Text>
         </Box>
       </Box>

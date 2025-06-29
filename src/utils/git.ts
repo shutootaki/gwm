@@ -306,3 +306,166 @@ export function deleteLocalBranch(
     );
   }
 }
+
+export interface CleanableWorktree {
+  worktree: Worktree;
+  reason: 'remote_deleted' | 'merged';
+  mergedIntoBranch?: string;
+}
+
+/**
+ * リモートブランチの状態を確認
+ * - isDeleted: origin/<branch> が存在しない
+ * - isMerged : ブランチがいずれかの mainBranch にマージ済み
+ */
+export function checkRemoteBranchStatus(
+  branch: string,
+  mainBranches: string[]
+): {
+  isDeleted: boolean;
+  isMerged: boolean;
+  mergedIntoBranch?: string;
+} {
+  // sanitize branch (refs/heads/... を取り除く)
+  const branchName = branch.replace(/^refs\/heads\//, '');
+  let isDeleted = false;
+  let isMerged = false;
+  let mergedIntoBranch: string | undefined;
+
+  // リモートブランチの存在は fetch/prune 済みのローカル追跡リファレンスを確認する
+  // ネットワークアクセスを伴う `git ls-remote` はコストが高いため使用しない。
+  try {
+    execSync(
+      `git show-ref --verify --quiet refs/remotes/origin/${branchName}`,
+      {
+        cwd: process.cwd(),
+        stdio: 'ignore',
+      }
+    );
+    // 参照が見つかった = ブランチは存在
+  } catch {
+    // 参照が無い = origin にブランチが存在しない（削除済み）
+    isDeleted = true;
+  }
+
+  // マージ判定 (origin にブランチがある場合のみチェック)
+  if (!isDeleted) {
+    for (const mainBr of mainBranches) {
+      try {
+        execSync(
+          `git merge-base --is-ancestor origin/${branchName} origin/${mainBr}`,
+          { cwd: process.cwd(), stdio: 'ignore' }
+        );
+        // exit code 0 なら ancestor
+        isMerged = true;
+        mergedIntoBranch = mainBr;
+        break;
+      } catch {
+        // exit code 1 -> not ancestor, その他 -> 無視
+        continue;
+      }
+    }
+  }
+
+  return { isDeleted, isMerged, mergedIntoBranch };
+}
+
+/**
+ * ワークツリーパスでローカル変更を確認
+ */
+export function checkLocalChanges(worktreePath: string): {
+  hasUnstagedChanges: boolean;
+  hasUntrackedFiles: boolean;
+  hasStagedChanges: boolean;
+  hasLocalCommits: boolean;
+} {
+  let statusLines: string[] = [];
+  try {
+    const output = execSync('git status --porcelain', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    });
+    statusLines = output.split('\n').filter((l) => l.trim() !== '');
+  } catch {
+    // ignore, treat as no changes
+  }
+
+  let hasUnstagedChanges = false;
+  let hasUntrackedFiles = false;
+  let hasStagedChanges = false;
+
+  statusLines.forEach((line) => {
+    if (line.startsWith('??')) hasUntrackedFiles = true;
+    else {
+      const [x, y] = line.split('');
+      if (x && x !== ' ') hasStagedChanges = true;
+      if (y && y !== ' ') hasUnstagedChanges = true;
+    }
+  });
+
+  // 未プッシュコミット
+  let hasLocalCommits = false;
+  try {
+    // upstream が無い場合エラーになる
+    execSync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', {
+      cwd: worktreePath,
+      stdio: 'ignore',
+    });
+
+    const cherry = execSync('git cherry -v', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim();
+    if (cherry.length > 0) hasLocalCommits = true;
+  } catch {
+    // upstreamが無い -> リモートに存在しない or 削除済み。未プッシュコミットは無視
+    hasLocalCommits = false;
+  }
+
+  return {
+    hasUnstagedChanges,
+    hasUntrackedFiles,
+    hasStagedChanges,
+    hasLocalCommits,
+  };
+}
+
+/**
+ * 削除可能なワークツリーを取得
+ */
+export async function getCleanableWorktrees(): Promise<CleanableWorktree[]> {
+  const config = loadConfig();
+  const worktrees = await getWorktreesWithStatus();
+
+  const results: CleanableWorktree[] = [];
+
+  for (const wt of worktrees) {
+    // MAIN / ACTIVE を除外
+    if (wt.isMain || wt.isActive) continue;
+
+    const { isDeleted, isMerged, mergedIntoBranch } = checkRemoteBranchStatus(
+      wt.branch,
+      config.main_branches
+    );
+
+    // 1. リモート削除 または マージ済み
+    if (!isDeleted && !isMerged) continue;
+
+    // 2. ローカル変更なし
+    const local = checkLocalChanges(wt.path);
+    const hasChanges =
+      local.hasLocalCommits ||
+      local.hasStagedChanges ||
+      local.hasUnstagedChanges ||
+      local.hasUntrackedFiles;
+    if (hasChanges) continue;
+
+    results.push({
+      worktree: wt,
+      reason: isDeleted ? 'remote_deleted' : 'merged',
+      mergedIntoBranch,
+    });
+  }
+
+  return results;
+}
