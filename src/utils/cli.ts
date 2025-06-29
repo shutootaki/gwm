@@ -21,6 +21,10 @@ export interface PullMainArgs {
   // 将来の拡張用 (例: --remote=origin)
 }
 
+export interface HelpArgs {
+  command?: string;
+}
+
 function hasFlag(args: string[], flags: string[]): boolean {
   return flags.some((f) => args.includes(f));
 }
@@ -100,6 +104,12 @@ export function parseGoArgs(args: string[]): {
 export function parsePullMainArgs(_args: string[]): PullMainArgs {
   // 現在はオプションなし、将来の拡張用
   return {};
+}
+
+export function parseHelpArgs(args: string[]): HelpArgs {
+  // help コマンドの後の最初の位置引数を取得
+  const command = getFirstPositional(args, 1);
+  return { command };
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {

@@ -16,6 +16,7 @@ export const Welcome: React.FC = () => {
       <Text> remove, rm [query] [-f] Remove worktrees (interactive)</Text>
       {/* <Text> clean [-y] Clean merged/deleted worktrees</Text> */}
       <Text> go [query] [--code] [--cursor] Navigate or open worktree</Text>
+      <Text> help [command] Show help for gwm or specific command</Text>
       <Text></Text>
       <Text bold>Options:</Text>
       <Text> -r, --remote Add from remote branch</Text>

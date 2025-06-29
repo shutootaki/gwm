@@ -136,6 +136,35 @@ gwm pull-main
 
 - Your worktree directories live in a specific folder (e.g., `~/username/git-worktree`) and you can't easily update the main branch.
 
+### `gwm help [command]`
+
+Display help information for gwm or specific commands.
+
+```bash
+# Show general help
+gwm help
+gwm --help
+gwm -h
+
+# Show help for specific commands
+gwm help add
+gwm add --help
+gwm add -h
+```
+
+**Examples:**
+
+```bash
+# Display all available commands
+gwm help
+
+# Show detailed usage and options for the add command
+gwm help add
+
+# Show help for the remove command
+gwm help remove
+```
+
 ## Configuration
 
 Add a configuration file at `~/.config/gwm/config.toml`:
