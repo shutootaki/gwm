@@ -11,6 +11,8 @@ import {
   Worktree,
 } from '../utils/index.js';
 import { loadConfig } from '../config.js';
+import { Notice } from './ui/Notice.js';
+import { LoadingSpinner } from './ui/LoadingSpinner.js';
 
 interface WorktreeRemoveProps {
   query?: string;
@@ -120,60 +122,23 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
 
   if (success.length > 0) {
     return (
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderColor="green"
-        padding={1}
-      >
-        <Text color="green" bold>
-          Successfully removed {success.length} worktree(s):
-        </Text>
-        {success.map((path) => (
-          <Text key={path} color="gray">
-            {' '}
-            ✓ {path}
-          </Text>
-        ))}
-        {branchSuccess.map((b) => (
-          <Text key={b} color="gray">
-            {' '}
-            ✓ cleaned branch {b}
-          </Text>
-        ))}
-      </Box>
+      <Notice
+        variant="success"
+        title={`Successfully removed ${success.length} worktree(s)`}
+        messages={[
+          ...success.map((p) => `✓ ${p}`),
+          ...branchSuccess.map((b) => `✓ cleaned branch ${b}`),
+        ]}
+      />
     );
   }
 
   if (error) {
-    return (
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderColor="red"
-        padding={1}
-      >
-        <Text color="red" bold>
-          Error: {error}
-        </Text>
-      </Box>
-    );
+    return <Notice variant="error" title="Error" messages={error} />;
   }
 
   if (removing) {
-    return (
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderColor="yellow"
-        padding={1}
-      >
-        <Text color="yellow" bold>
-          Removing worktrees...
-        </Text>
-        <Text color="gray">Please wait...</Text>
-      </Box>
-    );
+    return <LoadingSpinner label="Removing worktrees..." color="yellow" />;
   }
 
   if (worktrees.length === 0) {
