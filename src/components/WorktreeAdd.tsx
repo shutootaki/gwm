@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Text, Box } from 'ink';
 import { execSync } from 'child_process';
 import { SelectList } from './SelectList.js';
 import {
@@ -10,6 +9,8 @@ import {
 import { SelectItem } from '../types/index.js';
 import { formatErrorForDisplay } from '../utils/index.js';
 import { useWorktree } from '../hooks/useWorktree.js';
+import { LoadingSpinner } from './ui/LoadingSpinner.js';
+import { Notice } from './ui/Notice.js';
 
 interface WorktreeAddProps {
   branchName?: string;
@@ -189,11 +190,11 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
       const editorName = openCode ? 'VS Code' : 'Cursor';
 
       return (
-        <Box>
-          <Text color="green">
-            ✓ Worktree created and opened in {editorName}: {worktreePath}
-          </Text>
-        </Box>
+        <Notice
+          variant="success"
+          title={`Worktree created and opened in ${editorName}`}
+          messages={`✓ ${worktreePath}`}
+        />
       );
     }
 
@@ -210,62 +211,25 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     }
 
     return (
-      <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text color="green" bold>
-            Worktree created successfully!
-          </Text>
-        </Box>
-        <Box
-          flexDirection="column"
-          borderStyle="single"
-          borderColor="green"
-          padding={1}
-        >
-          <Text color="white">Location:</Text>
-          <Text color="cyan" bold>
-            {' '}
-            {worktreePath}
-          </Text>
-          {actions.length > 0 && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text color="white">Actions:</Text>
-              {actions.map((action, index) => (
-                <Text key={index} color="yellow">
-                  • {action}
-                </Text>
-              ))}
-            </Box>
-          )}
-          <Box marginTop={1}>
-            <Text color="gray">
-              Use <Text color="cyan">cd &quot;{worktreePath}&quot;</Text> to
-              navigate
-            </Text>
-          </Box>
-        </Box>
-      </Box>
+      <Notice
+        variant="success"
+        title="Worktree created successfully!"
+        messages={[
+          `Location: ${worktreePath}`,
+          ...actions.map((a) => `• ${a}`),
+          `Use: cd "${worktreePath}" to navigate`,
+        ]}
+      />
     );
   }
 
   if (error) {
     return (
-      <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text color="red" bold>
-            Failed to create worktree
-          </Text>
-        </Box>
-        <Box
-          flexDirection="column"
-          borderStyle="single"
-          borderColor="red"
-          padding={1}
-        >
-          <Text color="red">{error}</Text>
-          <Text color="gray">Branch may already exist or permission issue</Text>
-        </Box>
-      </Box>
+      <Notice
+        variant="error"
+        title="Failed to create worktree"
+        messages={[error, 'Branch may already exist or permission issue']}
+      />
     );
   }
 
@@ -296,10 +260,5 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   }
 
   // viewMode === 'loading'
-  return (
-    <Box flexDirection="column">
-      <Text color="cyan">Fetching remote branches...</Text>
-      <Text color="gray">Please wait</Text>
-    </Box>
-  );
+  return <LoadingSpinner label="Fetching remote branches..." />;
 };
