@@ -26,8 +26,8 @@ import { fileURLToPath } from 'node:url';
         const distPath = path.join(root, 'dist');
         const files = await fs.readdir(distPath);
         if (!files.length) throw new Error('dist is empty');
-    } catch {
-        console.error('❌ Build artifacts not found in dist/. Did you run "pnpm run build"?');
+    } catch (err) {
+        console.error(`❌ Build artifacts not found in dist/. Did you run "pnpm run build"? Error: ${err.message}`);
         process.exit(1);
     }
 
