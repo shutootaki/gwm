@@ -41,6 +41,7 @@ describe('loadConfig', () => {
     expect(result).toEqual({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
 
     // 両方のパスをチェックしているか確認
@@ -65,6 +66,7 @@ main_branches = ["main", "development"]
     mockTOMLParse.mockReturnValue({
       worktree_base_path: '/Users/test/my-worktrees',
       main_branches: ['main', 'development'],
+      clean_branch: 'ask',
     });
 
     const result = loadConfig();
@@ -72,6 +74,7 @@ main_branches = ["main", "development"]
     expect(result).toEqual({
       worktree_base_path: '/Users/test/my-worktrees',
       main_branches: ['main', 'development'],
+      clean_branch: 'ask',
     });
 
     expect(mockReadFileSync).toHaveBeenCalledWith(
@@ -96,6 +99,7 @@ main_branches = ["master"]
     mockTOMLParse.mockReturnValue({
       worktree_base_path: '/Users/test/alternative-worktrees',
       main_branches: ['master'],
+      clean_branch: 'ask',
     });
 
     const result = loadConfig();
@@ -103,6 +107,7 @@ main_branches = ["master"]
     expect(result).toEqual({
       worktree_base_path: '/Users/test/alternative-worktrees',
       main_branches: ['master'],
+      clean_branch: 'ask',
     });
 
     expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.gwmrc', 'utf8');
@@ -120,6 +125,7 @@ main_branches = ["main"]
     mockTOMLParse.mockReturnValue({
       worktree_base_path: '/Users/test/primary-worktrees',
       main_branches: ['main'],
+      clean_branch: 'ask',
     });
 
     const result = loadConfig();
@@ -127,6 +133,7 @@ main_branches = ["main"]
     expect(result).toEqual({
       worktree_base_path: '/Users/test/primary-worktrees',
       main_branches: ['main'],
+      clean_branch: 'ask',
     });
 
     // 最初のファイルのみ読み込まれることを確認
@@ -150,6 +157,7 @@ worktree_base_path = "/Users/test/custom-worktrees"
     mockReadFileSync.mockReturnValue(partialConfigContent);
     mockTOMLParse.mockReturnValue({
       worktree_base_path: '/Users/test/custom-worktrees',
+      clean_branch: 'ask',
     });
 
     const result = loadConfig();
@@ -157,6 +165,7 @@ worktree_base_path = "/Users/test/custom-worktrees"
     expect(result).toEqual({
       worktree_base_path: '/Users/test/custom-worktrees',
       main_branches: ['main', 'master', 'develop'], // デフォルト値
+      clean_branch: 'ask',
     });
   });
 
@@ -185,6 +194,7 @@ worktree_base_path = /invalid/toml/syntax
     expect(result).toEqual({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -215,6 +225,7 @@ worktree_base_path = /invalid/toml/syntax
     expect(result).toEqual({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -238,6 +249,7 @@ worktree_base_path = /invalid/toml/syntax
     expect(result).toEqual({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
+      clean_branch: 'ask',
     });
   });
 });
