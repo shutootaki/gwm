@@ -510,7 +510,7 @@ export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
       .map((line) => {
         const [fullName, date, committer, subject] = line.split('|');
         const name = fullName.replace('origin/', '');
-        
+
         return {
           name,
           fullName,

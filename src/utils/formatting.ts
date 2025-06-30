@@ -89,12 +89,12 @@ export function truncateStart(text: string, width: number): string {
 export function formatRelativeTime(dateString: string): string {
   try {
     const date = new Date(dateString);
-    
+
     // 無効な日付をチェック
     if (isNaN(date.getTime())) {
       return dateString;
     }
-    
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSeconds = Math.floor(diffMs / 1000);
