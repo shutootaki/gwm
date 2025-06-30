@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Text, Box } from 'ink';
 import { SelectList } from './SelectList.js';
 import { SelectItem } from '../types/index.js';
-import { getWorktreesWithStatus, Worktree } from '../utils/index.js';
+import {
+  getWorktreesWithStatus,
+  Worktree,
+  getStatusIcon,
+} from '../utils/index.js';
 
 interface WorktreeSelectorProps {
   onSelect: (worktree: Worktree) => void;
@@ -56,18 +60,40 @@ export const WorktreeSelector: React.FC<WorktreeSelectorProps> = ({
     );
   }
 
-  const items: SelectItem[] = worktrees.map((worktree) => ({
-    label: `${worktree.branch.padEnd(30)} ${worktree.path}`,
-    value: worktree.path,
-  }));
+  // mainワークツリーを先頭に、アクティブなワークツリーを次に表示
+  const sortedWorktrees = [...worktrees].sort((a, b) => {
+    if (a.isMain && !b.isMain) return -1;
+    if (!a.isMain && b.isMain) return 1;
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+    return 0;
+  });
+
+  const items: SelectItem[] = sortedWorktrees.map((worktree) => {
+    const icon = getStatusIcon(worktree.status, worktree.isActive);
+    const prefix = icon !== ' ' ? `[${icon}] ` : '';
+    return {
+      label: `${prefix}${worktree.branch.padEnd(30)} ${worktree.path}`,
+      value: worktree.path,
+    };
+  });
 
   return (
-    <SelectList
-      items={items}
-      onSelect={handleSelect}
-      onCancel={onCancel}
-      placeholder={placeholder}
-      initialQuery={initialQuery}
-    />
+    <Box flexDirection="column">
+      <SelectList
+        items={items}
+        onSelect={handleSelect}
+        onCancel={onCancel}
+        placeholder={placeholder}
+        initialQuery={initialQuery}
+      />
+      <Box>
+        <Text color="gray">
+          <Text color="yellow">[*]</Text> Active {'  '}
+          <Text color="cyan">[M]</Text> Main {'  '}
+          <Text color="white">[-]</Text> Other
+        </Text>
+      </Box>
+    </Box>
   );
 };

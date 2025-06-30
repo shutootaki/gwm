@@ -158,3 +158,17 @@ Note: Some test files reference `ink-testing-library` which needs to be installe
 - Design and code properly with UX as the top priority
 - Always write tests when coding
 - After coding, check the operation as much as possible.
+
+## Verifying in a Local Environment (Important)
+
+Follow the steps below to test the application locally:
+
+1. `pnpm install`
+2. `pnpm build`
+3. `node dist/index.js {command}`
+
+For example, to verify the `gwm list` command, run:
+
+```shell
+node dist/index.js list
+```
