@@ -30,10 +30,12 @@ _注: `gwm help <command>` で各コマンドの詳細を確認できます。_
 
 ## インストール
 
-### npm (グローバル)
-
 ```bash
-npm install -g gwm
+# Global install
+npm install -g @shutootaki/gwm
+
+# or use npx (no installation needed)
+npx @shutootaki/gwm
 ```
 
 ## クイックスタート
