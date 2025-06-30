@@ -33,7 +33,11 @@ _Note: Run `gwm help <command>` for details on each command._
 ### npm (global)
 
 ```bash
-npm install -g gwm
+# Global install
+npm install -g @shutootaki/gwm
+
+# or use npx (no installation needed)
+npx @shutootaki/gwm
 ```
 
 ## Quick start
