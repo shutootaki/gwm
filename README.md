@@ -30,8 +30,6 @@ _Note: Run `gwm help <command>` for details on each command._
 
 ## Installation
 
-### npm (global)
-
 ```bash
 # Global install
 npm install -g @shutootaki/gwm
