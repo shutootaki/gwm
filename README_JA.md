@@ -105,9 +105,6 @@ worktree_base_path = "/Users/me/dev/worktrees"
 #   "ask"   – 確認プロンプト（デフォルト）
 #   "never" – 削除しない
 clean_branch = "ask"
-
-# 新規ブランチの基準となるメインブランチ
-main_branches = ["main", "master", "develop"]
 ```
 
 ## 📖 コマンドリファレンス
@@ -221,58 +218,6 @@ gwm go pr-branch           # レビューに移動
 gwm remove pr-branch       # 完了後にクリーンアップ
 ```
 
-## 🆚 他ツールとの比較
-
-| 機能 | gwm | git-worktree (生) | 複数クローン |
-|------|-----|-------------------|-------------|
-| セットアップ時間 | 数秒 | 数分 | 数分 |
-| ディスク使用量 | 効率的 | 効率的 | 無駄が多い |
-| コンテキスト切り替え | 瞬時 | 手動 | 手動 |
-| クリーンアップ | 自動 | 手動 | 手動 |
-| PR レビュー | 1コマンド | 複数コマンド | 複数コマンド |
-| 学習コスト | 低い | 高い | なし |
-
-## 🛠️ トラブルシューティング
-
-### よくある問題
-
-**Q: `gwm` コマンドが見つからない**
-```bash
-# gwm がグローバルにインストールされているか確認
-npm list -g @shutootaki/gwm
-
-# インストールされていない場合はインストール
-npm install -g @shutootaki/gwm
-```
-
-**Q: ワークツリー作成時に権限エラー**
-```bash
-# ベースディレクトリが存在するか、書き込み可能かを確認
-ls -la ~/git-worktrees/
-
-# ディレクトリが存在しない場合は作成
-mkdir -p ~/git-worktrees/
-```
-
-**Q: リモートブランチが見つからない**
-```bash
-# 最新のリモート情報を取得
-git fetch --all
-
-# その後、再度ワークツリーを作成
-gwm add your-branch -r
-```
-
-**Q: VS Code/Cursor が開かない**
-```bash
-# エディタがインストールされ、PATH に含まれているか確認
-which code     # VS Code の場合
-which cursor   # Cursor の場合
-
-# VS Code のコマンドラインツールをインストール
-# VS Code で: Cmd+Shift+P → "Shell Command: Install 'code' command"
-```
-
 ### ヘルプの取得方法
 
 - `gwm help` で一般的なヘルプを表示
@@ -280,57 +225,6 @@ which cursor   # Cursor の場合
 - [GitHub Issues](https://github.com/shutootaki/gwm/issues) で既知の問題を確認
 - バグを発見した場合は新しい Issue を作成してください
 
-## 🤝 コントリビューション
-
-貢献を歓迎します！以下のような方法で協力いただけます：
-
-### 開発環境のセットアップ
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-
-# 依存関係をインストール
-pnpm install
-
-# 開発モードで実行
-pnpm run dev
-
-# テストを実行
-pnpm test
-
-# 本番用にビルド
-pnpm run build
-```
-
-### コントリビューションガイドライン
-
-1. **リポジトリをフォーク**してフィーチャーブランチを作成
-2. **新機能にはテストを追加**
-3. **既存のコードスタイルに従う**（Prettier と ESLint を使用）
-4. **必要に応じてドキュメントを更新**
-5. **明確な説明付きでプルリクエストを提出**
-
-### 協力が必要な分野
-
-- 🐛 **バグ修正** - バグの発見と修正
-- 🎨 **UI 改善** - CLI をより美しく
-- 📚 **ドキュメント** - ガイドと例の改善
-- 🌐 **翻訳** - 他言語への翻訳支援
-- ⚡ **パフォーマンス** - コマンド実行の最適化
-- 🧪 **テスト** - テストカバレッジの向上
-
 ## 📄 ライセンス
 
 MIT © 2024 Shuto Otaki and contributors
-
----
-
-<div align="center">
-
-**⭐ このプロジェクトが役に立った場合はスターをお願いします！**
-
-[バグ報告](https://github.com/shutootaki/gwm/issues) · [機能リクエスト](https://github.com/shutootaki/gwm/issues) · [コントリビューション](https://github.com/shutootaki/gwm/blob/main/CONTRIBUTING.md)
-
-</div>

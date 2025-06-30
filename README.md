@@ -105,9 +105,6 @@ worktree_base_path = "/Users/me/dev/worktrees"
 #   "ask"   – prompt for confirmation (default)
 #   "never" – never delete
 clean_branch = "ask"
-
-# Main branches to use as base for new branches
-main_branches = ["main", "master", "develop"]
 ```
 
 ## 📖 Command reference
@@ -221,57 +218,7 @@ gwm go pr-branch           # Jump to review
 gwm remove pr-branch       # Clean up when done
 ```
 
-## 🆚 Comparison with other tools
-
-| Feature | gwm | git-worktree (raw) | multiple clones |
-|---------|-----|-------------------|-----------------|
-| Setup time | Seconds | Minutes | Minutes |
-| Disk usage | Efficient | Efficient | Wasteful |
-| Context switching | Instant | Manual | Manual |
-| Cleanup | Automated | Manual | Manual |
-| PR review | One command | Multiple commands | Multiple commands |
-| Learning curve | Gentle | Steep | None |
-
 ## 🛠️ Troubleshooting
-
-### Common Issues
-
-**Q: `gwm` command not found**
-```bash
-# Make sure gwm is installed globally
-npm list -g @shutootaki/gwm
-
-# If not installed, install it
-npm install -g @shutootaki/gwm
-```
-
-**Q: Permission denied when creating worktrees**
-```bash
-# Check if the base directory exists and is writable
-ls -la ~/git-worktrees/
-
-# Create the directory if it doesn't exist
-mkdir -p ~/git-worktrees/
-```
-
-**Q: Remote branch not found**
-```bash
-# Fetch the latest remote information
-git fetch --all
-
-# Then try creating the worktree again
-gwm add your-branch -r
-```
-
-**Q: VS Code/Cursor not opening**
-```bash
-# Make sure the editor is installed and in PATH
-which code     # for VS Code
-which cursor   # for Cursor
-
-# Install VS Code command line tools
-# In VS Code: Cmd+Shift+P → "Shell Command: Install 'code' command"
-```
 
 ### Getting Help
 
@@ -280,57 +227,6 @@ which cursor   # for Cursor
 - Check the [GitHub Issues](https://github.com/shutootaki/gwm/issues) for known problems
 - Create a new issue if you encounter a bug
 
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/shutootaki/gwm.git
-cd gwm
-
-# Install dependencies
-pnpm install
-
-# Run in development mode
-pnpm run dev
-
-# Run tests
-pnpm test
-
-# Build for production
-pnpm run build
-```
-
-### Contributing Guidelines
-
-1. **Fork the repository** and create your feature branch
-2. **Write tests** for new functionality
-3. **Follow the existing code style** (we use Prettier and ESLint)
-4. **Update documentation** if needed
-5. **Submit a pull request** with a clear description
-
-### Areas We Need Help With
-
-- 🐛 **Bug fixes** - Help us squash bugs
-- 🎨 **UI improvements** - Make the CLI even more beautiful
-- 📚 **Documentation** - Improve guides and examples
-- 🌐 **Translations** - Help translate to other languages
-- ⚡ **Performance** - Optimize command execution
-- 🧪 **Testing** - Improve test coverage
-
 ## 📄 License
 
 MIT © 2024 Shuto Otaki and contributors
-
----
-
-<div align="center">
-
-**⭐ Star this project if you find it useful!**
-
-[Report Bug](https://github.com/shutootaki/gwm/issues) · [Request Feature](https://github.com/shutootaki/gwm/issues) · [Contribute](https://github.com/shutootaki/gwm/blob/main/CONTRIBUTING.md)
-
-</div>
