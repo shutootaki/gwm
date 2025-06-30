@@ -20,13 +20,6 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 - **🧹 Keep your laptop squeaky-clean** — detect and safely remove stale branches
 - **🎨 Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder
 
-### 📊 Performance Comparison
-
-| Operation | Traditional Git | gwm | Improvement |
-|-----------|----------------|-----|-------------|
-| Switch to feature branch | `git stash` → `git checkout` → `git pull` (5-10s) | `gwm go` (< 1s) | **10x faster** |
-| Review PR | Clone → checkout → review (30s+) | `gwm add pr-branch -r` (< 3s) | **10x faster** |
-| Clean old branches | Manual tracking and cleanup (minutes) | `gwm clean` (< 5s) | **Automated** |
 
 ## 📋 Command overview
 
@@ -69,17 +62,16 @@ bun add -g @shutootaki/gwm
 ## 🎯 Quick start
 
 ```bash
-# Inside a Git repo
-$ gwm add                   # Interactive: type branch name → Enter
-$ gwm go feature/my-branch  # Jump into the worktree
-$ code .                    # or use `gwm go --code` to open VS Code right away
+# In a Git repository
+$ gwm add                   # Interactive mode: enter branch name → Enter
+$ gwm go feature/my-branch  # Jump to the worktree
+$ gwm go --code             # Open VS Code instantly
 ```
 
-**Reviewing a pull request:**
+When reviewing a pull request:
 
 ```bash
-$ gwm add 1234-fix-layout -r  # Create a worktree from a remote branch
-$ gwm go                      # Fuzzy search and teleport 🚀
+$ gwm add 1234-fix-layout -r --code  # Create a worktree from the remote branch and open VS Code immediately 🚀
 ```
 
 **Weekend cleanup:**
