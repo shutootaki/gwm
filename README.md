@@ -1,21 +1,27 @@
 # gwm – Git Worktree Manager
 
-> Switch Git contexts with zero friction. Review pull requests, create feature branches, and clean up your workspace—all from a single interactive CLI.
+> ⚡ **Switch Git contexts in milliseconds**. Review pull requests, create feature branches, and clean up your workspace—all from a single interactive CLI.
 
-[![npm version](https://img.shields.io/npm/v/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/gwm)
+<div align="center">
+
+[![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
 [![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![CI](https://github.com/your-org/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/gwm/actions/workflows/ci.yml)
+[![CI](https://github.com/shutootaki/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/shutootaki/gwm/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/npm/dm/@shutootaki/gwm?style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
 
-## Why gwm?
+</div>
+
+## 🚀 Why gwm?
 
 When you're juggling multiple pull requests or hotfixes at once, running `git checkout` and `git pull` over and over or keeping multiple local clones around can slow you down. **gwm** leverages Git's native _worktree_ feature and a pleasant UI to:
 
-- **Swap tasks in milliseconds** — no more stash/checkout dance.
-- **Spin up a worktree from any remote branch in one go**.
-- **Keep your laptop squeaky-clean** — detect and safely remove stale branches.
-- **Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder.
+- **⚡ Swap tasks in milliseconds** — no more stash/checkout dance
+- **🎯 Spin up a worktree from any remote branch in one go**
+- **🧹 Keep your laptop squeaky-clean** — detect and safely remove stale branches
+- **🎨 Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder
 
-## Command overview
+
+## 📋 Command overview
 
 | Command                 | Purpose                                             | Highlights                                     |
 | ----------------------- | --------------------------------------------------- | ---------------------------------------------- |
@@ -28,9 +34,9 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 
 _Note: Run `gwm help <command>` for details on each command._
 
-## Installation
+## 📦 Installation
 
-### npm (global)
+### npm (Recommended)
 
 ```bash
 # Global install
@@ -40,29 +46,41 @@ npm install -g @shutootaki/gwm
 npx @shutootaki/gwm
 ```
 
-## Quick start
+### Alternative Installation Methods
 
 ```bash
-# Inside a Git repo
-$ gwm add                   # Interactive: type branch name → Enter
-$ gwm go feature/my-branch  # Jump into the worktree
-$ code .                    # or use `gwm go --code` to open VS Code right away
+# Using pnpm
+pnpm add -g @shutootaki/gwm
+
+# Using yarn
+yarn global add @shutootaki/gwm
+
+# Using bun
+bun add -g @shutootaki/gwm
 ```
 
-Reviewing a pull request:
+## 🎯 Quick start
 
 ```bash
-$ gwm add 1234-fix-layout -r  # Create a worktree from a remote branch
-$ gwm go                      # Fuzzy search and teleport 🚀
+# In a Git repository
+$ gwm add                   # Interactive mode: enter branch name → Enter
+$ gwm go feature/my-branch  # Jump to the worktree
+$ gwm go --code             # Open VS Code instantly
 ```
 
-Weekend cleanup:
+When reviewing a pull request:
+
+```bash
+$ gwm add 1234-fix-layout -r --code  # Create a worktree from the remote branch and open VS Code immediately 🚀
+```
+
+**Weekend cleanup:**
 
 ```bash
 $ gwm clean             # Clean up safe-to-delete worktrees interactively
 ```
 
-## Default directory layout
+## 🗂️ Default directory layout
 
 ```
 ~/git-worktrees/
@@ -74,7 +92,7 @@ $ gwm clean             # Clean up safe-to-delete worktrees interactively
 
 You can change the base path in `~/.config/gwm/config.toml` (or `~/.gwmrc`).
 
-## Configuration file
+## ⚙️ Configuration file
 
 Create `~/.config/gwm/config.toml` to fine-tune behavior:
 
@@ -89,7 +107,7 @@ worktree_base_path = "/Users/me/dev/worktrees"
 clean_branch = "ask"
 ```
 
-## Command reference
+## 📖 Command reference
 
 Below are the main commands. Run `gwm <command> --help` for more information.
 
@@ -176,6 +194,39 @@ A worktree is eligible if:
 
 Regardless of where you are, find worktrees of main branches (`main`, `master`, etc.) and run `git pull` to bring them up to date.
 
-## License
+## 🔄 Workflow Comparison
+
+### Before gwm (Traditional Git)
+```bash
+# Reviewing a PR
+git stash                    # Save current work
+git checkout main           # Switch to main
+git pull                    # Update main
+git checkout pr-branch      # Switch to PR branch
+git pull origin pr-branch   # Update PR branch
+# ... review work ...
+git checkout main           # Back to main
+git stash pop               # Restore work
+```
+
+### After gwm
+```bash
+# Reviewing a PR
+gwm add pr-branch -r        # Create worktree from remote
+gwm go pr-branch           # Jump to review
+# ... review work ... (your main work is untouched)
+gwm remove pr-branch       # Clean up when done
+```
+
+## 🛠️ Troubleshooting
+
+### Getting Help
+
+- Run `gwm help` for general help
+- Run `gwm help <command>` for specific command help
+- Check the [GitHub Issues](https://github.com/shutootaki/gwm/issues) for known problems
+- Create a new issue if you encounter a bug
+
+## 📄 License
 
 MIT © 2024 Shuto Otaki and contributors

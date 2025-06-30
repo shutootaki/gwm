@@ -1,21 +1,27 @@
 # gwm – Git Worktree Manager
 
-> Git のコンテキストをゼロフリクションで切り替え。PR のレビュー、フィーチャーブランチの作成、ワークスペースのクリーンアップまで、すべてを 1 つの対話型 CLI で。
+> ⚡ **Git のコンテキストをミリ秒で切り替え**。PR のレビュー、フィーチャーブランチの作成、ワークスペースのクリーンアップまで、すべてを 1 つの対話型 CLI で。
 
-[![npm version](https://img.shields.io/npm/v/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/gwm)
+<div align="center">
+
+[![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
 [![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![CI](https://github.com/your-org/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/gwm/actions/workflows/ci.yml)
+[![CI](https://github.com/shutootaki/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/shutootaki/gwm/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/npm/dm/@shutootaki/gwm?style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
 
-## gwm が便利な理由
+</div>
+
+## 🚀 gwm が便利な理由
 
 複数のプルリクエストやホットフィックスを同時に進めていると、`git checkout` や `git pull` を何度も実行したり、ローカルクローンが散在してしまいがちです。**gwm** は Git のネイティブ機能 _worktree_ を活用し、心地よい UI を提供することで次のことを実現します:
 
-- **ミリ秒でタスクを切り替え** — stash/checkout のダンスは不要。
-- **任意のリモートブランチからワークツリーを一発生成**。
-- **ノート PC を常にクリーンに保つ** — 古いブランチを検出し安全に削除。
-- **すべてターミナル内で完結** — Ink 製のファジーファインダーを採用。
+- **⚡ ミリ秒でタスクを切り替え** — stash/checkout のダンスは不要
+- **🎯 任意のリモートブランチからワークツリーを一発生成**
+- **🧹 ノート PC を常にクリーンに保つ** — 古いブランチを検出し安全に削除
+- **🎨 すべてターミナル内で完結** — Ink 製のファジーファインダーを採用
 
-## 主なコマンド一覧
+
+## 📋 主なコマンド一覧
 
 | コマンド                | 役割                                               | ハイライト                                     |
 | ----------------------- | -------------------------------------------------- | ---------------------------------------------- |
@@ -28,7 +34,9 @@
 
 _注: `gwm help <command>` で各コマンドの詳細を確認できます。_
 
-## インストール
+## 📦 インストール
+
+### npm（推奨）
 
 ```bash
 # Global install
@@ -38,29 +46,41 @@ npm install -g @shutootaki/gwm
 npx @shutootaki/gwm
 ```
 
-## クイックスタート
+### 代替インストール方法
+
+```bash
+# pnpm を使用
+pnpm add -g @shutootaki/gwm
+
+# yarn を使用
+yarn global add @shutootaki/gwm
+
+# bun を使用
+bun add -g @shutootaki/gwm
+```
+
+## 🎯 クイックスタート
 
 ```bash
 # Git リポジトリで
 $ gwm add                   # 対話形式: ブランチ名入力 → Enter
 $ gwm go feature/my-branch  # ワークツリーにジャンプ
-$ code .                    # または `gwm go --code` で VS Code を即起動
+$ gwm go --code             # VS Code を即起動
 ```
 
 プルリクをレビューする場合:
 
 ```bash
-$ gwm add 1234-fix-layout -r  # リモートブランチからワークツリーを作成
-$ gwm go                      # ファジー検索して瞬間移動 🚀
+$ gwm add 1234-fix-layout -r --code  # リモートブランチからワークツリーを作成し、VS Code を即起動 🚀
 ```
 
-週末の大掃除:
+**週末の大掃除:**
 
 ```bash
 $ gwm clean             # マージ/削除済みワークツリーを安全に一括削除
 ```
 
-## デフォルトディレクトリ構成
+## 🗂️ デフォルトディレクトリ構成
 
 ```
 ~/git-worktrees/
@@ -72,7 +92,7 @@ $ gwm clean             # マージ/削除済みワークツリーを安全に�
 
 ベースパスは `~/.config/gwm/config.toml`（または `~/.gwmrc`）で変更できます。
 
-## 設定ファイル
+## ⚙️ 設定ファイル
 
 `~/.config/gwm/config.toml` を作成して動作を調整できます:
 
@@ -87,7 +107,7 @@ worktree_base_path = "/Users/me/dev/worktrees"
 clean_branch = "ask"
 ```
 
-## コマンドリファレンス
+## 📖 コマンドリファレンス
 
 以下は主要なコマンドの詳細です。各コマンドで `gwm <command> --help` を実行すると、さらに詳しい情報が確認できます。
 
@@ -174,6 +194,37 @@ M       main              ~/git-worktrees/project/main      123abc4
 
 現在地に関わらず、プロジェクトのメインブランチ (`main`, `master` など) の worktree を探し、`git pull` を実行して最新の状態に更新します。
 
-## ライセンス
+## 🔄 ワークフロー比較
+
+### gwm 導入前（従来の Git）
+```bash
+# PR をレビューする場合
+git stash                    # 現在の作業を退避
+git checkout main           # main ブランチに切り替え
+git pull                    # main を更新
+git checkout pr-branch      # PR ブランチに切り替え
+git pull origin pr-branch   # PR ブランチを更新
+# ... レビュー作業 ...
+git checkout main           # main に戻る
+git stash pop               # 作業を復元
+```
+
+### gwm 導入後
+```bash
+# PR をレビューする場合
+gwm add pr-branch -r        # リモートからワークツリーを作成
+gwm go pr-branch           # レビューに移動
+# ... レビュー作業 ... (元の作業には影響なし)
+gwm remove pr-branch       # 完了後にクリーンアップ
+```
+
+### ヘルプの取得方法
+
+- `gwm help` で一般的なヘルプを表示
+- `gwm help <command>` で特定のコマンドのヘルプを表示
+- [GitHub Issues](https://github.com/shutootaki/gwm/issues) で既知の問題を確認
+- バグを発見した場合は新しい Issue を作成してください
+
+## 📄 ライセンス
 
 MIT © 2024 Shuto Otaki and contributors
