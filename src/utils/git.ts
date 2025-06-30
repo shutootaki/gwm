@@ -481,3 +481,49 @@ export function getRepoRoot(): string {
     return process.cwd();
   }
 }
+
+export interface RemoteBranchInfo {
+  name: string;
+  fullName: string;
+  lastCommitDate: string;
+  lastCommitterName: string;
+  lastCommitMessage: string;
+}
+
+/**
+ * リモートブランチの詳細情報を取得する
+ */
+export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
+  try {
+    // git for-each-ref でリモートブランチの詳細情報を取得
+    const output = execSync(
+      'git for-each-ref refs/remotes --format="%(refname:short)|%(committerdate:iso8601-strict)|%(committername)|%(subject)"',
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+      }
+    );
+
+    const branches = output
+      .split('\n')
+      .filter((line) => line.trim() && !line.includes('HEAD'))
+      .map((line) => {
+        const [fullName, date, committer, subject] = line.split('|');
+        const name = fullName.replace('origin/', '');
+
+        return {
+          name,
+          fullName,
+          lastCommitDate: date || '',
+          lastCommitterName: committer || '',
+          lastCommitMessage: subject || '',
+        };
+      });
+
+    return branches;
+  } catch (err) {
+    throw new Error(
+      `Failed to get remote branches: ${err instanceof Error ? err.message : 'Unknown error'}`
+    );
+  }
+}

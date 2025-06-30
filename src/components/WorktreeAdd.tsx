@@ -11,6 +11,7 @@ import { formatErrorForDisplay } from '../utils/index.js';
 import { useWorktree } from '../hooks/useWorktree.js';
 import { LoadingSpinner } from './ui/LoadingSpinner.js';
 import { Notice } from './ui/Notice.js';
+import { getRemoteBranchesWithInfo } from '../utils/git.js';
 
 interface WorktreeAddProps {
   branchName?: string;
@@ -24,6 +25,9 @@ interface WorktreeAddProps {
 interface RemoteBranch {
   name: string;
   fullName: string;
+  lastCommitDate: string;
+  lastCommitterName: string;
+  lastCommitMessage: string;
 }
 
 type ViewMode = 'input' | 'select' | 'loading';
@@ -87,26 +91,11 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
 
       const targetRemotes = remotes.includes('origin') ? ['origin'] : remotes;
       for (const remote of targetRemotes) {
-        execSync(`git fetch ${remote}`, { cwd: process.cwd() });
+        execSync(`git fetch --prune ${remote}`, { cwd: process.cwd() });
       }
 
-      // リモートブランチ一覧を取得
-      const output = execSync('git branch -r', {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-      });
-
-      const branches = output
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line && !line.includes('HEAD'))
-        .map((line) => {
-          const fullName = line.replace('origin/', '');
-          return {
-            name: fullName,
-            fullName: line,
-          };
-        });
+      // リモートブランチの詳細情報を取得
+      const branches = getRemoteBranchesWithInfo();
 
       setRemoteBranches(branches);
       setIsRemoteBranchesLoaded(true);
@@ -136,6 +125,12 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
       remoteBranches.map((branch) => ({
         label: branch.name,
         value: branch.name,
+        description: branch.lastCommitMessage,
+        metadata: {
+          lastCommitDate: branch.lastCommitDate,
+          lastCommitterName: branch.lastCommitterName,
+          lastCommitMessage: branch.lastCommitMessage,
+        },
       })),
     [remoteBranches]
   );

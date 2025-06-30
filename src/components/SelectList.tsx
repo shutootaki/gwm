@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useCallback, useReducer } from 'react';
 import { Text, Box, useInput } from 'ink';
 import { SelectItem } from '../types/common.js';
 import { useEditableText } from '../hooks/useEditableText.js';
+import { formatRelativeTime } from '../utils/formatting.js';
 
 interface SelectListProps {
   items: SelectItem[];
@@ -272,6 +273,29 @@ export const SelectList: React.FC<SelectListProps> = ({
             </Text>
             {currentItem.value !== currentItem.label && (
               <Text color="gray">Value: {currentItem.value}</Text>
+            )}
+            {currentItem.metadata && (
+              <>
+                {currentItem.metadata.lastCommitDate && (
+                  <Text color="gray">
+                    Updated:{' '}
+                    {formatRelativeTime(
+                      String(currentItem.metadata.lastCommitDate)
+                    )}
+                  </Text>
+                )}
+                {currentItem.metadata.lastCommitterName && (
+                  <Text color="gray">
+                    By: {String(currentItem.metadata.lastCommitterName)}
+                  </Text>
+                )}
+                {currentItem.metadata.lastCommitMessage && (
+                  <Text color="gray">
+                    Last commit:{' '}
+                    {String(currentItem.metadata.lastCommitMessage)}
+                  </Text>
+                )}
+              </>
             )}
           </Box>
         </Box>
