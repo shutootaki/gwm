@@ -3,6 +3,7 @@ import { Text, Box } from 'ink';
 import { execSync, spawnSync } from 'child_process';
 import { WorktreeSelector } from './WorktreeSelector.js';
 import { formatErrorForDisplay } from '../utils/index.js';
+import { escapeShellArg } from '../utils/shell.js';
 
 interface WorktreeGoProps {
   query?: string;
@@ -25,8 +26,7 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
         execSync('which code', { stdio: 'ignore' });
 
         // VS Codeでディレクトリを開く（適切にエスケープ）
-        const escapedPath = `"${worktree.path.replace(/"/g, '\\"')}"`;
-        execSync(`code ${escapedPath}`, { stdio: 'inherit' });
+        execSync(`code ${escapeShellArg(worktree.path)}`, { stdio: 'inherit' });
 
         setSuccess(`Opened ${worktree.branch} in Editor`);
         setTimeout(() => process.exit(0), 1000);
@@ -44,8 +44,9 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
         // cursor コマンドが存在するかチェック
         execSync('which cursor', { stdio: 'ignore' });
 
-        const escapedPath = `"${worktree.path.replace(/"/g, '\\"')}"`;
-        execSync(`cursor ${escapedPath}`, { stdio: 'inherit' });
+        execSync(`cursor ${escapeShellArg(worktree.path)}`, {
+          stdio: 'inherit',
+        });
 
         setSuccess(`Opened ${worktree.branch} in Cursor`);
         setTimeout(() => process.exit(0), 1000);

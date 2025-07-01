@@ -25,7 +25,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('/path/to/project', 'code');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('code "/path/to/project"', {
+      expect(mockExecSync).toHaveBeenCalledWith("code '/path/to/project'", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -37,7 +37,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('/path/to/project', 'cursor');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('cursor "/path/to/project"', {
+      expect(mockExecSync).toHaveBeenCalledWith("cursor '/path/to/project'", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -53,7 +53,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('/path/to/project', 'code');
 
       expect(result).toBe(false);
-      expect(mockExecSync).toHaveBeenCalledWith('code "/path/to/project"', {
+      expect(mockExecSync).toHaveBeenCalledWith("code '/path/to/project'", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -67,7 +67,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('/path/to/project', 'cursor');
 
       expect(result).toBe(false);
-      expect(mockExecSync).toHaveBeenCalledWith('cursor "/path/to/project"', {
+      expect(mockExecSync).toHaveBeenCalledWith("cursor '/path/to/project'", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -92,7 +92,7 @@ describe('openWithEditor', () => {
 
       expect(result).toBe(true);
       expect(mockExecSync).toHaveBeenCalledWith(
-        'code "/path/with spaces/project"',
+        "code '/path/with spaces/project'",
         {
           cwd: process.cwd(),
           stdio: 'ignore',
@@ -107,7 +107,7 @@ describe('openWithEditor', () => {
 
       expect(result).toBe(true);
       expect(mockExecSync).toHaveBeenCalledWith(
-        'code "/path/with\\"quotes/project"',
+        "code '/path/with\"quotes/project'",
         {
           cwd: process.cwd(),
           stdio: 'ignore',
@@ -125,7 +125,7 @@ describe('openWithEditor', () => {
 
       expect(result).toBe(true);
       expect(mockExecSync).toHaveBeenCalledWith(
-        'cursor "/path/with spaces and \\"quotes\\"/project"',
+        'cursor \'/path/with spaces and "quotes"/project\'',
         {
           cwd: process.cwd(),
           stdio: 'ignore',
@@ -141,7 +141,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('', 'code');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('code ""', {
+      expect(mockExecSync).toHaveBeenCalledWith("code ''", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -153,7 +153,7 @@ describe('openWithEditor', () => {
       const result = openWithEditor('./relative/path', 'code');
 
       expect(result).toBe(true);
-      expect(mockExecSync).toHaveBeenCalledWith('code "./relative/path"', {
+      expect(mockExecSync).toHaveBeenCalledWith("code './relative/path'", {
         cwd: process.cwd(),
         stdio: 'ignore',
       });
@@ -166,7 +166,7 @@ describe('openWithEditor', () => {
 
       expect(result).toBe(true);
       expect(mockExecSync).toHaveBeenCalledWith(
-        'cursor "~/Documents/project"',
+        "cursor '~/Documents/project'",
         {
           cwd: process.cwd(),
           stdio: 'ignore',

@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import { loadConfig } from '../config.js';
+import { escapeShellArg } from './shell.js';
 
 export interface Worktree {
   path: string;
@@ -133,12 +134,9 @@ export function fetchAndPrune(): void {
  * worktreeを削除する
  */
 export function removeWorktree(path: string, force: boolean = false): void {
-  // シェルエスケープ簡易実装（ダブルクォート & バックスラッシュ をエスケープ）
-  const escapedPath = `"${path.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-
   try {
     const forceFlag = force ? ' --force' : '';
-    execSync(`git worktree remove ${escapedPath}${forceFlag}`, {
+    execSync(`git worktree remove ${escapeShellArg(path)}${forceFlag}`, {
       cwd: process.cwd(),
     });
   } catch (err) {
@@ -247,10 +245,13 @@ export async function pullMainBranch(): Promise<PullResult[]> {
  */
 export function localBranchExists(branch: string): boolean {
   try {
-    execSync(`git show-ref --verify --quiet refs/heads/${branch}`, {
-      stdio: 'ignore',
-      cwd: process.cwd(),
-    });
+    execSync(
+      `git show-ref --verify --quiet refs/heads/${escapeShellArg(branch)}`,
+      {
+        stdio: 'ignore',
+        cwd: process.cwd(),
+      }
+    );
     return true;
   } catch {
     return false;
@@ -266,19 +267,25 @@ export function hasUnmergedCommits(branch: string): boolean {
   try {
     // origin/<branch> が無い場合は fetch を試みない
     try {
-      execSync(`git show-ref --verify --quiet refs/remotes/origin/${branch}`, {
-        stdio: 'ignore',
-        cwd: process.cwd(),
-      });
+      execSync(
+        `git show-ref --verify --quiet refs/remotes/origin/${escapeShellArg(branch)}`,
+        {
+          stdio: 'ignore',
+          cwd: process.cwd(),
+        }
+      );
     } catch {
       // upstream がない = 既に削除 or push していない -> 安全のため未マージと判定しない
       return false;
     }
 
-    const output = execSync(`git cherry origin/${branch} ${branch}`, {
-      encoding: 'utf8',
-      cwd: process.cwd(),
-    }).trim();
+    const output = execSync(
+      `git cherry origin/${escapeShellArg(branch)} ${escapeShellArg(branch)}`,
+      {
+        encoding: 'utf8',
+        cwd: process.cwd(),
+      }
+    ).trim();
 
     return output.length > 0;
   } catch {
@@ -296,7 +303,7 @@ export function deleteLocalBranch(
 ): void {
   try {
     const flag = force ? '-D' : '-d';
-    execSync(`git branch ${flag} ${branch}`, {
+    execSync(`git branch ${flag} ${escapeShellArg(branch)}`, {
       stdio: 'ignore',
       cwd: process.cwd(),
     });
@@ -336,7 +343,7 @@ export function checkRemoteBranchStatus(
   // ネットワークアクセスを伴う `git ls-remote` はコストが高いため使用しない。
   try {
     execSync(
-      `git show-ref --verify --quiet refs/remotes/origin/${branchName}`,
+      `git show-ref --verify --quiet refs/remotes/origin/${escapeShellArg(branchName)}`,
       {
         cwd: process.cwd(),
         stdio: 'ignore',
@@ -353,7 +360,7 @@ export function checkRemoteBranchStatus(
     for (const mainBr of mainBranches) {
       try {
         execSync(
-          `git merge-base --is-ancestor origin/${branchName} origin/${mainBr}`,
+          `git merge-base --is-ancestor origin/${escapeShellArg(branchName)} origin/${escapeShellArg(mainBr)}`,
           { cwd: process.cwd(), stdio: 'ignore' }
         );
         // exit code 0 なら ancestor

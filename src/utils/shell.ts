@@ -1,8 +1,9 @@
 import { execSync } from 'child_process';
 
 export function escapeShellArg(arg: string): string {
-  // ダブルクォートをエスケープして安全なシェル引数に変換
-  return `"${arg.replace(/"/g, '\\"')}"`;
+  // シングルクォートで囲み、内部のシングルクォートをエスケープ
+  // これにより、$、バッククォート、改行などの特殊文字が安全に処理される
+  return "'" + arg.replace(/'/g, "'\\''") + "'";
 }
 
 // child_process.execSync を使った簡易ラッパー（主にテスト時にモックしやすくする目的）

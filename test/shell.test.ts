@@ -12,92 +12,97 @@ const mockExecSync = vi.mocked(execSync);
 describe('shell utilities', () => {
   describe('escapeShellArg', () => {
     describe('基本的なエスケープ処理', () => {
-      it('通常の文字列をダブルクォートで囲む', () => {
+      it('通常の文字列をシングルクォートで囲む', () => {
         const result = escapeShellArg('hello');
-        expect(result).toBe('"hello"');
+        expect(result).toBe("'hello'");
       });
 
-      it('スペースを含む文字列をダブルクォートで囲む', () => {
+      it('スペースを含む文字列をシングルクォートで囲む', () => {
         const result = escapeShellArg('hello world');
-        expect(result).toBe('"hello world"');
+        expect(result).toBe("'hello world'");
       });
 
-      it('空文字列をダブルクォートで囲む', () => {
+      it('空文字列をシングルクォートで囲む', () => {
         const result = escapeShellArg('');
-        expect(result).toBe('""');
+        expect(result).toBe("''");
       });
     });
 
     describe('特殊文字のエスケープ', () => {
-      it('ダブルクォートをエスケープする', () => {
+      it('シングルクォートをエスケープする', () => {
+        const result = escapeShellArg("hello 'world'");
+        expect(result).toBe("'hello '\\''world'\\'''");
+      });
+
+      it('複数のシングルクォートをエスケープする', () => {
+        const result = escapeShellArg("'test' and 'more'");
+        expect(result).toBe("''\\''test'\\'' and '\\''more'\\'''");
+      });
+
+      it('文字列の先頭と末尾のシングルクォートをエスケープする', () => {
+        const result = escapeShellArg("'wrapped'");
+        expect(result).toBe("''\\''wrapped'\\'''");
+      });
+
+      it('ダブルクォートはエスケープ不要', () => {
         const result = escapeShellArg('hello "world"');
-        expect(result).toBe('"hello \\"world\\""');
-      });
-
-      it('複数のダブルクォートをエスケープする', () => {
-        const result = escapeShellArg('"test" and "more"');
-        expect(result).toBe('"\\"test\\" and \\"more\\""');
-      });
-
-      it('文字列の先頭と末尾のダブルクォートをエスケープする', () => {
-        const result = escapeShellArg('"wrapped"');
-        expect(result).toBe('"\\"wrapped\\""');
+        expect(result).toBe('\'hello "world"\'');
       });
     });
 
     describe('エッジケース', () => {
-      it('ダブルクォートのみの文字列', () => {
-        const result = escapeShellArg('"');
-        expect(result).toBe('"\\"\"');
+      it('シングルクォートのみの文字列', () => {
+        const result = escapeShellArg("'");
+        expect(result).toBe("''\\'''");
       });
 
-      it('連続するダブルクォート', () => {
-        const result = escapeShellArg('""');
-        expect(result).toBe('"\\"\\""');
+      it('連続するシングルクォート', () => {
+        const result = escapeShellArg("''");
+        expect(result).toBe("''\\'''\\'''");
       });
 
-      it('バックスラッシュとダブルクォートの組み合わせ', () => {
-        const result = escapeShellArg('path\\to\\"file');
-        expect(result).toBe('"path\\to\\\\"file"');
+      it('バックスラッシュとシングルクォートの組み合わせ', () => {
+        const result = escapeShellArg("path\\to\\'file");
+        expect(result).toBe("'path\\to\\'\\''file'");
       });
     });
 
     describe('パスとファイル名のテスト', () => {
       it('Unixパスをエスケープする', () => {
         const result = escapeShellArg('/home/user/project');
-        expect(result).toBe('"/home/user/project"');
+        expect(result).toBe("'/home/user/project'");
       });
 
       it('スペースを含むパスをエスケープする', () => {
         const result = escapeShellArg('/path/with spaces/file.txt');
-        expect(result).toBe('"/path/with spaces/file.txt"');
+        expect(result).toBe("'/path/with spaces/file.txt'");
       });
 
       it('ダブルクォートを含むファイル名をエスケープする', () => {
         const result = escapeShellArg('file "name".txt');
-        expect(result).toBe('"file \\"name\\".txt"');
+        expect(result).toBe('\'file "name".txt\'');
       });
 
       it('Windowsパスをエスケープする', () => {
         const result = escapeShellArg('C:\\\\Program Files\\\\App');
-        expect(result).toBe('"C:\\\\Program Files\\\\App"');
+        expect(result).toBe("'C:\\\\Program Files\\\\App'");
       });
     });
 
     describe('Unicode文字とその他の特殊文字', () => {
       it('日本語文字列をエスケープする', () => {
         const result = escapeShellArg('こんにちは世界');
-        expect(result).toBe('"こんにちは世界"');
+        expect(result).toBe("'こんにちは世界'");
       });
 
       it('絵文字を含む文字列をエスケープする', () => {
         const result = escapeShellArg('Hello 🌍 World');
-        expect(result).toBe('"Hello 🌍 World"');
+        expect(result).toBe("'Hello 🌍 World'");
       });
 
       it('タブや改行を含む文字列をエスケープする', () => {
         const result = escapeShellArg('line1\\nline2\\tindented');
-        expect(result).toBe('"line1\\nline2\\tindented"');
+        expect(result).toBe("'line1\\nline2\\tindented'");
       });
     });
   });
@@ -175,16 +180,16 @@ describe('shell utilities', () => {
         const mockResult = Buffer.from('output');
         mockExecSync.mockReturnValue(mockResult);
 
-        exec('node --version', { 
+        exec('node --version', {
           timeout: 5000,
-          env: { NODE_ENV: 'test' }
+          env: { NODE_ENV: 'test' },
         });
 
         expect(mockExecSync).toHaveBeenCalledWith('node --version', {
           cwd: process.cwd(),
           stdio: 'inherit',
           timeout: 5000,
-          env: { NODE_ENV: 'test' }
+          env: { NODE_ENV: 'test' },
         });
       });
     });
@@ -209,9 +214,9 @@ describe('shell utilities', () => {
         const mockResult = Buffer.from('main\\nfeature\\n');
         mockExecSync.mockReturnValue(mockResult);
 
-        const result = exec('git branch', { 
+        const result = exec('git branch', {
           stdio: 'pipe',
-          encoding: 'utf8'
+          encoding: 'utf8',
         });
 
         expect(result).toBe(mockResult);
@@ -228,7 +233,7 @@ describe('shell utilities', () => {
 
         const result = exec('pnpm install', {
           cwd: '/project/path',
-          stdio: 'inherit'
+          stdio: 'inherit',
         });
 
         expect(result).toBe(mockResult);

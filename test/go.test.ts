@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getWorktreesWithStatus } from '../src/utils/git.js';
 
@@ -153,7 +154,7 @@ describe('gwm go command integration tests', () => {
 
     mockGetWorktreesWithStatus.mockResolvedValue(mockWorktrees);
 
-    const query = 'usr';
+    // const _query = 'usr'; // query removed as it was unused
 
     // ファジーサーチ（部分一致で "usr" -> "user"）
     const fuzzyMatches = mockWorktrees
