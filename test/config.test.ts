@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
-import { join } from 'path';
 import TOML from '@ltd/j-toml';
-import { loadConfig, Config } from '../src/config.js';
+import { loadConfig } from '../src/config.js';
 
 // モック化
 vi.mock('fs', () => ({

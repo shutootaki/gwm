@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
@@ -28,12 +29,12 @@ vi.mock('../src/components/WorktreeSelector.js', () => ({
 }));
 
 // process.exitをモック化
-const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+const _mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit called');
 });
 
 // console.logをモック化
-const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+const _mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
 const mockExecSync = vi.mocked(execSync);
 
