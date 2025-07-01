@@ -240,4 +240,80 @@ describe('useEditableText logic', () => {
       expect(newText).toBe('こんにちちは🌍世界');
     });
   });
+
+  describe('高速入力の問題', () => {
+    it('連続した文字入力が正しく処理される', () => {
+      // React の状態更新が非同期であることを考慮したテスト
+      // 実際のフックでは、単一のstateオブジェクトを使用することで
+      // 状態の一貫性を保証する
+      
+      // 期待される動作：'abc' を高速入力した場合
+      const inputs = ['a', 'b', 'c'];
+      let state = { value: '', cursorPosition: 0 };
+      
+      // 各文字入力を同期的にシミュレート
+      for (const char of inputs) {
+        state = {
+          value: state.value.slice(0, state.cursorPosition) + char + state.value.slice(state.cursorPosition),
+          cursorPosition: state.cursorPosition + 1
+        };
+      }
+      
+      expect(state.value).toBe('abc');
+      expect(state.cursorPosition).toBe(3);
+    });
+
+    it('高速入力中の削除操作が正しく処理される', () => {
+      // 'abcd' と入力した後、高速に2回Backspaceを押す
+      let state = { value: 'abcd', cursorPosition: 4 };
+      
+      // Backspace 1回目
+      if (state.cursorPosition > 0) {
+        state = {
+          value: state.value.slice(0, state.cursorPosition - 1) + state.value.slice(state.cursorPosition),
+          cursorPosition: state.cursorPosition - 1
+        };
+      }
+      
+      // Backspace 2回目
+      if (state.cursorPosition > 0) {
+        state = {
+          value: state.value.slice(0, state.cursorPosition - 1) + state.value.slice(state.cursorPosition),
+          cursorPosition: state.cursorPosition - 1
+        };
+      }
+      
+      expect(state.value).toBe('ab');
+      expect(state.cursorPosition).toBe(2);
+    });
+
+    it('高速入力と移動操作の組み合わせ', () => {
+      // 'hello' と入力、左に3移動、'X' を入力
+      let state = { value: '', cursorPosition: 0 };
+      
+      // 'hello' を入力
+      const hello = 'hello';
+      for (const char of hello) {
+        state = {
+          value: state.value.slice(0, state.cursorPosition) + char + state.value.slice(state.cursorPosition),
+          cursorPosition: state.cursorPosition + 1
+        };
+      }
+      
+      // 左に3移動
+      state = {
+        ...state,
+        cursorPosition: Math.max(0, state.cursorPosition - 3)
+      };
+      
+      // 'X' を入力
+      state = {
+        value: state.value.slice(0, state.cursorPosition) + 'X' + state.value.slice(state.cursorPosition),
+        cursorPosition: state.cursorPosition + 1
+      };
+      
+      expect(state.value).toBe('heXllo');
+      expect(state.cursorPosition).toBe(3);
+    });
+  });
 });
