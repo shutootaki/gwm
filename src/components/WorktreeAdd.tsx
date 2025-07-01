@@ -12,6 +12,7 @@ import { useWorktree } from '../hooks/useWorktree.js';
 import { LoadingSpinner } from './ui/LoadingSpinner.js';
 import { Notice } from './ui/Notice.js';
 import { getRemoteBranchesWithInfo } from '../utils/git.js';
+import { escapeShellArg } from '../utils/shell.js';
 
 interface WorktreeAddProps {
   branchName?: string;
@@ -91,7 +92,9 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
 
       const targetRemotes = remotes.includes('origin') ? ['origin'] : remotes;
       for (const remote of targetRemotes) {
-        execSync(`git fetch --prune ${remote}`, { cwd: process.cwd() });
+        execSync(`git fetch --prune ${escapeShellArg(remote)}`, {
+          cwd: process.cwd(),
+        });
       }
 
       // リモートブランチの詳細情報を取得
