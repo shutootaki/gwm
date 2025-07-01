@@ -11,12 +11,25 @@ export interface Config {
    * "auto" | "ask" | "never" (既定: "ask")
    */
   clean_branch: 'auto' | 'ask' | 'never';
+  /**
+   * gitignoreされたファイルのコピー設定
+   */
+  copy_ignored_files?: {
+    enabled: boolean;
+    patterns: string[];
+    exclude_patterns?: string[];
+  };
 }
 
 const DEFAULT_CONFIG: Config = {
   worktree_base_path: join(homedir(), 'git-worktrees'),
   main_branches: ['main', 'master', 'develop'],
   clean_branch: 'ask',
+  copy_ignored_files: {
+    enabled: true,
+    patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+    exclude_patterns: ['.env.example', '.env.sample'],
+  },
 };
 
 export function loadConfig(): Config {
@@ -49,6 +62,31 @@ export function loadConfig(): Config {
             ? cleanBranchRaw
             : 'ask';
 
+        // copy_ignored_files設定の読み込み
+        let copyIgnoredFiles = DEFAULT_CONFIG.copy_ignored_files;
+        if (
+          parsed.copy_ignored_files &&
+          typeof parsed.copy_ignored_files === 'object'
+        ) {
+          const cif = parsed.copy_ignored_files as Record<string, unknown>;
+          copyIgnoredFiles = {
+            enabled:
+              typeof cif.enabled === 'boolean'
+                ? cif.enabled
+                : DEFAULT_CONFIG.copy_ignored_files!.enabled,
+            patterns: Array.isArray(cif.patterns)
+              ? (cif.patterns as unknown[]).filter(
+                  (v): v is string => typeof v === 'string'
+                )
+              : DEFAULT_CONFIG.copy_ignored_files!.patterns,
+            exclude_patterns: Array.isArray(cif.exclude_patterns)
+              ? (cif.exclude_patterns as unknown[]).filter(
+                  (v): v is string => typeof v === 'string'
+                )
+              : DEFAULT_CONFIG.copy_ignored_files!.exclude_patterns,
+          };
+        }
+
         return {
           worktree_base_path: worktreeBasePath,
           main_branches:
@@ -56,6 +94,7 @@ export function loadConfig(): Config {
               ? mainBranches
               : DEFAULT_CONFIG.main_branches,
           clean_branch: cleanBranch,
+          copy_ignored_files: copyIgnoredFiles,
         };
       } catch (error) {
         console.error(`Error reading config file ${configPath}:`, error);

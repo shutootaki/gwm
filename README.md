@@ -20,7 +20,6 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 - **🧹 Keep your laptop squeaky-clean** — detect and safely remove stale branches
 - **🎨 Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder
 
-
 ## 📋 Command overview
 
 | Command                 | Purpose                                             | Highlights                                     |
@@ -105,6 +104,14 @@ worktree_base_path = "/Users/me/dev/worktrees"
 #   "ask"   – prompt for confirmation (default)
 #   "never" – never delete
 clean_branch = "ask"
+
+# Copy gitignored files from main worktree (e.g., .env files)
+# By default, gitignored files cannot be copied to the new worktree.
+# Enable this setting to copy them to the new worktree.
+[copy_ignored_files]
+enabled = true  # Enable/disable the feature
+patterns = [".env", ".env.*", ".env.local", ".env.*.local"]  # Files to copy
+exclude_patterns = [".env.example", ".env.sample"]  # Files to exclude
 ```
 
 ## 📖 Command reference
@@ -149,6 +156,10 @@ Create a new worktree. Comes with an interactive UI.
   - `--code`: Open in VS Code after creation.
   - `--cursor`: Open in Cursor after creation.
   - `--cd`: After creation, go to the directory where the corresponding work tree exists.
+
+- **Automatic file copying:**
+  - When `copy_ignored_files` is enabled in the config, gitignored files (like `.env` files) will be automatically copied from the main worktree to the new worktree.
+  - This is useful for development environment files that need to be present but shouldn't be tracked by Git.
 
 ---
 
@@ -197,6 +208,7 @@ Regardless of where you are, find worktrees of main branches (`main`, `master`, 
 ## 🔄 Workflow Comparison
 
 ### Before gwm (Traditional Git)
+
 ```bash
 # Reviewing a PR
 git stash                    # Save current work
@@ -210,6 +222,7 @@ git stash pop               # Restore work
 ```
 
 ### After gwm
+
 ```bash
 # Reviewing a PR
 gwm add pr-branch -r        # Create worktree from remote

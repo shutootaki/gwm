@@ -14,6 +14,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
+    "fix": "pnpm format && pnpm lint:fix",
     "format:check": "prettier --check 'src/**/*.{ts,tsx}'",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' 'test/**/*.{ts,tsx}' --fix",

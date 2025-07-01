@@ -20,7 +20,6 @@
 - **🧹 ノート PC を常にクリーンに保つ** — 古いブランチを検出し安全に削除
 - **🎨 すべてターミナル内で完結** — Ink 製のファジーファインダーを採用
 
-
 ## 📋 主なコマンド一覧
 
 | コマンド                | 役割                                               | ハイライト                                     |
@@ -105,6 +104,14 @@ worktree_base_path = "/Users/me/dev/worktrees"
 #   "ask"   – 確認プロンプト（デフォルト）
 #   "never" – 削除しない
 clean_branch = "ask"
+
+# メインワークツリーから gitignore されたファイルをコピー（例: .env ファイル）
+# デフォルトでは、gitignoreされたファイルはワークツリーに引き継ぐことはできません。
+# この設定を有効にすると、新しく作成するワークツリーにコピーされます。
+[copy_ignored_files]
+enabled = true  # 機能の有効/無効
+patterns = [".env", ".env.*", ".env.local", ".env.*.local"]  # コピー対象
+exclude_patterns = [".env.example", ".env.sample"]  # 除外対象
 ```
 
 ## 📖 コマンドリファレンス
@@ -149,6 +156,10 @@ M       main              ~/git-worktrees/project/main      123abc4
   - `--code`: 作成後に VS Code で開きます。
   - `--cursor`: 作成後に Cursor で開きます。
   - `--cd`: 作成後に該当のワークツリーが存在するディレクトリに移動します。
+
+- **gitignore されたファイルの自動コピー:**
+  - 設定で `copy_ignored_files` が有効な場合、メインワークツリーから新しいワークツリーに gitignore されたファイル（`.env` ファイルなど）が自動的にコピーされます。
+  - これにより、Git で追跡されていない開発環境設定ファイルを手動でコピーする手間が省けます。
 
 ---
 
@@ -197,6 +208,7 @@ M       main              ~/git-worktrees/project/main      123abc4
 ## 🔄 ワークフロー比較
 
 ### gwm 導入前（従来の Git）
+
 ```bash
 # PR をレビューする場合
 git stash                    # 現在の作業を退避
@@ -210,6 +222,7 @@ git stash pop               # 作業を復元
 ```
 
 ### gwm 導入後
+
 ```bash
 # PR をレビューする場合
 gwm add pr-branch -r        # リモートからワークツリーを作成

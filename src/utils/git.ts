@@ -1,4 +1,6 @@
 import { execSync } from 'child_process';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { join, dirname, relative } from 'path';
 import { loadConfig } from '../config.js';
 import { escapeShellArg } from './shell.js';
 
@@ -533,4 +535,183 @@ export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
       `Failed to get remote branches: ${err instanceof Error ? err.message : 'Unknown error'}`
     );
   }
+}
+
+/**
+ * メインワークツリーのパスを取得する
+ * 通常、最初のワークツリーがメインとなる
+ */
+export function getMainWorktreePath(): string | null {
+  try {
+    const worktrees = parseWorktrees(
+      execSync('git worktree list --porcelain', {
+        encoding: 'utf8',
+        cwd: process.cwd(),
+      })
+    );
+
+    // isMainフラグが設定されているワークツリーを探す
+    const mainWorktree = worktrees.find((wt) => wt.isMain);
+    if (mainWorktree) {
+      return mainWorktree.path;
+    }
+
+    // フォールバック: 最初のワークツリーをメインとして扱う
+    if (worktrees.length > 0) {
+      return worktrees[0].path;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * gitignoreされたファイルのリストを取得
+ * @param workdir 検索対象のディレクトリ
+ * @param patterns 検索パターン（ワイルドカード対応）
+ * @param excludePatterns 除外パターン
+ */
+export function getIgnoredFiles(
+  workdir: string,
+  patterns: string[],
+  excludePatterns?: string[]
+): string[] {
+  const matchedFiles: string[] = [];
+
+  // パターンに基づいてファイルを直接検索
+  function scanDirectory(dir: string, baseDir: string = workdir) {
+    try {
+      const entries = readdirSync(dir);
+
+      for (const entry of entries) {
+        const fullPath = join(dir, entry);
+        const relativePath = relative(baseDir, fullPath);
+
+        // .gitディレクトリはスキップ
+        if (entry === '.git') continue;
+
+        try {
+          const stat = statSync(fullPath);
+
+          if (stat.isDirectory()) {
+            // ディレクトリの場合は再帰的に検索
+            scanDirectory(fullPath, baseDir);
+          } else if (stat.isFile()) {
+            // ファイルの場合はパターンマッチング
+            let shouldInclude = false;
+
+            // 除外パターンのチェック
+            if (excludePatterns) {
+              let isExcluded = false;
+              for (const excludePattern of excludePatterns) {
+                if (
+                  matchesPattern(entry, excludePattern) ||
+                  matchesPattern(relativePath, excludePattern)
+                ) {
+                  isExcluded = true;
+                  break;
+                }
+              }
+              if (isExcluded) continue;
+            }
+
+            // 含めるパターンのチェック
+            for (const pattern of patterns) {
+              if (
+                matchesPattern(entry, pattern) ||
+                matchesPattern(relativePath, pattern)
+              ) {
+                shouldInclude = true;
+                break;
+              }
+            }
+
+            if (shouldInclude) {
+              // gitで追跡されていないファイルのみを対象とする
+              try {
+                execSync(
+                  `git ls-files --error-unmatch ${escapeShellArg(relativePath)}`,
+                  {
+                    cwd: baseDir,
+                    stdio: 'ignore',
+                  }
+                );
+                // ファイルが追跡されている場合はスキップ
+              } catch {
+                // ファイルが追跡されていない場合は含める
+                matchedFiles.push(relativePath);
+              }
+            }
+          }
+        } catch {
+          // ファイルアクセスエラーは無視
+        }
+      }
+    } catch {
+      // ディレクトリスキャンエラーは無視
+    }
+  }
+
+  scanDirectory(workdir);
+
+  return matchedFiles;
+}
+
+/**
+ * ファイル名がパターンにマッチするかチェック
+ * 簡易的なワイルドカードマッチング
+ */
+function matchesPattern(file: string, pattern: string): boolean {
+  // 簡易的なワイルドカードマッチング
+  // * を任意の文字列に変換
+  const regexPattern = pattern
+    .split('*')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*');
+
+  const regex = new RegExp(`^${regexPattern}$`);
+  return regex.test(file);
+}
+
+/**
+ * ファイルを別のディレクトリにコピー
+ * @param sourceDir コピー元ディレクトリ
+ * @param targetDir コピー先ディレクトリ
+ * @param files コピーするファイルのリスト（相対パス）
+ * @returns コピーしたファイルのリスト
+ */
+export function copyFiles(
+  sourceDir: string,
+  targetDir: string,
+  files: string[]
+): string[] {
+  const copiedFiles: string[] = [];
+
+  for (const file of files) {
+    try {
+      const sourcePath = join(sourceDir, file);
+      const targetPath = join(targetDir, file);
+
+      // ソースファイルが存在しない場合はスキップ
+      if (!existsSync(sourcePath)) {
+        continue;
+      }
+
+      // ターゲットディレクトリを作成
+      const targetFileDir = dirname(targetPath);
+      if (!existsSync(targetFileDir)) {
+        mkdirSync(targetFileDir, { recursive: true });
+      }
+
+      // ファイルをコピー
+      copyFileSync(sourcePath, targetPath);
+      copiedFiles.push(file);
+    } catch {
+      // エラーは無視して次のファイルに進む
+    }
+  }
+
+  return copiedFiles;
 }

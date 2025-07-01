@@ -41,6 +41,11 @@ describe('loadConfig', () => {
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     // 両方のパスをチェックしているか確認
@@ -74,6 +79,11 @@ main_branches = ["main", "development"]
       worktree_base_path: '/Users/test/my-worktrees',
       main_branches: ['main', 'development'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     expect(mockReadFileSync).toHaveBeenCalledWith(
@@ -107,6 +117,11 @@ main_branches = ["master"]
       worktree_base_path: '/Users/test/alternative-worktrees',
       main_branches: ['master'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     expect(mockReadFileSync).toHaveBeenCalledWith('/Users/test/.gwmrc', 'utf8');
@@ -133,6 +148,11 @@ main_branches = ["main"]
       worktree_base_path: '/Users/test/primary-worktrees',
       main_branches: ['main'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     // 最初のファイルのみ読み込まれることを確認
@@ -165,6 +185,11 @@ worktree_base_path = "/Users/test/custom-worktrees"
       worktree_base_path: '/Users/test/custom-worktrees',
       main_branches: ['main', 'master', 'develop'], // デフォルト値
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
   });
 
@@ -194,6 +219,11 @@ worktree_base_path = /invalid/toml/syntax
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -225,6 +255,11 @@ worktree_base_path = /invalid/toml/syntax
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -249,6 +284,136 @@ worktree_base_path = /invalid/toml/syntax
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
+      copy_ignored_files: {
+        enabled: true,
+        patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+        exclude_patterns: ['.env.example', '.env.sample'],
+      },
+    });
+  });
+
+  // copy_ignored_files設定のカスタマイズをテスト
+  it('should load custom copy_ignored_files settings', () => {
+    const configContent = `
+worktree_base_path = "/Users/test/my-worktrees"
+main_branches = ["main"]
+
+[copy_ignored_files]
+enabled = false
+patterns = [".env", ".secret"]
+exclude_patterns = [".env.test"]
+`;
+
+    mockExistsSync.mockImplementation((path) => {
+      return path === '/Users/test/.config/gwm/config.toml';
+    });
+
+    mockReadFileSync.mockReturnValue(configContent);
+    mockTOMLParse.mockReturnValue({
+      worktree_base_path: '/Users/test/my-worktrees',
+      main_branches: ['main'],
+      copy_ignored_files: {
+        enabled: false,
+        patterns: ['.env', '.secret'],
+        exclude_patterns: ['.env.test'],
+      },
+    });
+
+    const result = loadConfig();
+
+    expect(result.copy_ignored_files).toEqual({
+      enabled: false,
+      patterns: ['.env', '.secret'],
+      exclude_patterns: ['.env.test'],
+    });
+  });
+
+  // copy_ignored_files設定の部分的なカスタマイズをテスト
+  it('should merge partial copy_ignored_files settings with defaults', () => {
+    const configContent = `
+worktree_base_path = "/Users/test/my-worktrees"
+
+[copy_ignored_files]
+enabled = false
+`;
+
+    mockExistsSync.mockImplementation((path) => {
+      return path === '/Users/test/.config/gwm/config.toml';
+    });
+
+    mockReadFileSync.mockReturnValue(configContent);
+    mockTOMLParse.mockReturnValue({
+      worktree_base_path: '/Users/test/my-worktrees',
+      copy_ignored_files: {
+        enabled: false,
+      },
+    });
+
+    const result = loadConfig();
+
+    expect(result.copy_ignored_files).toEqual({
+      enabled: false,
+      patterns: ['.env', '.env.*', '.env.local', '.env.*.local'], // デフォルト値
+      exclude_patterns: ['.env.example', '.env.sample'], // デフォルト値
+    });
+  });
+
+  // copy_ignored_files設定の無効な値の処理をテスト
+  it('should handle invalid copy_ignored_files settings gracefully', () => {
+    const configContent = `
+worktree_base_path = "/Users/test/my-worktrees"
+
+[copy_ignored_files]
+enabled = "true" # should be boolean
+patterns = "not-an-array" # should be array
+`;
+
+    mockExistsSync.mockImplementation((path) => {
+      return path === '/Users/test/.config/gwm/config.toml';
+    });
+
+    mockReadFileSync.mockReturnValue(configContent);
+    mockTOMLParse.mockReturnValue({
+      worktree_base_path: '/Users/test/my-worktrees',
+      copy_ignored_files: {
+        enabled: 'true', // 文字列（無効）
+        patterns: 'not-an-array', // 文字列（無効）
+      },
+    });
+
+    const result = loadConfig();
+
+    // 無効な値はデフォルトにフォールバック
+    expect(result.copy_ignored_files).toEqual({
+      enabled: true, // デフォルト値
+      patterns: ['.env', '.env.*', '.env.local', '.env.*.local'], // デフォルト値
+      exclude_patterns: ['.env.example', '.env.sample'], // デフォルト値
+    });
+  });
+
+  // copy_ignored_files設定がnullの場合の処理をテスト
+  it('should use defaults when copy_ignored_files is null', () => {
+    const configContent = `
+worktree_base_path = "/Users/test/my-worktrees"
+copy_ignored_files = null
+`;
+
+    mockExistsSync.mockImplementation((path) => {
+      return path === '/Users/test/.config/gwm/config.toml';
+    });
+
+    mockReadFileSync.mockReturnValue(configContent);
+    mockTOMLParse.mockReturnValue({
+      worktree_base_path: '/Users/test/my-worktrees',
+      copy_ignored_files: null,
+    });
+
+    const result = loadConfig();
+
+    expect(result.copy_ignored_files).toEqual({
+      enabled: true,
+      patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
+      exclude_patterns: ['.env.example', '.env.sample'],
     });
   });
 });
