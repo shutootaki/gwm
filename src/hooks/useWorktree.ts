@@ -2,7 +2,12 @@ import { useCallback, useMemo } from 'react';
 import { execSync, spawnSync } from 'child_process';
 import { join } from 'path';
 import { loadConfig } from '../config.js';
-import { getRepositoryName, getMainWorktreePath, getIgnoredFiles, copyFiles } from '../utils/git.js';
+import {
+  getRepositoryName,
+  getMainWorktreePath,
+  getIgnoredFiles,
+  copyFiles,
+} from '../utils/git.js';
 import { escapeShellArg } from '../utils/shell.js';
 import { openWithEditor } from '../utils/editor.js';
 import { formatErrorForDisplay } from '../utils/index.js';
@@ -70,7 +75,7 @@ export function useWorktree({
         // gitignoreされたファイルのコピー処理
         if (config.copy_ignored_files?.enabled) {
           const mainWorktreePath = getMainWorktreePath();
-          
+
           if (mainWorktreePath && mainWorktreePath !== worktreePath) {
             const ignoredFiles = getIgnoredFiles(
               mainWorktreePath,
@@ -79,9 +84,15 @@ export function useWorktree({
             );
 
             if (ignoredFiles.length > 0) {
-              const copiedFiles = copyFiles(mainWorktreePath, worktreePath, ignoredFiles);
+              const copiedFiles = copyFiles(
+                mainWorktreePath,
+                worktreePath,
+                ignoredFiles
+              );
               if (copiedFiles.length > 0) {
-                actions.push(`Copied ${copiedFiles.length} ignored file(s): ${copiedFiles.join(', ')}`);
+                actions.push(
+                  `Copied ${copiedFiles.length} ignored file(s): ${copiedFiles.join(', ')}`
+                );
               }
             }
           }

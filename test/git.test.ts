@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  type Stats,
+} from 'fs';
 import { join } from 'path';
 import {
   parseWorktrees,
@@ -366,20 +373,32 @@ describe('getIgnoredFiles', () => {
     // ディレクトリ構造のモック設定
     mockReaddirSync.mockImplementation((dir) => {
       if (dir === workdir) {
-        return ['.env', '.env.local', '.env.example', 'src', '.git'];
+        return [
+          '.env',
+          '.env.local',
+          '.env.example',
+          'src',
+          '.git',
+        ] as unknown as any;
       }
       if (dir === join(workdir, 'src')) {
-        return ['.env.test', 'index.ts'];
+        return ['.env.test', 'index.ts'] as unknown as any;
       }
-      return [];
+      return [] as unknown as any;
     });
 
     mockStatSync.mockImplementation((path) => {
       const pathStr = path as string;
       if (pathStr.includes('.git') || pathStr.endsWith('src')) {
-        return { isDirectory: () => true, isFile: () => false } as any;
+        return {
+          isDirectory: () => true,
+          isFile: () => false,
+        } as unknown as Stats;
       }
-      return { isDirectory: () => false, isFile: () => true } as any;
+      return {
+        isDirectory: () => false,
+        isFile: () => true,
+      } as unknown as Stats;
     });
 
     // gitで追跡されていないファイルの判定
@@ -410,15 +429,18 @@ describe('getIgnoredFiles', () => {
 
     mockReaddirSync.mockImplementation((dir) => {
       if (dir === workdir) {
-        return ['src', 'package.json'];
+        return ['src', 'package.json'] as unknown as any;
       }
-      return [];
+      return [] as unknown as any;
     });
 
-    mockStatSync.mockImplementation(() => ({
-      isDirectory: () => false,
-      isFile: () => true,
-    }) as any);
+    mockStatSync.mockImplementation(
+      () =>
+        ({
+          isDirectory: () => false,
+          isFile: () => true,
+        }) as unknown as Stats
+    );
 
     const result = getIgnoredFiles(workdir, patterns);
     expect(result).toEqual([]);
@@ -431,15 +453,23 @@ describe('getIgnoredFiles', () => {
 
     mockReaddirSync.mockImplementation((dir) => {
       if (dir === workdir) {
-        return ['.env.local', '.env.production', '.envrc', 'env.txt'];
+        return [
+          '.env.local',
+          '.env.production',
+          '.envrc',
+          'env.txt',
+        ] as unknown as any;
       }
-      return [];
+      return [] as unknown as any;
     });
 
-    mockStatSync.mockImplementation(() => ({
-      isDirectory: () => false,
-      isFile: () => true,
-    }) as any);
+    mockStatSync.mockImplementation(
+      () =>
+        ({
+          isDirectory: () => false,
+          isFile: () => true,
+        }) as unknown as Stats
+    );
 
     mockExecSync.mockImplementation(() => {
       throw new Error('Not tracked');
@@ -482,10 +512,9 @@ describe('copyFiles', () => {
     const result = copyFiles(sourceDir, targetDir, files);
 
     expect(result).toEqual(['.env', 'config/.env.local']);
-    expect(mockMkdirSync).toHaveBeenCalledWith(
-      join(targetDir, 'config'),
-      { recursive: true }
-    );
+    expect(mockMkdirSync).toHaveBeenCalledWith(join(targetDir, 'config'), {
+      recursive: true,
+    });
     expect(mockCopyFileSync).toHaveBeenCalledWith(
       join(sourceDir, '.env'),
       join(targetDir, '.env')

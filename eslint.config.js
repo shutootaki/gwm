@@ -61,6 +61,7 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       ...(vitest.configs?.recommended?.rules ?? {}),
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

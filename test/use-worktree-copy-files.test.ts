@@ -3,7 +3,11 @@ import React, { useEffect } from 'react';
 import { render } from 'ink-testing-library';
 import { useWorktree } from '../src/hooks/useWorktree.js';
 import { execSync } from 'child_process';
-import { getMainWorktreePath, getIgnoredFiles, copyFiles } from '../src/utils/git.js';
+import {
+  getMainWorktreePath,
+  getIgnoredFiles,
+  copyFiles,
+} from '../src/utils/git.js';
 import { loadConfig } from '../src/config.js';
 
 // モジュールモック
@@ -145,7 +149,9 @@ describe('useWorktree copy_ignored_files', () => {
   // 同じワークツリーの場合のスキップテスト
   it('should skip copy when source and target are the same', () => {
     const onSuccess = vi.fn();
-    mockGetMainWorktreePath.mockReturnValue('/Users/test/git-worktrees/project/feature-test');
+    mockGetMainWorktreePath.mockReturnValue(
+      '/Users/test/git-worktrees/project/feature-test'
+    );
 
     render(
       React.createElement(HookTester, {

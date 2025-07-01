@@ -584,51 +584,60 @@ export function getIgnoredFiles(
   function scanDirectory(dir: string, baseDir: string = workdir) {
     try {
       const entries = readdirSync(dir);
-      
+
       for (const entry of entries) {
         const fullPath = join(dir, entry);
         const relativePath = relative(baseDir, fullPath);
-        
+
         // .gitディレクトリはスキップ
         if (entry === '.git') continue;
-        
+
         try {
           const stat = statSync(fullPath);
-          
+
           if (stat.isDirectory()) {
             // ディレクトリの場合は再帰的に検索
             scanDirectory(fullPath, baseDir);
           } else if (stat.isFile()) {
             // ファイルの場合はパターンマッチング
             let shouldInclude = false;
-            
+
             // 除外パターンのチェック
             if (excludePatterns) {
               let isExcluded = false;
               for (const excludePattern of excludePatterns) {
-                if (matchesPattern(entry, excludePattern) || matchesPattern(relativePath, excludePattern)) {
+                if (
+                  matchesPattern(entry, excludePattern) ||
+                  matchesPattern(relativePath, excludePattern)
+                ) {
                   isExcluded = true;
                   break;
                 }
               }
               if (isExcluded) continue;
             }
-            
+
             // 含めるパターンのチェック
             for (const pattern of patterns) {
-              if (matchesPattern(entry, pattern) || matchesPattern(relativePath, pattern)) {
+              if (
+                matchesPattern(entry, pattern) ||
+                matchesPattern(relativePath, pattern)
+              ) {
                 shouldInclude = true;
                 break;
               }
             }
-            
+
             if (shouldInclude) {
               // gitで追跡されていないファイルのみを対象とする
               try {
-                execSync(`git ls-files --error-unmatch ${escapeShellArg(relativePath)}`, {
-                  cwd: baseDir,
-                  stdio: 'ignore',
-                });
+                execSync(
+                  `git ls-files --error-unmatch ${escapeShellArg(relativePath)}`,
+                  {
+                    cwd: baseDir,
+                    stdio: 'ignore',
+                  }
+                );
                 // ファイルが追跡されている場合はスキップ
               } catch {
                 // ファイルが追跡されていない場合は含める
@@ -646,7 +655,7 @@ export function getIgnoredFiles(
   }
 
   scanDirectory(workdir);
-  
+
   return matchedFiles;
 }
 
@@ -661,7 +670,7 @@ function matchesPattern(file: string, pattern: string): boolean {
     .split('*')
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('.*');
-  
+
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(file);
 }

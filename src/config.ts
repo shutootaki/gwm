@@ -64,15 +64,25 @@ export function loadConfig(): Config {
 
         // copy_ignored_files設定の読み込み
         let copyIgnoredFiles = DEFAULT_CONFIG.copy_ignored_files;
-        if (parsed.copy_ignored_files && typeof parsed.copy_ignored_files === 'object') {
+        if (
+          parsed.copy_ignored_files &&
+          typeof parsed.copy_ignored_files === 'object'
+        ) {
           const cif = parsed.copy_ignored_files as Record<string, unknown>;
           copyIgnoredFiles = {
-            enabled: typeof cif.enabled === 'boolean' ? cif.enabled : DEFAULT_CONFIG.copy_ignored_files!.enabled,
-            patterns: Array.isArray(cif.patterns) 
-              ? (cif.patterns as unknown[]).filter((v): v is string => typeof v === 'string')
+            enabled:
+              typeof cif.enabled === 'boolean'
+                ? cif.enabled
+                : DEFAULT_CONFIG.copy_ignored_files!.enabled,
+            patterns: Array.isArray(cif.patterns)
+              ? (cif.patterns as unknown[]).filter(
+                  (v): v is string => typeof v === 'string'
+                )
               : DEFAULT_CONFIG.copy_ignored_files!.patterns,
             exclude_patterns: Array.isArray(cif.exclude_patterns)
-              ? (cif.exclude_patterns as unknown[]).filter((v): v is string => typeof v === 'string')
+              ? (cif.exclude_patterns as unknown[]).filter(
+                  (v): v is string => typeof v === 'string'
+                )
               : DEFAULT_CONFIG.copy_ignored_files!.exclude_patterns,
           };
         }
