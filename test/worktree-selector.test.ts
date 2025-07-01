@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
@@ -21,7 +22,15 @@ vi.mock('../src/utils/presentation.js', () => ({
 // SelectListをモック化してitemsの順序を検証可能にする
 let capturedItems: any[] = [];
 vi.mock('../src/components/SelectList.js', () => ({
-  SelectList: ({ items, onSelect, onCancel }: any) => {
+  SelectList: ({
+    items,
+    onSelect: _onSelect,
+    onCancel: _onCancel,
+  }: {
+    items: unknown[];
+    onSelect: () => void;
+    onCancel: () => void;
+  }) => {
     capturedItems = items;
     return React.createElement('div', {
       'data-testid': 'select-list',
@@ -56,7 +65,12 @@ describe('WorktreeSelector', () => {
     it('mainワークツリーが最初に表示される', async () => {
       const worktrees: Worktree[] = [
         createMockWorktree({ branch: 'feature-a', path: '/path/feature-a' }),
-        createMockWorktree({ branch: 'main', path: '/path/main', isMain: true, status: 'MAIN' }),
+        createMockWorktree({
+          branch: 'main',
+          path: '/path/main',
+          isMain: true,
+          status: 'MAIN',
+        }),
         createMockWorktree({ branch: 'feature-b', path: '/path/feature-b' }),
       ];
       mockGetWorktreesWithStatus.mockResolvedValue(worktrees);
@@ -80,8 +94,18 @@ describe('WorktreeSelector', () => {
     it('activeワークツリーがmainの次に表示される', async () => {
       const worktrees: Worktree[] = [
         createMockWorktree({ branch: 'feature-a', path: '/path/feature-a' }),
-        createMockWorktree({ branch: 'active-branch', path: '/path/active', isActive: true, status: 'ACTIVE' }),
-        createMockWorktree({ branch: 'main', path: '/path/main', isMain: true, status: 'MAIN' }),
+        createMockWorktree({
+          branch: 'active-branch',
+          path: '/path/active',
+          isActive: true,
+          status: 'ACTIVE',
+        }),
+        createMockWorktree({
+          branch: 'main',
+          path: '/path/main',
+          isMain: true,
+          status: 'MAIN',
+        }),
         createMockWorktree({ branch: 'feature-b', path: '/path/feature-b' }),
       ];
       mockGetWorktreesWithStatus.mockResolvedValue(worktrees);
@@ -105,8 +129,18 @@ describe('WorktreeSelector', () => {
     it('その他のワークツリーが最後に表示される', async () => {
       const worktrees: Worktree[] = [
         createMockWorktree({ branch: 'feature-c', path: '/path/feature-c' }),
-        createMockWorktree({ branch: 'main', path: '/path/main', isMain: true, status: 'MAIN' }),
-        createMockWorktree({ branch: 'active-branch', path: '/path/active', isActive: true, status: 'ACTIVE' }),
+        createMockWorktree({
+          branch: 'main',
+          path: '/path/main',
+          isMain: true,
+          status: 'MAIN',
+        }),
+        createMockWorktree({
+          branch: 'active-branch',
+          path: '/path/active',
+          isActive: true,
+          status: 'ACTIVE',
+        }),
         createMockWorktree({ branch: 'feature-a', path: '/path/feature-a' }),
         createMockWorktree({ branch: 'feature-b', path: '/path/feature-b' }),
       ];
@@ -135,7 +169,12 @@ describe('WorktreeSelector', () => {
   describe('アイコン表示', () => {
     it('mainワークツリーに[M]アイコンが表示される', async () => {
       const worktrees: Worktree[] = [
-        createMockWorktree({ branch: 'main', path: '/path/main', isMain: true, status: 'MAIN' }),
+        createMockWorktree({
+          branch: 'main',
+          path: '/path/main',
+          isMain: true,
+          status: 'MAIN',
+        }),
       ];
       mockGetWorktreesWithStatus.mockResolvedValue(worktrees);
 
@@ -155,7 +194,12 @@ describe('WorktreeSelector', () => {
 
     it('activeワークツリーに[*]アイコンが表示される', async () => {
       const worktrees: Worktree[] = [
-        createMockWorktree({ branch: 'active-branch', path: '/path/active', isActive: true, status: 'ACTIVE' }),
+        createMockWorktree({
+          branch: 'active-branch',
+          path: '/path/active',
+          isActive: true,
+          status: 'ACTIVE',
+        }),
       ];
       mockGetWorktreesWithStatus.mockResolvedValue(worktrees);
 
@@ -196,7 +240,7 @@ describe('WorktreeSelector', () => {
     it('スペースアイコンの場合はプレフィックスが付かない', async () => {
       // getStatusIconが' 'を返すケースをモック
       vi.mocked(getStatusIcon).mockReturnValueOnce(' ');
-      
+
       const worktrees: Worktree[] = [
         createMockWorktree({ branch: 'special-branch', path: '/path/special' }),
       ];

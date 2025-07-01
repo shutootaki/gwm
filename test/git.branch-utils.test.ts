@@ -27,7 +27,7 @@ describe('git branch helper utilities', () => {
 
       expect(result).toBe(true);
       expect(mockExecSync).toHaveBeenCalledWith(
-        'git show-ref --verify --quiet refs/heads/feature/test',
+        "git show-ref --verify --quiet refs/heads/'feature/test'",
         {
           stdio: 'ignore',
           cwd: process.cwd(),
@@ -114,10 +114,13 @@ describe('git branch helper utilities', () => {
 
       deleteLocalBranch('feature/test', false);
 
-      expect(mockExecSync).toHaveBeenCalledWith('git branch -d feature/test', {
-        stdio: 'ignore',
-        cwd: process.cwd(),
-      });
+      expect(mockExecSync).toHaveBeenCalledWith(
+        "git branch -d 'feature/test'",
+        {
+          stdio: 'ignore',
+          cwd: process.cwd(),
+        }
+      );
     });
 
     it('should call git branch -D when force is true', () => {
@@ -125,10 +128,13 @@ describe('git branch helper utilities', () => {
 
       deleteLocalBranch('feature/test', true);
 
-      expect(mockExecSync).toHaveBeenCalledWith('git branch -D feature/test', {
-        stdio: 'ignore',
-        cwd: process.cwd(),
-      });
+      expect(mockExecSync).toHaveBeenCalledWith(
+        "git branch -D 'feature/test'",
+        {
+          stdio: 'ignore',
+          cwd: process.cwd(),
+        }
+      );
     });
 
     it('should throw wrapped error when git command fails', () => {

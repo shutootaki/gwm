@@ -238,7 +238,7 @@ describe('removeWorktree', () => {
 
     expect(() => removeWorktree('/path/to/worktree')).not.toThrow();
     expect(mockExecSync).toHaveBeenCalledWith(
-      'git worktree remove "/path/to/worktree"',
+      "git worktree remove '/path/to/worktree'",
       { cwd: process.cwd() }
     );
   });
@@ -249,7 +249,7 @@ describe('removeWorktree', () => {
 
     expect(() => removeWorktree('/path/to/worktree', true)).not.toThrow();
     expect(mockExecSync).toHaveBeenCalledWith(
-      'git worktree remove "/path/to/worktree" --force',
+      "git worktree remove '/path/to/worktree' --force",
       { cwd: process.cwd() }
     );
   });
