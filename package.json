@@ -27,8 +27,7 @@
     "test:ui": "vitest --ui",
     "test": "vitest",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
-    "validate": "pnpm run lint && pnpm run typecheck",
-    "prepare": "husky"
+    "validate": "pnpm run lint && pnpm run typecheck"
   },
   "keywords": [
     "cli",
