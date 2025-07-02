@@ -55,7 +55,14 @@ const DEFAULT_CONFIG: Config = {
     auto_detect: true,
     exclude_venv: true,
     suggest_venv_recreate: true,
-    exclude_patterns: ['.venv', '.venv/*', '__pycache__', '*.pyc', '*.pyo', '.pytest_cache'],
+    exclude_patterns: [
+      '.venv',
+      '.venv/*',
+      '__pycache__',
+      '*.pyc',
+      '*.pyo',
+      '.pytest_cache',
+    ],
   },
 };
 
@@ -116,10 +123,7 @@ export function loadConfig(): Config {
 
         // python設定の読み込み
         let pythonConfig = DEFAULT_CONFIG.python;
-        if (
-          parsed.python &&
-          typeof parsed.python === 'object'
-        ) {
+        if (parsed.python && typeof parsed.python === 'object') {
           const py = parsed.python as Record<string, unknown>;
           pythonConfig = {
             auto_detect:

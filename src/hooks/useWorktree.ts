@@ -101,18 +101,29 @@ export function useWorktree({
         }
 
         // Pythonプロジェクトの場合、venv再作成の提案を表示
-        if (config.python?.auto_detect && config.python?.suggest_venv_recreate && isPythonProject(worktreePath)) {
-          actions.push('💡 Python project detected! Consider recreating virtual environment:');
-          
+        if (
+          config.python?.auto_detect &&
+          config.python?.suggest_venv_recreate &&
+          isPythonProject(worktreePath)
+        ) {
+          actions.push(
+            '💡 Python project detected! Consider recreating virtual environment:'
+          );
+
           // プロジェクトファイルに基づいて適切なコマンドを提案
           const mainWorktreePath = getMainWorktreePath();
           if (mainWorktreePath) {
-            if (existsSync(join(mainWorktreePath, 'pyproject.toml')) || existsSync(join(mainWorktreePath, 'poetry.lock'))) {
+            if (
+              existsSync(join(mainWorktreePath, 'pyproject.toml')) ||
+              existsSync(join(mainWorktreePath, 'poetry.lock'))
+            ) {
               actions.push('   • poetry install');
             } else if (existsSync(join(mainWorktreePath, 'Pipfile'))) {
               actions.push('   • pipenv install');
             } else if (existsSync(join(mainWorktreePath, 'requirements.txt'))) {
-              actions.push('   • python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt');
+              actions.push(
+                '   • python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt'
+              );
             } else {
               actions.push('   • python -m venv .venv');
             }

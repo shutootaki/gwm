@@ -581,10 +581,10 @@ export function isPythonProject(projectPath: string): boolean {
     'Pipfile',
     'Pipfile.lock',
     'conda.yml',
-    'environment.yml'
+    'environment.yml',
   ];
 
-  return pythonFiles.some(file => existsSync(join(projectPath, file)));
+  return pythonFiles.some((file) => existsSync(join(projectPath, file)));
 }
 
 /**
@@ -600,15 +600,15 @@ export function getIgnoredFiles(
 ): string[] {
   const matchedFiles: string[] = [];
   const config = loadConfig();
-  
+
   // Pythonプロジェクトの場合、設定に基づいて自動除外
   const effectiveExcludePatterns = [...(excludePatterns || [])];
-  
+
   if (config.python?.auto_detect && isPythonProject(workdir)) {
     if (config.python.exclude_venv) {
       effectiveExcludePatterns.push('.venv', '.venv/*', '.venv/**/*');
     }
-    
+
     // Python固有の除外パターンを追加
     if (config.python.exclude_patterns) {
       effectiveExcludePatterns.push(...config.python.exclude_patterns);
