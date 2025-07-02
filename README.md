@@ -112,6 +112,14 @@ clean_branch = "ask"
 enabled = true  # Enable/disable the feature
 patterns = [".env", ".env.*", ".env.local", ".env.*.local"]  # Files to copy
 exclude_patterns = [".env.example", ".env.sample"]  # Files to exclude
+
+# Python project settings
+# Automatically detect Python projects and resolve .venv directory issues
+[python]
+auto_detect = true  # Enable automatic Python project detection (default: true)
+exclude_venv = true  # Automatically exclude .venv directory (default: true)
+suggest_venv_recreate = true  # Show suggestions for recreating venv (default: true)
+exclude_patterns = [".venv", ".venv/*", "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"]  # Python-specific exclusion patterns
 ```
 
 ## 📖 Command reference

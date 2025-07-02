@@ -112,6 +112,14 @@ clean_branch = "ask"
 enabled = true  # 機能の有効/無効
 patterns = [".env", ".env.*", ".env.local", ".env.*.local"]  # コピー対象
 exclude_patterns = [".env.example", ".env.sample"]  # 除外対象
+
+# Python プロジェクト用の設定
+# Python プロジェクトを自動検出し、.venv ディレクトリの問題を解決します
+[python]
+auto_detect = true  # Pythonプロジェクトの自動検出を有効にする（デフォルト: true）
+exclude_venv = true  # .venvディレクトリを自動除外する（デフォルト: true）
+suggest_venv_recreate = true  # venv再作成の提案を表示する（デフォルト: true）
+exclude_patterns = [".venv", ".venv/*", "__pycache__", "*.pyc", "*.pyo", ".pytest_cache"]  # Python固有の除外パターン
 ```
 
 ## 📖 コマンドリファレンス

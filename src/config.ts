@@ -19,6 +19,27 @@ export interface Config {
     patterns: string[];
     exclude_patterns?: string[];
   };
+  /**
+   * Python プロジェクト固有の設定
+   */
+  python?: {
+    /**
+     * Pythonプロジェクトの自動検出を有効にするか
+     */
+    auto_detect: boolean;
+    /**
+     * .venvディレクトリの自動除外を有効にするか
+     */
+    exclude_venv: boolean;
+    /**
+     * ワークツリー作成後にvenv再作成の提案を表示するか
+     */
+    suggest_venv_recreate: boolean;
+    /**
+     * Python固有の除外パターン
+     */
+    exclude_patterns?: string[];
+  };
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -29,6 +50,12 @@ const DEFAULT_CONFIG: Config = {
     enabled: true,
     patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
     exclude_patterns: ['.env.example', '.env.sample'],
+  },
+  python: {
+    auto_detect: true,
+    exclude_venv: true,
+    suggest_venv_recreate: true,
+    exclude_patterns: ['.venv', '.venv/*', '__pycache__', '*.pyc', '*.pyo', '.pytest_cache'],
   },
 };
 
@@ -87,6 +114,34 @@ export function loadConfig(): Config {
           };
         }
 
+        // python設定の読み込み
+        let pythonConfig = DEFAULT_CONFIG.python;
+        if (
+          parsed.python &&
+          typeof parsed.python === 'object'
+        ) {
+          const py = parsed.python as Record<string, unknown>;
+          pythonConfig = {
+            auto_detect:
+              typeof py.auto_detect === 'boolean'
+                ? py.auto_detect
+                : DEFAULT_CONFIG.python!.auto_detect,
+            exclude_venv:
+              typeof py.exclude_venv === 'boolean'
+                ? py.exclude_venv
+                : DEFAULT_CONFIG.python!.exclude_venv,
+            suggest_venv_recreate:
+              typeof py.suggest_venv_recreate === 'boolean'
+                ? py.suggest_venv_recreate
+                : DEFAULT_CONFIG.python!.suggest_venv_recreate,
+            exclude_patterns: Array.isArray(py.exclude_patterns)
+              ? (py.exclude_patterns as unknown[]).filter(
+                  (v): v is string => typeof v === 'string'
+                )
+              : DEFAULT_CONFIG.python!.exclude_patterns,
+          };
+        }
+
         return {
           worktree_base_path: worktreeBasePath,
           main_branches:
@@ -95,6 +150,7 @@ export function loadConfig(): Config {
               : DEFAULT_CONFIG.main_branches,
           clean_branch: cleanBranch,
           copy_ignored_files: copyIgnoredFiles,
+          python: pythonConfig,
         };
       } catch (error) {
         console.error(`Error reading config file ${configPath}:`, error);

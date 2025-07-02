@@ -568,6 +568,26 @@ export function getMainWorktreePath(): string | null {
 }
 
 /**
+ * Pythonプロジェクトかどうかを検出する
+ */
+export function isPythonProject(projectPath: string): boolean {
+  const pythonFiles = [
+    'pyproject.toml',
+    'poetry.lock',
+    'requirements.txt',
+    'requirements-dev.txt',
+    'setup.py',
+    'setup.cfg',
+    'Pipfile',
+    'Pipfile.lock',
+    'conda.yml',
+    'environment.yml'
+  ];
+
+  return pythonFiles.some(file => existsSync(join(projectPath, file)));
+}
+
+/**
  * gitignoreされたファイルのリストを取得
  * @param workdir 検索対象のディレクトリ
  * @param patterns 検索パターン（ワイルドカード対応）
@@ -579,6 +599,21 @@ export function getIgnoredFiles(
   excludePatterns?: string[]
 ): string[] {
   const matchedFiles: string[] = [];
+  const config = loadConfig();
+  
+  // Pythonプロジェクトの場合、設定に基づいて自動除外
+  const effectiveExcludePatterns = [...(excludePatterns || [])];
+  
+  if (config.python?.auto_detect && isPythonProject(workdir)) {
+    if (config.python.exclude_venv) {
+      effectiveExcludePatterns.push('.venv', '.venv/*', '.venv/**/*');
+    }
+    
+    // Python固有の除外パターンを追加
+    if (config.python.exclude_patterns) {
+      effectiveExcludePatterns.push(...config.python.exclude_patterns);
+    }
+  }
 
   // パターンに基づいてファイルを直接検索
   function scanDirectory(dir: string, baseDir: string = workdir) {
@@ -603,9 +638,9 @@ export function getIgnoredFiles(
             let shouldInclude = false;
 
             // 除外パターンのチェック
-            if (excludePatterns) {
+            if (effectiveExcludePatterns.length > 0) {
               let isExcluded = false;
-              for (const excludePattern of excludePatterns) {
+              for (const excludePattern of effectiveExcludePatterns) {
                 if (
                   matchesPattern(entry, excludePattern) ||
                   matchesPattern(relativePath, excludePattern)

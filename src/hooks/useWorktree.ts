@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { execSync, spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { loadConfig } from '../config.js';
 import {
@@ -7,6 +8,7 @@ import {
   getMainWorktreePath,
   getIgnoredFiles,
   copyFiles,
+  isPythonProject,
 } from '../utils/git.js';
 import { escapeShellArg } from '../utils/shell.js';
 import { openWithEditor } from '../utils/editor.js';
@@ -94,6 +96,25 @@ export function useWorktree({
                   `Copied ${copiedFiles.length} ignored file(s): ${copiedFiles.join(', ')}`
                 );
               }
+            }
+          }
+        }
+
+        // Pythonプロジェクトの場合、venv再作成の提案を表示
+        if (config.python?.auto_detect && config.python?.suggest_venv_recreate && isPythonProject(worktreePath)) {
+          actions.push('💡 Python project detected! Consider recreating virtual environment:');
+          
+          // プロジェクトファイルに基づいて適切なコマンドを提案
+          const mainWorktreePath = getMainWorktreePath();
+          if (mainWorktreePath) {
+            if (existsSync(join(mainWorktreePath, 'pyproject.toml')) || existsSync(join(mainWorktreePath, 'poetry.lock'))) {
+              actions.push('   • poetry install');
+            } else if (existsSync(join(mainWorktreePath, 'Pipfile'))) {
+              actions.push('   • pipenv install');
+            } else if (existsSync(join(mainWorktreePath, 'requirements.txt'))) {
+              actions.push('   • python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt');
+            } else {
+              actions.push('   • python -m venv .venv');
             }
           }
         }
