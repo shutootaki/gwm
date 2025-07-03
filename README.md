@@ -18,7 +18,7 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 - **⚡ Swap tasks in milliseconds** — no more stash/checkout dance
 - **🎯 Spin up a worktree from any remote branch in one go**
 - **🧹 Keep your laptop squeaky-clean** — detect and safely remove stale branches
-- **🎨 Do it all without leaving the terminal** — powered by an Ink-based fuzzy finder
+- **🎨 Do it all without leaving the terminal** — powered by an Ink-based interactive finder
 
 ## 📋 Command overview
 
@@ -165,7 +165,7 @@ Create a new worktree. Comes with an interactive UI.
 
 ### `gwm go [query]`
 
-Fuzzy-find a worktree and jump into it (launches a subshell).
+Find a worktree and jump into it (launches a subshell).
 
 - Run `gwm go` for interactive selection or supply an initial query, e.g., `gwm go feat`.
 - **Key options:**
