@@ -115,7 +115,7 @@ const ListHelp: React.FC = () => (
 
 const RemoveHelp: React.FC = () => (
   <Box flexDirection="column">
-    <Text>Remove one or more worktrees with fuzzy search selection.</Text>
+    <Text>Remove one or more worktrees with search selection.</Text>
     <Text>If no query is provided, an interactive UI will be launched.</Text>
     <Text />
     <Text bold>USAGE:</Text>

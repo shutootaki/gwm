@@ -42,17 +42,19 @@ The CLI follows a component-based architecture:
 
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
 - `gwm add [branch_name]` - Add new worktree interactively or from specified branch
-- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection
-- `gwm clean` - Clean up merged/deleted worktrees with optional `--yes` flag
+- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with search selection and optional local branch cleanup (`--clean-branch`)
+- `gwm clean [-y]` - Safely clean merged/deleted worktrees with interactive selection
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
+- `gwm pull-main` - Update main branch worktrees to latest state from any directory
+- `gwm help [command]` - Show help for gwm or a specific command
 
 ## Key Features
 
 ### Interactive UI Priority
 
-- Commands without arguments launch fuzzy search interfaces
+- Commands without arguments launch search interfaces
 - Multi-select capabilities for operations like remove and clean
-- fzf-like incremental search functionality
+- incremental search functionality
 
 ### Worktree Path Convention
 
@@ -62,10 +64,9 @@ The CLI follows a component-based architecture:
 
 ### Status Indicators
 
-- `ACTIVE`: Current worktree (marked with `*`)
-- `NORMAL`: Standard worktree
-- `PRUNABLE`: Merged or deleted branches (candidates for cleanup)
-- `LOCKED`: Git-locked worktrees
+- `ACTIVE`: Current worktree (marked with `*`, yellow)
+- `MAIN`: Base main worktree (marked with `M`, cyan)
+- `OTHER`: All other worktrees (marked with `-`, white)
 
 ## Development Phases
 
@@ -74,8 +75,9 @@ The project follows a 5-phase development plan:
 1. **Foundation**: Project setup, TypeScript config, basic Ink "Hello World"
 2. **Read-only Features**: `gwm list` implementation, config file handling
 3. **Core Operations**: Interactive UI components, add/remove/go/code commands
-4. **Automation**: `gwm clean` command with merge detection
-5. **Distribution**: Error handling, documentation, npm publishing
+4. **Automation**: Added automatic local branch cleanup via `--clean-branch` / `clean_branch` config
+5. **Clean**: `gwm clean` command with merge detection and safe worktree cleanup
+6. **Distribution**: Error handling, documentation, npm publishing
 
 ## Configuration
 
@@ -84,6 +86,8 @@ Settings file: `~/.config/gwm/config.toml`
 ```toml
 worktree_base_path = "/Users/myuser/dev/worktrees"
 main_branches = ["main", "master", "develop"]
+# Branch cleanup mode: "auto" | "ask" | "never"
+clean_branch = "ask"
 ```
 
 ## Shell Integration
@@ -126,6 +130,11 @@ The tool wraps several Git commands:
 - `git worktree remove` - Remove worktrees
 - `git fetch --prune origin` - Update remote branch status
 - `git branch -r` - List remote branches
+- `git pull` - Pull latest changes in main branch worktrees
+- `git ls-remote` - Check remote branch existence for clean operations
+- `git merge-base --is-ancestor` - Check if branch is merged into main
+- `git status --porcelain` - Check for uncommitted changes
+- `git log --oneline` - Check for unpushed local commits
 
 ## Testing
 
@@ -139,7 +148,7 @@ Note: Some test files reference `ink-testing-library` which needs to be installe
 
 ## Current Implementation Status
 
-- **Core Commands**: All main commands implemented with React components
+- **Core Commands**: All main commands implemented with React components (including `pull-main`)
 - **Utilities**: Git operations, CLI parsing, configuration handling complete
 - **Testing**: Comprehensive unit tests for utilities
 - **Missing**: `ink-testing-library` dependency for UI component tests
@@ -149,3 +158,17 @@ Note: Some test files reference `ink-testing-library` which needs to be installe
 - Design and code properly with UX as the top priority
 - Always write tests when coding
 - After coding, check the operation as much as possible.
+
+## Verifying in a Local Environment (Important)
+
+Follow the steps below to test the application locally:
+
+1. `pnpm install`
+2. `pnpm build`
+3. `node dist/index.js {command}`
+
+For example, to verify the `gwm list` command, run:
+
+```shell
+node dist/index.js list
+```
