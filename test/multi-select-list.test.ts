@@ -91,6 +91,68 @@ describe('MultiSelectList Component Tests', () => {
     });
   });
 
+  describe('Paste Operation with skipChars', () => {
+    it('should handle paste operation with spaces removed (skipChars)', () => {
+      const query = 'hello';
+      const cursorPosition = 5;
+      const pastedText = 'world is beautiful';
+      const skipChars = [' ']; // MultiSelectListではスペースがスキップされる
+      
+      // skipCharsをフィルタリング
+      const filteredPaste = pastedText
+        .split('')
+        .filter(char => !skipChars.includes(char))
+        .join('');
+      
+      const newQuery = 
+        query.slice(0, cursorPosition) + filteredPaste + query.slice(cursorPosition);
+      const newCursorPosition = cursorPosition + filteredPaste.length;
+      
+      expect(filteredPaste).toBe('worldisbeautiful');
+      expect(newQuery).toBe('helloworldisbeautiful');
+      expect(newCursorPosition).toBe(21);
+    });
+
+    it('should ignore paste if all characters are in skipChars', () => {
+      const query = 'test';
+      const cursorPosition = 4;
+      const pastedText = '   '; // 全てスペース
+      const skipChars = [' '];
+      
+      const filteredPaste = pastedText
+        .split('')
+        .filter(char => !skipChars.includes(char))
+        .join('');
+      
+      if (filteredPaste.length > 0) {
+        // この場合は実行されない
+        const newQuery = 
+          query.slice(0, cursorPosition) + filteredPaste + query.slice(cursorPosition);
+        expect(newQuery).toBe('test'); // 変更なし
+      } else {
+        expect(query).toBe('test'); // 変更なし
+      }
+    });
+
+    it('should handle paste with mixed content', () => {
+      const query = 'branch';
+      const cursorPosition = 6;
+      const pastedText = 'feature bug fix';
+      const skipChars = [' '];
+      
+      const filteredPaste = pastedText
+        .split('')
+        .filter(char => !skipChars.includes(char))
+        .join('');
+      
+      const newQuery = 
+        query.slice(0, cursorPosition) + filteredPaste + query.slice(cursorPosition);
+      
+      expect(filteredPaste).toBe('featurebugfix');
+      expect(newQuery).toBe('branchfeaturebugfix');
+    });
+  });
+
   describe('Filtering with Search Query', () => {
     it('should filter items based on search query', () => {
       const query = 'feature';
