@@ -1,8 +1,9 @@
 import { execSync } from 'child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
-import { join, dirname, relative } from 'path';
+import { existsSync, readdirSync, statSync } from 'fs';
+import { join, dirname, relative, resolve } from 'path';
 import { loadConfig } from '../config.js';
 import { escapeShellArg } from './shell.js';
+import { isVirtualEnv } from './virtualenv.js';
 
 export interface Worktree {
   path: string;
@@ -576,7 +577,13 @@ export function getMainWorktreePath(): string | null {
 export function getIgnoredFiles(
   workdir: string,
   patterns: string[],
-  excludePatterns?: string[]
+  excludePatterns?: string[],
+  /**
+   * 仮想環境ディレクトリをスキップするかどうか。
+   * true  : isVirtualEnv() に一致したディレクトリを走査対象から除外 (既定)
+   * false : 仮想環境も通常ディレクトリとして扱う
+   */
+  skipVirtualEnvs: boolean = true
 ): string[] {
   const matchedFiles: string[] = [];
 
@@ -591,6 +598,22 @@ export function getIgnoredFiles(
 
         // .gitディレクトリはスキップ
         if (entry === '.git') continue;
+
+        // ===== 追加: ディレクトリ自体が除外パターン / 仮想環境に一致する場合は再帰しない =====
+        if (
+          excludePatterns &&
+          excludePatterns.some(
+            (p) => matchesPattern(entry, p) || matchesPattern(relativePath, p)
+          )
+        ) {
+          // エントリ自体が除外対象
+          continue;
+        }
+
+        // 仮想環境ディレクトリの除外はフラグに基づいて決定
+        if (skipVirtualEnvs && isVirtualEnv(relativePath)) {
+          continue;
+        }
 
         try {
           const stat = statSync(fullPath);
@@ -675,43 +698,186 @@ function matchesPattern(file: string, pattern: string): boolean {
   return regex.test(file);
 }
 
+export interface CopyFilesResult {
+  copied: string[];
+  skippedVirtualEnvs: string[];
+  skippedOversize: string[];
+}
+
 /**
  * ファイルを別のディレクトリにコピー
+ * シンボリックリンクを適切に処理し、仮想環境は除外
  * @param sourceDir コピー元ディレクトリ
  * @param targetDir コピー先ディレクトリ
  * @param files コピーするファイルのリスト（相対パス）
  * @returns コピーしたファイルのリスト
  */
-export function copyFiles(
+export async function copyFiles(
   sourceDir: string,
   targetDir: string,
   files: string[]
-): string[] {
-  const copiedFiles: string[] = [];
+): Promise<CopyFilesResult> {
+  // Node 組み込み promises API を使用
+  const { copyFile, mkdir, lstat, readlink, symlink, realpath } = await import(
+    'fs/promises'
+  );
+  const os = await import('os');
 
-  for (const file of files) {
+  const copiedFiles: string[] = [];
+  const skippedVirtualEnvSet = new Set<string>();
+  const skippedOversize: string[] = [];
+
+  const { virtual_env_handling } = loadConfig();
+  const isIsolationEnabled = (() => {
+    if (!virtual_env_handling) return false; // デフォルト disabled
+    if (typeof virtual_env_handling.isolate_virtual_envs === 'boolean') {
+      return virtual_env_handling.isolate_virtual_envs;
+    }
+    // 後方互換: mode
+    return virtual_env_handling.mode === 'skip';
+  })();
+
+  // サイズ上限 (バイト)
+  const maxFileSizeBytes =
+    virtual_env_handling?.max_file_size_mb !== undefined
+      ? virtual_env_handling.max_file_size_mb >= 0
+        ? virtual_env_handling.max_file_size_mb * 1024 * 1024
+        : undefined
+      : virtual_env_handling?.max_copy_size_mb &&
+          virtual_env_handling.max_copy_size_mb > 0
+        ? virtual_env_handling.max_copy_size_mb * 1024 * 1024
+        : undefined;
+
+  const maxDirSizeBytes =
+    virtual_env_handling?.max_dir_size_mb !== undefined
+      ? virtual_env_handling.max_dir_size_mb >= 0
+        ? virtual_env_handling.max_dir_size_mb * 1024 * 1024
+        : undefined
+      : undefined;
+
+  // ディレクトリ単位で累積サイズを追跡
+  const dirSizeMap = new Map<string, number>();
+
+  // 並列度
+  const parallelism =
+    virtual_env_handling?.copy_parallelism !== undefined
+      ? virtual_env_handling.copy_parallelism === 0
+        ? os.cpus().length
+        : virtual_env_handling.copy_parallelism
+      : 4;
+
+  const active: Promise<void>[] = [];
+
+  async function processFile(file: string): Promise<void> {
     try {
       const sourcePath = join(sourceDir, file);
       const targetPath = join(targetDir, file);
 
-      // ソースファイルが存在しない場合はスキップ
-      if (!existsSync(sourcePath)) {
-        continue;
+      if (!existsSync(sourcePath)) return;
+
+      if (isIsolationEnabled && isVirtualEnv(file)) {
+        // 先頭セグメントだけではなく、相対パス全体を保持して詳細を提供する
+        skippedVirtualEnvSet.add(file);
+        return;
       }
 
-      // ターゲットディレクトリを作成
-      const targetFileDir = dirname(targetPath);
-      if (!existsSync(targetFileDir)) {
-        mkdirSync(targetFileDir, { recursive: true });
+      const lst = await lstat(sourcePath);
+
+      if (!lst.isSymbolicLink() && maxFileSizeBytes !== undefined) {
+        if (lst.size > maxFileSizeBytes) {
+          skippedOversize.push(file);
+          return;
+        }
       }
 
-      // ファイルをコピー
-      copyFileSync(sourcePath, targetPath);
-      copiedFiles.push(file);
+      if (!lst.isSymbolicLink() && maxDirSizeBytes !== undefined) {
+        const dirRel = dirname(file) || '.';
+        let violates = false;
+        let cursor = dirRel;
+        while (true) {
+          const current = dirSizeMap.get(cursor) ?? 0;
+          if (current + lst.size > maxDirSizeBytes) {
+            violates = true;
+            break;
+          }
+          if (cursor === '.') break;
+          const parent = dirname(cursor);
+          if (parent === cursor) break;
+          cursor = parent;
+        }
+
+        if (violates) {
+          skippedOversize.push(file);
+          return;
+        }
+
+        // サイズ加算
+        cursor = dirRel;
+        while (true) {
+          const current = dirSizeMap.get(cursor) ?? 0;
+          dirSizeMap.set(cursor, current + lst.size);
+          if (cursor === '.') break;
+          const parent = dirname(cursor);
+          if (parent === cursor) break;
+          cursor = parent;
+        }
+      }
+
+      // ディレクトリ作成
+      const targetDirName = dirname(targetPath);
+      if (!existsSync(targetDirName))
+        await mkdir(targetDirName, { recursive: true });
+
+      if (lst.isSymbolicLink()) {
+        const linkTarget = await readlink(sourcePath);
+        const absoluteLinkTarget = resolve(dirname(sourcePath), linkTarget);
+
+        let rewrittenTarget = absoluteLinkTarget;
+        if (isIsolationEnabled) {
+          try {
+            const realSourceDir = await realpath(sourceDir);
+            const targetReal = await realpath(absoluteLinkTarget);
+            if (targetReal.startsWith(realSourceDir)) {
+              const relFromSource = relative(realSourceDir, targetReal);
+              rewrittenTarget = join(targetDir, relFromSource);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        let linkSrc = rewrittenTarget;
+        if (rewrittenTarget !== absoluteLinkTarget) {
+          linkSrc = relative(dirname(targetPath), rewrittenTarget);
+        }
+
+        await symlink(linkSrc, targetPath);
+        copiedFiles.push(file);
+      } else {
+        await copyFile(sourcePath, targetPath);
+        copiedFiles.push(file);
+      }
     } catch {
-      // エラーは無視して次のファイルに進む
+      /* ignore individual errors */
     }
   }
 
-  return copiedFiles;
+  for (const file of files) {
+    const p = processFile(file).then(() => {
+      const idx = active.indexOf(p);
+      if (idx >= 0) active.splice(idx, 1);
+    });
+    active.push(p);
+    if (active.length >= parallelism) {
+      await Promise.race(active);
+    }
+  }
+
+  await Promise.all(active);
+
+  return {
+    copied: copiedFiles,
+    skippedVirtualEnvs: [...skippedVirtualEnvSet],
+    skippedOversize,
+  };
 }

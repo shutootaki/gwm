@@ -41,8 +41,10 @@ const mockLoadConfig = vi.mocked(loadConfig);
 function HookTester(props: any) {
   const { createWorktree } = useWorktree(props.options);
   useEffect(() => {
-    createWorktree('feature-test', false);
-  }, []);
+    void (async () => {
+      await createWorktree('feature-test', false);
+    })();
+  }, [createWorktree]);
   return null;
 }
 
@@ -70,11 +72,15 @@ describe('useWorktree copy_ignored_files', () => {
   });
 
   // copy_ignored_filesが有効な場合のファイルコピーをテスト
-  it('should copy ignored files when copy_ignored_files is enabled', () => {
+  it('should copy ignored files when copy_ignored_files is enabled', async () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue('/Users/test/project');
     mockGetIgnoredFiles.mockReturnValue(['.env', '.env.local']);
-    mockCopyFiles.mockReturnValue(['.env', '.env.local']);
+    mockCopyFiles.mockResolvedValue({
+      copied: ['.env', '.env.local'],
+      skippedVirtualEnvs: [],
+      skippedOversize: [],
+    });
 
     render(
       React.createElement(HookTester, {
@@ -85,11 +91,17 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
+    // 非同期処理が完了するまで少し待機
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
     expect(mockGetMainWorktreePath).toHaveBeenCalled();
-    expect(mockGetIgnoredFiles).toHaveBeenCalledWith(
-      '/Users/test/project',
-      ['.env', '.env.*'],
-      ['.env.example']
+    // 第3引数 (excludePatterns) には仮想環境パターンも追加されるため配列内容を柔軟に検証
+    const ignoredCallArgs = mockGetIgnoredFiles.mock.calls[0];
+    expect(ignoredCallArgs[0]).toBe('/Users/test/project');
+    expect(ignoredCallArgs[1]).toEqual(['.env', '.env.*']);
+    expect(Array.isArray(ignoredCallArgs[2])).toBe(true);
+    expect(ignoredCallArgs[2]).toEqual(
+      expect.arrayContaining(['.env.example'])
     );
     expect(mockCopyFiles).toHaveBeenCalledWith(
       '/Users/test/project',
@@ -107,7 +119,11 @@ describe('useWorktree copy_ignored_files', () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue('/Users/test/project');
     mockGetIgnoredFiles.mockReturnValue([]);
-    mockCopyFiles.mockReturnValue([]);
+    mockCopyFiles.mockResolvedValue({
+      copied: [],
+      skippedVirtualEnvs: [],
+      skippedOversize: [],
+    });
 
     render(
       React.createElement(HookTester, {
@@ -190,17 +206,22 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
+    // copy_ignored_filesが無効で隔離も無効なので、getMainWorktreePath等は呼ばれない
     expect(mockGetMainWorktreePath).not.toHaveBeenCalled();
     expect(mockGetIgnoredFiles).not.toHaveBeenCalled();
     expect(mockCopyFiles).not.toHaveBeenCalled();
   });
 
   // 部分的なコピー成功のテスト
-  it('should handle partial copy success', () => {
+  it('should handle partial copy success', async () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue('/Users/test/project');
     mockGetIgnoredFiles.mockReturnValue(['.env', '.env.local', '.env.test']);
-    mockCopyFiles.mockReturnValue(['.env', '.env.local']); // .env.testはコピー失敗
+    mockCopyFiles.mockResolvedValue({
+      copied: ['.env', '.env.local'],
+      skippedVirtualEnvs: [],
+      skippedOversize: [],
+    }); // .env.testはコピー失敗
 
     render(
       React.createElement(HookTester, {
@@ -210,6 +231,9 @@ describe('useWorktree copy_ignored_files', () => {
         },
       })
     );
+
+    // 非同期処理が完了するまで少し待機
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockCopyFiles).toHaveBeenCalledWith(
       '/Users/test/project',
@@ -230,7 +254,11 @@ describe('useWorktree copy_ignored_files', () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue('/Users/test/project');
     mockGetIgnoredFiles.mockReturnValue(['.env']);
-    mockCopyFiles.mockReturnValue(['.env']);
+    mockCopyFiles.mockResolvedValue({
+      copied: ['.env'],
+      skippedVirtualEnvs: [],
+      skippedOversize: [],
+    });
 
     render(
       React.createElement(HookTester, {
@@ -241,6 +269,9 @@ describe('useWorktree copy_ignored_files', () => {
         },
       })
     );
+
+    // 非同期処理が完了するまで少し待機
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(onSuccess).toHaveBeenCalledWith({
       path: '/Users/test/git-worktrees/project/feature-test',

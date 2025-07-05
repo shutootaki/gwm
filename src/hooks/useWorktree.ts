@@ -8,6 +8,11 @@ import {
   getIgnoredFiles,
   copyFiles,
 } from '../utils/git.js';
+import {
+  detectVirtualEnvs,
+  suggestSetupCommands,
+  getVirtualEnvExcludePatterns,
+} from '../utils/virtualenv.js';
 import { escapeShellArg } from '../utils/shell.js';
 import { openWithEditor } from '../utils/editor.js';
 import { formatErrorForDisplay } from '../utils/index.js';
@@ -32,7 +37,7 @@ export function useWorktree({
   const config = useMemo(() => loadConfig(), []);
 
   const createWorktree = useCallback(
-    (branch: string, isRemote: boolean) => {
+    async (branch: string, isRemote: boolean) => {
       try {
         const repoName = getRepositoryName();
         const sanitizedBranch = branch.replace(/\//g, '-');
@@ -43,6 +48,15 @@ export function useWorktree({
         );
 
         let command: string;
+
+        // 仮想環境隔離機能が有効かどうか判定（後方互換）
+        const isIsolationEnabled = (() => {
+          const veh = config.virtual_env_handling;
+          if (!veh) return false;
+          if (typeof veh.isolate_virtual_envs === 'boolean')
+            return veh.isolate_virtual_envs;
+          return veh.mode === 'skip';
+        })();
 
         // まずローカルブランチの存在を確認（isRemote= true の場合も含む）
         const localExists = (() => {
@@ -80,20 +94,54 @@ export function useWorktree({
             const ignoredFiles = getIgnoredFiles(
               mainWorktreePath,
               config.copy_ignored_files.patterns,
-              config.copy_ignored_files.exclude_patterns
+              [
+                ...(config.copy_ignored_files.exclude_patterns ?? []),
+                ...(isIsolationEnabled ? getVirtualEnvExcludePatterns() : []),
+              ],
+              isIsolationEnabled
             );
 
             if (ignoredFiles.length > 0) {
-              const copiedFiles = copyFiles(
-                mainWorktreePath,
-                worktreePath,
-                ignoredFiles
-              );
-              if (copiedFiles.length > 0) {
+              const { copied, skippedVirtualEnvs, skippedOversize } =
+                await copyFiles(mainWorktreePath, worktreePath, ignoredFiles);
+
+              if (copied.length > 0) {
                 actions.push(
-                  `Copied ${copiedFiles.length} ignored file(s): ${copiedFiles.join(', ')}`
+                  `Copied ${copied.length} ignored file(s): ${copied.join(', ')}`
                 );
               }
+
+              if (skippedVirtualEnvs.length > 0) {
+                actions.push(
+                  `Skipped virtual environment(s): ${skippedVirtualEnvs.join(', ')}`
+                );
+              }
+
+              if (skippedOversize.length > 0) {
+                actions.push(
+                  `Skipped oversize file(s): ${skippedOversize.join(', ')}`
+                );
+              }
+            }
+          }
+        }
+
+        // 仮想環境の検出とセットアップ提案（隔離有効時のみ）
+        if (isIsolationEnabled) {
+          const mainPath = getMainWorktreePath();
+          if (mainPath) {
+            const detectedEnvs = detectVirtualEnvs(mainPath);
+            if (detectedEnvs.length > 0) {
+              actions.push(
+                '',
+                '📦 Virtual environments detected in the source worktree:',
+                ...detectedEnvs.map(
+                  (env) => `  - ${env.language}: ${env.path}`
+                ),
+                '',
+                '💡 To set up your development environment, run:',
+                ...suggestSetupCommands(detectedEnvs)
+              );
             }
           }
         }

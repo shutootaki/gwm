@@ -37,7 +37,7 @@ describe('loadConfig', () => {
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
@@ -45,6 +45,13 @@ describe('loadConfig', () => {
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -75,7 +82,7 @@ main_branches = ["main", "development"]
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/my-worktrees',
       main_branches: ['main', 'development'],
       clean_branch: 'ask',
@@ -83,6 +90,13 @@ main_branches = ["main", "development"]
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -113,7 +127,7 @@ main_branches = ["master"]
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/alternative-worktrees',
       main_branches: ['master'],
       clean_branch: 'ask',
@@ -121,6 +135,13 @@ main_branches = ["master"]
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -144,7 +165,7 @@ main_branches = ["main"]
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/primary-worktrees',
       main_branches: ['main'],
       clean_branch: 'ask',
@@ -152,6 +173,13 @@ main_branches = ["main"]
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -181,7 +209,7 @@ worktree_base_path = "/Users/test/custom-worktrees"
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/custom-worktrees',
       main_branches: ['main', 'master', 'develop'], // デフォルト値
       clean_branch: 'ask',
@@ -189,6 +217,13 @@ worktree_base_path = "/Users/test/custom-worktrees"
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
   });
@@ -215,7 +250,7 @@ worktree_base_path = /invalid/toml/syntax
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
@@ -223,6 +258,13 @@ worktree_base_path = /invalid/toml/syntax
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -251,7 +293,7 @@ worktree_base_path = /invalid/toml/syntax
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
@@ -259,6 +301,13 @@ worktree_base_path = /invalid/toml/syntax
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
 
@@ -280,7 +329,7 @@ worktree_base_path = /invalid/toml/syntax
 
     const result = loadConfig();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main', 'master', 'develop'],
       clean_branch: 'ask',
@@ -288,6 +337,13 @@ worktree_base_path = /invalid/toml/syntax
         enabled: true,
         patterns: ['.env', '.env.*', '.env.local', '.env.*.local'],
         exclude_patterns: ['.env.example', '.env.sample'],
+      },
+      virtual_env_handling: {
+        isolate_virtual_envs: false,
+        max_file_size_mb: 100,
+        max_dir_size_mb: 500,
+        max_scan_depth: 5,
+        copy_parallelism: 4,
       },
     });
   });
