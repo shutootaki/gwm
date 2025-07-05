@@ -147,15 +147,27 @@ export function useEditableText(options: UseEditableTextOptions = {}) {
       return;
     }
 
-    // 通常の文字入力（スキップ指定されていない）
-    if (input && input.length === 1 && !skipChars.includes(input)) {
-      setState((prev) => ({
-        value:
-          prev.value.slice(0, prev.cursorPosition) +
-          input +
-          prev.value.slice(prev.cursorPosition),
-        cursorPosition: prev.cursorPosition + 1,
-      }));
+    // 通常の文字入力およびペースト操作の処理
+    if (input) {
+      // skipCharsに含まれる文字をフィルタリング
+      const filteredInput =
+        skipChars.length > 0
+          ? input
+              .split('')
+              .filter((char) => !skipChars.includes(char))
+              .join('')
+          : input;
+
+      // フィルタリング後にテキストが残っている場合のみ処理
+      if (filteredInput.length > 0) {
+        setState((prev) => ({
+          value:
+            prev.value.slice(0, prev.cursorPosition) +
+            filteredInput +
+            prev.value.slice(prev.cursorPosition),
+          cursorPosition: prev.cursorPosition + filteredInput.length,
+        }));
+      }
     }
   });
 

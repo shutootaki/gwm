@@ -42,7 +42,7 @@ The CLI follows a component-based architecture:
 
 - `gwm list` (alias: `ls`) - Display worktree list with status indicators
 - `gwm add [branch_name]` - Add new worktree interactively or from specified branch
-- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with fuzzy search selection and optional local branch cleanup (`--clean-branch`)
+- `gwm remove [query]` (alias: `rm`) - Remove worktree(s) with search selection and optional local branch cleanup (`--clean-branch`)
 - `gwm clean [-y]` - Safely clean merged/deleted worktrees with interactive selection
 - `gwm go [query]` - Output worktree path for shell integration (used with `wgo()` shell function)
 - `gwm pull-main` - Update main branch worktrees to latest state from any directory
@@ -52,9 +52,9 @@ The CLI follows a component-based architecture:
 
 ### Interactive UI Priority
 
-- Commands without arguments launch fuzzy search interfaces
+- Commands without arguments launch search interfaces
 - Multi-select capabilities for operations like remove and clean
-- fzf-like incremental search functionality
+- incremental search functionality
 
 ### Worktree Path Convention
 

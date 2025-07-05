@@ -1,4 +1,3 @@
- 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getWorktreesWithStatus } from '../src/utils/git.js';
 
@@ -123,8 +122,8 @@ describe('gwm go command integration tests', () => {
     expect(filteredWorktrees[1].branch).toBe('refs/heads/feature-ui');
   });
 
-  // ファジーサーチ機能のテスト
-  it('should support fuzzy search functionality', async () => {
+  // 検索機能のテスト
+  it('should support search functionality', async () => {
     const mockWorktrees = [
       {
         path: '/Users/test/project',
@@ -156,8 +155,8 @@ describe('gwm go command integration tests', () => {
 
     // const _query = 'usr'; // query removed as it was unused
 
-    // ファジーサーチ（部分一致で "usr" -> "user"）
-    const fuzzyMatches = mockWorktrees
+    // 部分一致検索（"user" を含むブランチ）
+    const searchMatches = mockWorktrees
       .filter(
         (w) =>
           w.branch.toLowerCase().includes('user') ||
@@ -165,11 +164,11 @@ describe('gwm go command integration tests', () => {
       )
       .filter((w) => !w.isMain);
 
-    expect(fuzzyMatches).toHaveLength(2);
-    expect(fuzzyMatches[0].branch).toBe(
+    expect(searchMatches).toHaveLength(2);
+    expect(searchMatches[0].branch).toBe(
       'refs/heads/feature-user-authentication'
     );
-    expect(fuzzyMatches[1].branch).toBe('refs/heads/fix-user-login');
+    expect(searchMatches[1].branch).toBe('refs/heads/fix-user-login');
   });
 
   // ユーザーキャンセル時の動作をテスト

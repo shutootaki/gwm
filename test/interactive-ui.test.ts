@@ -36,8 +36,8 @@ interface SelectInputProps {
   initialIndex?: number;
 }
 
-// ファジーサーチ機能のモック実装
-function fuzzySearch(items: SelectItem[], query: string): SelectItem[] {
+// 検索機能のモック実装
+function search(items: SelectItem[], query: string): SelectItem[] {
   if (!query) return items;
 
   return items.filter(
@@ -257,8 +257,8 @@ describe('Interactive UI Integration Tests', () => {
     });
   });
 
-  describe('Fuzzy Search Functionality', () => {
-    // ファジーサーチの基本機能をテスト
+  describe('Search Functionality', () => {
+    // 検索の基本機能をテスト
     it('should filter items based on search query', () => {
       const items: SelectItem[] = [
         { label: 'feature-auth', value: 'feature-auth' },
@@ -268,7 +268,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = 'feature';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toHaveLength(2);
       expect(filteredItems[0].label).toBe('feature-auth');
@@ -284,7 +284,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = 'feature';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toHaveLength(1);
       expect(filteredItems[0].label).toBe('Feature-Auth');
@@ -299,7 +299,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = 'user';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toHaveLength(2);
       expect(filteredItems[0].label).toBe('user-authentication');
@@ -315,7 +315,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = '';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toEqual(items);
     });
@@ -328,7 +328,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = 'nonexistent';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toHaveLength(0);
     });
@@ -537,7 +537,7 @@ describe('Interactive UI Integration Tests', () => {
       ];
 
       const query = 'nonexistent';
-      const filteredItems = fuzzySearch(items, query);
+      const filteredItems = search(items, query);
 
       expect(filteredItems).toHaveLength(0);
     });
