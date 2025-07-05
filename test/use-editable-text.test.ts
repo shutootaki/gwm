@@ -248,6 +248,106 @@ describe('useEditableText logic', () => {
     });
   });
 
+  describe('ペースト操作のテスト', () => {
+    it('複数文字のペーストが正しく処理される', () => {
+      let state = { value: 'hello world', cursorPosition: 5 };
+      const pastedText = 'beautiful ';
+
+      // ペースト操作をシミュレート
+      state = {
+        value:
+          state.value.slice(0, state.cursorPosition) +
+          pastedText +
+          state.value.slice(state.cursorPosition),
+        cursorPosition: state.cursorPosition + pastedText.length,
+      };
+
+      expect(state.value).toBe('hellobeautiful  world');
+      expect(state.cursorPosition).toBe(15);
+    });
+
+    it('skipCharsを含むペーストがフィルタリングされる', () => {
+      const skipChars = [' ', '\t'];
+      let state = { value: 'test', cursorPosition: 4 };
+      const pastedText = 'hello world\ttab';
+
+      // skipCharsをフィルタリング
+      const filteredText = pastedText
+        .split('')
+        .filter((char) => !skipChars.includes(char))
+        .join('');
+
+      state = {
+        value:
+          state.value.slice(0, state.cursorPosition) +
+          filteredText +
+          state.value.slice(state.cursorPosition),
+        cursorPosition: state.cursorPosition + filteredText.length,
+      };
+
+      expect(state.value).toBe('testhelloworldtab');
+      expect(state.cursorPosition).toBe(17);
+    });
+
+    it('空のペーストは無視される', () => {
+      const skipChars = [' '];
+      const originalState = { value: 'test', cursorPosition: 2 };
+      let state = { ...originalState };
+      const pastedText = '   '; // 全てskipChars
+
+      // skipCharsをフィルタリング
+      const filteredText = pastedText
+        .split('')
+        .filter((char) => !skipChars.includes(char))
+        .join('');
+
+      if (filteredText.length > 0) {
+        state = {
+          value:
+            state.value.slice(0, state.cursorPosition) +
+            filteredText +
+            state.value.slice(state.cursorPosition),
+          cursorPosition: state.cursorPosition + filteredText.length,
+        };
+      }
+
+      expect(state).toEqual(originalState);
+    });
+
+    it('カーソル位置でのペーストが正しく処理される', () => {
+      // 先頭でのペースト
+      let state = { value: 'world', cursorPosition: 0 };
+      const pastedText = 'hello ';
+
+      state = {
+        value:
+          state.value.slice(0, state.cursorPosition) +
+          pastedText +
+          state.value.slice(state.cursorPosition),
+        cursorPosition: state.cursorPosition + pastedText.length,
+      };
+
+      expect(state.value).toBe('hello world');
+      expect(state.cursorPosition).toBe(6);
+    });
+
+    it('絵文字を含むペーストが正しく処理される', () => {
+      let state = { value: 'Hello ', cursorPosition: 6 };
+      const pastedText = '🌍 World 🎉';
+
+      state = {
+        value:
+          state.value.slice(0, state.cursorPosition) +
+          pastedText +
+          state.value.slice(state.cursorPosition),
+        cursorPosition: state.cursorPosition + pastedText.length,
+      };
+
+      expect(state.value).toBe('Hello 🌍 World 🎉');
+      expect(state.cursorPosition).toBe(17);
+    });
+  });
+
   describe('高速入力の問題', () => {
     it('連続した文字入力が正しく処理される', () => {
       // React の状態更新が非同期であることを考慮したテスト
