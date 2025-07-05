@@ -108,7 +108,7 @@ describe('useWorktree virtual environment detection', () => {
     mockDetectVirtualEnvs.mockReturnValue(detectedEnvs);
     mockSuggestSetupCommands.mockReturnValue(setupCommands);
     mockGetIgnoredFiles.mockReturnValue(['.env']);
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: ['.env'],
       skippedVirtualEnvs: [],
       skippedOversize: [],
@@ -170,7 +170,7 @@ describe('useWorktree virtual environment detection', () => {
     mockDetectVirtualEnvs.mockReturnValue(detectedEnvs);
     mockSuggestSetupCommands.mockReturnValue(setupCommands);
     mockGetIgnoredFiles.mockReturnValue([]);
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: [],
       skippedVirtualEnvs: [],
       skippedOversize: [],
@@ -199,7 +199,7 @@ describe('useWorktree virtual environment detection', () => {
   it('should not add virtual environment messages when none detected', () => {
     mockDetectVirtualEnvs.mockReturnValue([]);
     mockGetIgnoredFiles.mockReturnValue([]);
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: [],
       skippedVirtualEnvs: [],
       skippedOversize: [],
@@ -230,7 +230,7 @@ describe('useWorktree virtual environment detection', () => {
     mockGetIgnoredFiles.mockReturnValue(['.env', '.venv', 'node_modules']);
 
     // copyFilesの実装をモック
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: ['.env'],
       skippedVirtualEnvs: ['.venv', 'node_modules'],
       skippedOversize: [],
@@ -340,7 +340,7 @@ describe('useWorktree virtual environment detection', () => {
     });
 
     mockGetIgnoredFiles.mockReturnValue(['.env']);
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: ['.env'],
       skippedVirtualEnvs: [],
       skippedOversize: [],
@@ -391,7 +391,7 @@ describe('useWorktree virtual environment detection', () => {
     });
 
     mockGetIgnoredFiles.mockReturnValue(['.env']);
-    mockCopyFiles.mockReturnValue({
+    mockCopyFiles.mockResolvedValue({
       copied: ['.env'],
       skippedVirtualEnvs: [],
       skippedOversize: [],

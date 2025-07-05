@@ -617,7 +617,7 @@ describe('copyFiles', () => {
     const files = ['.env', '.env.readonly'];
 
     mockExistsSync.mockReturnValue(true);
-    _mockCopyFileAsync.mockImplementation(async (src) => {
+    _mockCopyFileAsync.mockImplementation(async (src: string) => {
       if ((src as string).includes('.env.readonly')) {
         throw new Error('Permission denied');
       }
@@ -651,7 +651,7 @@ describe('copyFiles', () => {
     const files = ['.env', '.venv', 'node_modules', 'config.json'];
 
     mockExistsSync.mockReturnValue(true);
-    mockIsVirtualEnv.mockImplementation((p) => {
+    mockIsVirtualEnv.mockImplementation((p: any) => {
       const path = p as string;
       return path === '.venv' || path === 'node_modules';
     });
@@ -724,16 +724,16 @@ describe('copyFiles', () => {
     const files = ['.env', '.venv', 'symlink', 'regular.txt'];
 
     mockExistsSync.mockReturnValue(true);
-    mockIsVirtualEnv.mockImplementation((path) => path === '.venv');
+    mockIsVirtualEnv.mockImplementation((path: any) => path === '.venv');
     mockLstatSync.mockImplementation(
-      (p) =>
+      (p: any) =>
         ({
           isSymbolicLink: () => (p as string).includes('symlink'),
           size: 0,
         }) as any
     );
     mockLstatAsync.mockImplementation(
-      async (p) =>
+      async (p: any) =>
         ({
           isSymbolicLink: () => (p as string).includes('symlink'),
           size: 0,

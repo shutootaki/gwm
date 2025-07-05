@@ -9,9 +9,9 @@ import {
 } from '../src/utils/virtualenv.js';
 
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual: any = await importOriginal();
   return {
-    ...actual,
+    ...(actual as any),
     existsSync: vi.fn(),
     readdirSync: vi.fn(),
     statSync: vi.fn(),
