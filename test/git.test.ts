@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
   statSync,
+  lstatSync,
   type Stats,
 } from 'fs';
+import {
+  lstat as lstatAsync,
+  copyFile as copyFileAsync,
+  mkdir as mkdirAsync,
+  readlink as readlinkAsync,
+  symlink as symlinkAsync,
+  realpath as realpathAsync,
+} from 'fs/promises';
 import { join } from 'path';
 import {
   parseWorktrees,
@@ -18,6 +26,7 @@ import {
   getIgnoredFiles,
   copyFiles,
 } from '../src/utils/git.js';
+import { isVirtualEnv } from '../src/utils/virtualenv.js';
 
 // execSyncをモック化
 vi.mock('child_process', () => ({
@@ -26,11 +35,28 @@ vi.mock('child_process', () => ({
 
 // fsモジュールをモック化
 vi.mock('fs', () => ({
-  copyFileSync: vi.fn(),
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
   readdirSync: vi.fn(),
   statSync: vi.fn(),
+  lstatSync: vi.fn(),
+  readlinkSync: vi.fn(),
+  symlinkSync: vi.fn(),
+}));
+
+// fs/promises モジュールをモック化 (非同期API)
+vi.mock('fs/promises', () => ({
+  copyFile: vi.fn(),
+  mkdir: vi.fn(),
+  lstat: vi.fn(),
+  readlink: vi.fn(),
+  symlink: vi.fn(),
+  realpath: vi.fn(async (p: string) => p),
+}));
+
+// virtualenvモジュールをモック化
+vi.mock('../src/utils/virtualenv.js', () => ({
+  isVirtualEnv: vi.fn(),
 }));
 
 // loadConfigをモック化
@@ -39,19 +65,41 @@ vi.mock('../src/config.js', () => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master'],
     clean_branch: 'ask',
+    virtual_env_handling: {
+      isolate_virtual_envs: true,
+    },
   })),
 }));
 
 const mockExecSync = vi.mocked(execSync);
-const mockCopyFileSync = vi.mocked(copyFileSync);
 const mockExistsSync = vi.mocked(existsSync);
 const mockMkdirSync = vi.mocked(mkdirSync);
 const mockReaddirSync = vi.mocked(readdirSync);
 const mockStatSync = vi.mocked(statSync);
+const mockLstatSync = vi.mocked(lstatSync);
+const mockIsVirtualEnv = vi.mocked(isVirtualEnv);
+
+// 非同期APIのモック
+const mockLstatAsync = vi.mocked(lstatAsync as any);
+const _mockCopyFileAsync = vi.mocked(copyFileAsync as any);
+const _mockMkdirAsync = vi.mocked(mkdirAsync as any);
+const _mockReadlinkAsync = vi.mocked(readlinkAsync as any);
+const _mockSymlinkAsync = vi.mocked(symlinkAsync as any);
+const mockRealpathAsync = vi.mocked(realpathAsync as any);
 
 describe('parseWorktrees', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 非同期APIのデフォルトモック挙動
+    mockLstatAsync.mockResolvedValue({
+      isSymbolicLink: () => false,
+      size: 0,
+    } as any);
+    _mockCopyFileAsync.mockResolvedValue(undefined);
+    _mockMkdirAsync.mockResolvedValue(undefined);
+    _mockReadlinkAsync.mockResolvedValue('');
+    _mockSymlinkAsync.mockResolvedValue(undefined);
+    mockRealpathAsync.mockImplementation(async (p: string) => p);
   });
 
   // git worktree list --porcelain出力の正常な解析をテスト
@@ -490,7 +538,7 @@ describe('copyFiles', () => {
   });
 
   // ファイルの正常なコピーをテスト
-  it('should copy files successfully', () => {
+  it('should copy files successfully', async () => {
     const sourceDir = '/Users/test/project';
     const targetDir = '/Users/test/git-worktrees/project/feature-1';
     const files = ['.env', 'config/.env.local'];
@@ -506,27 +554,31 @@ describe('copyFiles', () => {
       return true;
     });
 
-    mockCopyFileSync.mockImplementation(() => {});
+    _mockCopyFileAsync.mockResolvedValue(undefined);
     mockMkdirSync.mockImplementation(() => undefined);
+    mockIsVirtualEnv.mockReturnValue(false);
+    const statObj = { isSymbolicLink: () => false, size: 0 } as any;
+    mockLstatSync.mockReturnValue(statObj);
+    mockLstatAsync.mockResolvedValue(statObj);
 
-    const result = copyFiles(sourceDir, targetDir, files);
+    const result = await copyFiles(sourceDir, targetDir, files);
 
-    expect(result).toEqual(['.env', 'config/.env.local']);
-    expect(mockMkdirSync).toHaveBeenCalledWith(join(targetDir, 'config'), {
+    expect(result.copied).toEqual(['.env', 'config/.env.local']);
+    expect(_mockMkdirAsync).toHaveBeenCalledWith(join(targetDir, 'config'), {
       recursive: true,
     });
-    expect(mockCopyFileSync).toHaveBeenCalledWith(
+    expect(_mockCopyFileAsync).toHaveBeenCalledWith(
       join(sourceDir, '.env'),
       join(targetDir, '.env')
     );
-    expect(mockCopyFileSync).toHaveBeenCalledWith(
+    expect(_mockCopyFileAsync).toHaveBeenCalledWith(
       join(sourceDir, 'config/.env.local'),
       join(targetDir, 'config/.env.local')
     );
   });
 
   // 存在しないソースファイルのスキップをテスト
-  it('should skip non-existent source files', () => {
+  it('should skip non-existent source files', async () => {
     const sourceDir = '/Users/test/project';
     const targetDir = '/Users/test/git-worktrees/project/feature-1';
     const files = ['.env', '.env.missing'];
@@ -542,46 +594,158 @@ describe('copyFiles', () => {
       return true;
     });
 
-    mockCopyFileSync.mockImplementation(() => {});
+    _mockCopyFileAsync.mockResolvedValue(undefined);
+    mockIsVirtualEnv.mockReturnValue(false);
+    const statObj2 = { isSymbolicLink: () => false, size: 0 } as any;
+    mockLstatSync.mockReturnValue(statObj2);
+    mockLstatAsync.mockResolvedValue(statObj2);
 
-    const result = copyFiles(sourceDir, targetDir, files);
+    const result = await copyFiles(sourceDir, targetDir, files);
 
-    expect(result).toEqual(['.env']);
-    expect(mockCopyFileSync).toHaveBeenCalledTimes(1);
-    expect(mockCopyFileSync).toHaveBeenCalledWith(
+    expect(result.copied).toEqual(['.env']);
+    expect(_mockCopyFileAsync).toHaveBeenCalledTimes(1);
+    expect(_mockCopyFileAsync).toHaveBeenCalledWith(
       join(sourceDir, '.env'),
       join(targetDir, '.env')
     );
   });
 
   // コピーエラーの処理をテスト
-  it('should handle copy errors gracefully', () => {
+  it('should handle copy errors gracefully', async () => {
     const sourceDir = '/Users/test/project';
     const targetDir = '/Users/test/git-worktrees/project/feature-1';
     const files = ['.env', '.env.readonly'];
 
     mockExistsSync.mockReturnValue(true);
-    mockCopyFileSync.mockImplementation((src) => {
+    _mockCopyFileAsync.mockImplementation(async (src) => {
       if ((src as string).includes('.env.readonly')) {
         throw new Error('Permission denied');
       }
     });
+    mockIsVirtualEnv.mockReturnValue(false);
+    const linkStatObj = { isSymbolicLink: () => false, size: 0 } as any;
+    mockLstatSync.mockReturnValue(linkStatObj);
+    mockLstatAsync.mockResolvedValue(linkStatObj);
 
-    const result = copyFiles(sourceDir, targetDir, files);
+    const result = await copyFiles(sourceDir, targetDir, files);
 
-    expect(result).toEqual(['.env']); // エラーが発生したファイルは除外
-    expect(mockCopyFileSync).toHaveBeenCalledTimes(2);
+    expect(result.copied).toEqual(['.env']); // エラーが発生したファイルは除外
+    expect(_mockCopyFileAsync).toHaveBeenCalledTimes(2);
   });
 
   // 空のファイルリストの処理をテスト
-  it('should return empty array for empty file list', () => {
+  it('should return empty array for empty file list', async () => {
     const sourceDir = '/Users/test/project';
     const targetDir = '/Users/test/git-worktrees/project/feature-1';
     const files: string[] = [];
 
-    const result = copyFiles(sourceDir, targetDir, files);
+    const result = await copyFiles(sourceDir, targetDir, files);
 
-    expect(result).toEqual([]);
-    expect(mockCopyFileSync).not.toHaveBeenCalled();
+    expect(result.copied).toEqual([]);
+    expect(_mockCopyFileAsync).not.toHaveBeenCalled();
+  });
+
+  it('should skip virtual environment directories', async () => {
+    const sourceDir = '/source';
+    const targetDir = '/target';
+    const files = ['.env', '.venv', 'node_modules', 'config.json'];
+
+    mockExistsSync.mockReturnValue(true);
+    mockIsVirtualEnv.mockImplementation((p) => {
+      const path = p as string;
+      return path === '.venv' || path === 'node_modules';
+    });
+    const linkStatObj2 = { isSymbolicLink: () => false, size: 0 } as any;
+    mockLstatSync.mockReturnValue(linkStatObj2);
+    mockLstatAsync.mockResolvedValue(linkStatObj2);
+
+    const result = await copyFiles(sourceDir, targetDir, files);
+
+    expect(result.copied).toEqual(['.env', 'config.json']);
+    expect(_mockCopyFileAsync).toHaveBeenCalledTimes(2);
+    expect(_mockCopyFileAsync).toHaveBeenCalledWith(
+      join(sourceDir, '.env'),
+      join(targetDir, '.env')
+    );
+    expect(_mockCopyFileAsync).toHaveBeenCalledWith(
+      join(sourceDir, 'config.json'),
+      join(targetDir, 'config.json')
+    );
+
+    // 仮想環境がスキップされたことを確認
+    expect(result.skippedVirtualEnvs).toEqual(['.venv', 'node_modules']);
+  });
+
+  it('should handle symbolic links pointing within source directory', async () => {
+    const sourceDir = '/source';
+    const targetDir = '/target';
+    const files = ['link-to-file'];
+
+    mockExistsSync.mockReturnValue(true);
+    mockIsVirtualEnv.mockReturnValue(false);
+    const linkStatObj = { isSymbolicLink: () => true, size: 0 } as any;
+    mockLstatSync.mockReturnValue(linkStatObj);
+    mockLstatAsync.mockResolvedValue(linkStatObj);
+    _mockReadlinkAsync.mockResolvedValue('../source/actual-file');
+
+    const result = await copyFiles(sourceDir, targetDir, files);
+
+    expect(result.copied).toEqual(['link-to-file']);
+    expect(_mockSymlinkAsync).toHaveBeenCalled();
+    // シンボリックリンクが新しいワークツリー内を指すように調整されることを確認
+    const symlinkCall = _mockSymlinkAsync.mock.calls[0];
+    expect(symlinkCall[1]).toBe(join(targetDir, 'link-to-file'));
+  });
+
+  it('should preserve external symbolic links', async () => {
+    const sourceDir = '/source';
+    const targetDir = '/target';
+    const files = ['link-to-external'];
+
+    mockExistsSync.mockReturnValue(true);
+    mockIsVirtualEnv.mockReturnValue(false);
+    const linkStatObj2 = { isSymbolicLink: () => true, size: 0 } as any;
+    mockLstatSync.mockReturnValue(linkStatObj2);
+    mockLstatAsync.mockResolvedValue(linkStatObj2);
+    _mockReadlinkAsync.mockResolvedValue('/usr/local/bin/something');
+
+    const result = await copyFiles(sourceDir, targetDir, files);
+
+    expect(result.copied).toEqual(['link-to-external']);
+    expect(_mockSymlinkAsync).toHaveBeenCalledWith(
+      '/usr/local/bin/something',
+      join(targetDir, 'link-to-external')
+    );
+  });
+
+  it('should handle mixed files, virtual envs, and symlinks', async () => {
+    const sourceDir = '/source';
+    const targetDir = '/target';
+    const files = ['.env', '.venv', 'symlink', 'regular.txt'];
+
+    mockExistsSync.mockReturnValue(true);
+    mockIsVirtualEnv.mockImplementation((path) => path === '.venv');
+    mockLstatSync.mockImplementation(
+      (p) =>
+        ({
+          isSymbolicLink: () => (p as string).includes('symlink'),
+          size: 0,
+        }) as any
+    );
+    mockLstatAsync.mockImplementation(
+      async (p) =>
+        ({
+          isSymbolicLink: () => (p as string).includes('symlink'),
+          size: 0,
+        }) as any
+    );
+    _mockReadlinkAsync.mockResolvedValue('./regular.txt');
+
+    const result = await copyFiles(sourceDir, targetDir, files);
+
+    expect(result.copied).toEqual(['.env', 'regular.txt', 'symlink']);
+    expect(_mockCopyFileAsync).toHaveBeenCalledTimes(2); // .env と regular.txt
+    expect(_mockSymlinkAsync).toHaveBeenCalledTimes(1); // symlink
+    expect(result.skippedVirtualEnvs).toEqual(['.venv']);
   });
 });

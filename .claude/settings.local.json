@@ -44,7 +44,8 @@
       "Bash(timeout 5s pnpm start add)",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm list:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(cat:*)"
     ],
     "deny": ["Bash(git:*)"]
   }
