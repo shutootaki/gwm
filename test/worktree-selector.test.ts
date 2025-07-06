@@ -3,10 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import { WorktreeSelector } from '../src/components/WorktreeSelector.js';
-import type { Worktree } from '../src/utils/git.js';
+import type { Worktree } from '../src/utils/git/index.js';
 
 // getWorktreesWithStatusをモック化
-vi.mock('../src/utils/git.js', () => ({
+vi.mock('../src/utils/git/index.js', () => ({
   getWorktreesWithStatus: vi.fn(),
 }));
 
@@ -39,7 +39,7 @@ vi.mock('../src/components/SelectList.js', () => ({
   },
 }));
 
-import { getWorktreesWithStatus } from '../src/utils/git.js';
+import { getWorktreesWithStatus } from '../src/utils/git/index.js';
 const mockGetWorktreesWithStatus = vi.mocked(getWorktreesWithStatus);
 
 describe('WorktreeSelector', () => {

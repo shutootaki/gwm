@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import TOML from '@ltd/j-toml';
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/config/index.js';
 
 // モック化
 vi.mock('fs', () => ({

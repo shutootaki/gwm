@@ -18,7 +18,7 @@ vi.mock('fs', async (importOriginal) => {
   };
 });
 
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     virtual_env_handling: {
       max_scan_depth: 5,

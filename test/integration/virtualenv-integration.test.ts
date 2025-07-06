@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { copyFiles } from '../../src/utils/git.js';
+import { copyFiles } from '../../src/utils/git/index.js';
 import { detectVirtualEnvs, isVirtualEnv } from '../../src/utils/virtualenv.js';
-import { loadConfig } from '../../src/config.js';
+import { loadConfig } from '../../src/config/index.js';
 
 // モジュールモック
-vi.mock('../../src/config.js', () => ({
+vi.mock('../../src/config/index.js', () => ({
   loadConfig: vi.fn(),
 }));
 

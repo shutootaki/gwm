@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getWorktreesWithStatus } from '../src/utils/git.js';
+import { getWorktreesWithStatus } from '../src/utils/git/index.js';
 
 // React InkのUIコンポーネントをモック化
 vi.mock('ink', () => ({
@@ -18,7 +18,7 @@ vi.mock('ink-select-input', () => ({
   }),
 }));
 
-vi.mock('../src/utils/git.js', () => ({
+vi.mock('../src/utils/git/index.js', () => ({
   getWorktreesWithStatus: vi.fn(),
 }));
 

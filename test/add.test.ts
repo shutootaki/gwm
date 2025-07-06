@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/config/index.js';
 
 // 依存関数をモック化
 vi.mock('child_process', () => ({
@@ -13,7 +13,7 @@ vi.mock('fs', () => ({
   mkdirSync: vi.fn(),
 }));
 
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],

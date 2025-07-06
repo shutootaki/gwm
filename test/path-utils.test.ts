@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { join } from 'path';
 import { homedir } from 'os';
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/config/index.js';
 
 // 依存関数をモック化
 vi.mock('os', () => ({
   homedir: vi.fn(() => '/Users/test'),
 }));
 
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master', 'develop'],

@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import { WorktreeSelector } from '../../src/components/WorktreeSelector.js';
-import * as gitUtils from '../../src/utils/git.js';
+import * as gitUtils from '../../src/utils/git/index.js';
 import { Worktree } from '../../src/utils/index.js';
 
-vi.mock('../../src/utils/git.js');
+vi.mock('../../src/utils/git/index.js');
 
 describe('WorktreeSelector', () => {
   const mockWorktrees: Worktree[] = [

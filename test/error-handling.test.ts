@@ -4,8 +4,8 @@ import {
   getWorktreesWithStatus,
   fetchAndPrune,
   removeWorktree,
-} from '../src/utils/git.js';
-import { loadConfig } from '../src/config.js';
+} from '../src/utils/git/index.js';
+import { loadConfig } from '../src/config/index.js';
 
 // execSyncをモック化
 vi.mock('child_process', () => ({
@@ -13,7 +13,7 @@ vi.mock('child_process', () => ({
 }));
 
 // loadConfigをモック化
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master'],

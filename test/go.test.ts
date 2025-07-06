@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getWorktreesWithStatus } from '../src/utils/git.js';
+import { getWorktreesWithStatus } from '../src/utils/git/index.js';
 
 // 依存関数をモック化
-vi.mock('../src/utils/git.js', () => ({
+vi.mock('../src/utils/git/index.js', () => ({
   getWorktreesWithStatus: vi.fn(),
 }));
 

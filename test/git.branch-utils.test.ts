@@ -10,7 +10,7 @@ import {
   localBranchExists,
   hasUnmergedCommits,
   deleteLocalBranch,
-} from '../src/utils/git.js';
+} from '../src/utils/git/index.js';
 
 const mockExecSync = vi.mocked(execSync);
 
