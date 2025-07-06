@@ -2,6 +2,8 @@
  * バリデーション共通ユーティリティ
  */
 
+import { BRANCH_NAME } from './constants';
+
 /**
  * ブランチ名をワークツリーパス用にサニタイズする
  * スラッシュをハイフンに置換する
@@ -26,18 +28,17 @@ export function isValidBranchName(branch: string): boolean {
   const trimmed = branch.trim();
 
   // 基本チェック
-  if (trimmed.length === 0 || trimmed.length > 255) {
+  if (trimmed.length === 0 || trimmed.length > BRANCH_NAME.MAX_LENGTH) {
     return false;
   }
 
   // 制御文字や無効文字のチェック
-  // eslint-disable-next-line no-control-regex
-  if (/[\x00-\x1f\x7f~^:?*[\\\s]/.test(trimmed)) {
+  if (BRANCH_NAME.FORBIDDEN_CHARS.test(trimmed)) {
     return false;
   }
 
   // 連続ドットのチェック
-  if (trimmed.includes('..')) {
+  if (BRANCH_NAME.FORBIDDEN_PATTERNS.test(trimmed)) {
     return false;
   }
 
