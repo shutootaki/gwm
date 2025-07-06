@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getRepositoryName } from '../src/utils/git.js';
+import { getRepositoryName } from '../src/utils/git/index.js';
 import { execSync } from 'child_process';
 
 // child_process.execSync をモック

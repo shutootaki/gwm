@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { execSync } from 'child_process';
-import { getRemoteBranchesWithInfo } from '../src/utils/git.js';
+import { getRemoteBranchesWithInfo } from '../src/utils/git/index.js';
 
 // execSyncをモック化
 vi.mock('child_process', () => ({

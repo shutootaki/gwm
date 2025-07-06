@@ -12,7 +12,7 @@ vi.mock('../src/config.js', () => ({
 }));
 
 vi.mock('../src/utils/git.js', () => ({
-  getRepositoryName: vi.fn(),
+  getRepositoryName: vi.fn(() => 'project'),
   getMainWorktreePath: vi.fn(),
   getIgnoredFiles: vi.fn(),
   copyFiles: vi.fn(),

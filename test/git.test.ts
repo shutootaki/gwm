@@ -25,7 +25,7 @@ import {
   getMainWorktreePath,
   getIgnoredFiles,
   copyFiles,
-} from '../src/utils/git.js';
+} from '../src/utils/git/index.js';
 import { isVirtualEnv } from '../src/utils/virtualenv.js';
 
 // execSyncをモック化
@@ -60,7 +60,7 @@ vi.mock('../src/utils/virtualenv.js', () => ({
 }));
 
 // loadConfigをモック化
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: ['main', 'master'],
@@ -743,7 +743,7 @@ describe('copyFiles', () => {
 
     const result = await copyFiles(sourceDir, targetDir, files);
 
-    expect(result.copied).toEqual(['.env', 'regular.txt', 'symlink']);
+    expect(result.copied).toEqual(['.env', 'symlink', 'regular.txt']);
     expect(_mockCopyFileAsync).toHaveBeenCalledTimes(2); // .env と regular.txt
     expect(_mockSymlinkAsync).toHaveBeenCalledTimes(1); // symlink
     expect(result.skippedVirtualEnvs).toEqual(['.venv']);

@@ -5,7 +5,7 @@ import { render } from 'ink-testing-library';
 import { WorktreeRemove } from '../src/components/WorktreeRemove.js';
 
 // Git utils をモック化
-vi.mock('../src/utils/git.js', () => ({
+vi.mock('../src/utils/git/index.js', () => ({
   getWorktreesWithStatus: vi.fn(),
   removeWorktree: vi.fn(),
 }));
@@ -31,7 +31,7 @@ vi.mock('../src/components/MultiSelectList.js', () => ({
   },
 }));
 
-import { getWorktreesWithStatus, removeWorktree } from '../src/utils/git.js';
+import { getWorktreesWithStatus, removeWorktree } from '../src/utils/git/index.js';
 
 const mockGetWorktreesWithStatus = vi.mocked(getWorktreesWithStatus);
 const mockRemoveWorktree = vi.mocked(removeWorktree);

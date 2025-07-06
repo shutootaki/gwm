@@ -15,7 +15,7 @@ vi.mock('ink', () => ({
 }));
 
 // Configとgitユーティリティをモック化
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
     worktree_base_path: '/Users/test/worktrees',
     main_branches: ['main', 'master', 'develop'],

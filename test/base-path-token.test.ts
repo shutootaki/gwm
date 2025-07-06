@@ -5,7 +5,7 @@ import { render } from 'ink-testing-library';
 // --------------------
 // Mock config to set WORKTREE_BASE_PATH
 // --------------------
-vi.mock('../src/config.js', () => ({
+vi.mock('../src/config/index.js', () => ({
   loadConfig: () => ({
     worktree_base_path: '/Users/test/git-worktrees',
     main_branches: [],

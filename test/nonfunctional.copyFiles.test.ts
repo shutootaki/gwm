@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { copyFiles } from '../src/utils/git.js';
+import { copyFiles } from '../src/utils/git/index.js';
 import { isVirtualEnv } from '../src/utils/virtualenv.js';
 
 /**
