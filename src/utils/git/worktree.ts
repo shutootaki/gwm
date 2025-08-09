@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { execAsync } from '../shell.js';
 import { loadConfig } from '../../config.js';
 import { isGitRepository } from './core.js';
 import type { Worktree, PullResult } from './types.js';
@@ -102,12 +103,12 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
       );
     }
 
-    const output = execSync('git worktree list --porcelain', {
+    const { stdout } = await execAsync('git worktree list --porcelain', {
       encoding: 'utf8',
       cwd: process.cwd(),
     });
 
-    return parseWorktrees(output);
+    return parseWorktrees(stdout);
   } catch (err) {
     if (err instanceof Error) {
       throw err;

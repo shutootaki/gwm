@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import { existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname, relative, resolve } from 'path';
 import { loadConfig } from '../config.js';
-import { escapeShellArg } from './shell.js';
+import { escapeShellArg, execAsync } from './shell.js';
 import { isVirtualEnv } from './virtualenv.js';
 
 export interface Worktree {
@@ -82,8 +82,7 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
   try {
     // Gitリポジトリかどうかチェック
     try {
-      execSync('git rev-parse --git-dir', {
-        stdio: 'ignore',
+      await execAsync('git rev-parse --git-dir', {
         cwd: process.cwd(),
       });
     } catch {
@@ -92,12 +91,12 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
       );
     }
 
-    const output = execSync('git worktree list --porcelain', {
+    const { stdout } = await execAsync('git worktree list --porcelain', {
       encoding: 'utf8',
       cwd: process.cwd(),
     });
 
-    const worktrees = parseWorktrees(output);
+    const worktrees = parseWorktrees(stdout);
 
     return worktrees;
   } catch (err) {
@@ -109,13 +108,12 @@ export async function getWorktreesWithStatus(): Promise<Worktree[]> {
 }
 
 /**
- * git fetch --prune origin を実行
+ * git fetch --prune origin を実行（非同期版）
  */
-export function fetchAndPrune(): void {
+export async function fetchAndPrune(): Promise<void> {
   try {
     // origin を前提として fetch --prune を試みる
-    execSync('git fetch --prune origin', {
-      stdio: 'ignore',
+    await execAsync('git fetch --prune origin', {
       cwd: process.cwd(),
     });
   } catch (err) {
@@ -134,12 +132,15 @@ export function fetchAndPrune(): void {
 }
 
 /**
- * worktreeを削除する
+ * worktreeを削除する（非同期版）
  */
-export function removeWorktree(path: string, force: boolean = false): void {
+export async function removeWorktree(
+  path: string,
+  force: boolean = false
+): Promise<void> {
   try {
     const forceFlag = force ? ' --force' : '';
-    execSync(`git worktree remove ${escapeShellArg(path)}${forceFlag}`, {
+    await execAsync(`git worktree remove ${escapeShellArg(path)}${forceFlag}`, {
       cwd: process.cwd(),
     });
   } catch (err) {
@@ -298,16 +299,15 @@ export function hasUnmergedCommits(branch: string): boolean {
 }
 
 /**
- * ローカルブランチを削除する (未マージコミットがある場合は -D を要求)
+ * ローカルブランチを削除する (未マージコミットがある場合は -D を要求)（非同期版）
  */
-export function deleteLocalBranch(
+export async function deleteLocalBranch(
   branch: string,
   force: boolean = false
-): void {
+): Promise<void> {
   try {
     const flag = force ? '-D' : '-d';
-    execSync(`git branch ${flag} ${escapeShellArg(branch)}`, {
-      stdio: 'ignore',
+    await execAsync(`git branch ${flag} ${escapeShellArg(branch)}`, {
       cwd: process.cwd(),
     });
   } catch (err) {
@@ -501,12 +501,12 @@ export interface RemoteBranchInfo {
 }
 
 /**
- * リモートブランチの詳細情報を取得する
+ * リモートブランチの詳細情報を取得する（非同期版）
  */
-export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
+export async function getRemoteBranchesWithInfo(): Promise<RemoteBranchInfo[]> {
   try {
     // git for-each-ref でリモートブランチの詳細情報を取得
-    const output = execSync(
+    const { stdout } = await execAsync(
       'git for-each-ref refs/remotes --format="%(refname:short)|%(committerdate:iso8601-strict)|%(committername)|%(subject)"',
       {
         cwd: process.cwd(),
@@ -514,7 +514,7 @@ export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
       }
     );
 
-    const branches = output
+    const branches = stdout
       .split('\n')
       .filter((line) => line.trim() && !line.includes('HEAD'))
       .map((line) => {

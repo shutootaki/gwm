@@ -2,7 +2,7 @@
  * バリデーション共通ユーティリティ
  */
 
-import { BRANCH_NAME } from './constants';
+import { BRANCH_NAME } from './constants.js';
 
 /**
  * ブランチ名をワークツリーパス用にサニタイズする

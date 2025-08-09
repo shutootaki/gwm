@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { escapeShellArg } from '../shell.js';
+import { escapeShellArg, execAsync } from '../shell.js';
 import type { RemoteBranchInfo, RemoteBranchStatus } from './types.js';
 
 /**
@@ -58,10 +58,10 @@ export function checkRemoteBranchStatus(
 /**
  * リモートブランチの詳細情報を取得する
  */
-export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
+export async function getRemoteBranchesWithInfo(): Promise<RemoteBranchInfo[]> {
   try {
     // git for-each-ref でリモートブランチの詳細情報を取得
-    const output = execSync(
+    const { stdout } = await execAsync(
       'git for-each-ref refs/remotes --format="%(refname:short)|%(committerdate:iso8601-strict)|%(committername)|%(subject)"',
       {
         cwd: process.cwd(),
@@ -69,7 +69,7 @@ export function getRemoteBranchesWithInfo(): RemoteBranchInfo[] {
       }
     );
 
-    const branches = output
+    const branches = stdout
       .split('\n')
       .filter((line) => line.trim() && !line.includes('HEAD'))
       .map((line) => {

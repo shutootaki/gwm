@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execAsync } from '../shell.js';
 import { loadConfig } from '../../config.js';
 import { getWorktreesWithStatus } from './worktree.js';
 import { checkRemoteBranchStatus } from './remote.js';
@@ -7,14 +7,16 @@ import type { LocalChanges, CleanableWorktree } from './types.js';
 /**
  * ワークツリーパスでローカル変更を確認
  */
-export function checkLocalChanges(worktreePath: string): LocalChanges {
+export async function checkLocalChanges(
+  worktreePath: string
+): Promise<LocalChanges> {
   let statusLines: string[] = [];
   try {
-    const output = execSync('git status --porcelain', {
+    const { stdout } = await execAsync('git status --porcelain', {
       cwd: worktreePath,
       encoding: 'utf8',
     });
-    statusLines = output.split('\n').filter((l) => l.trim() !== '');
+    statusLines = stdout.split('\n').filter((l) => l.trim() !== '');
   } catch {
     // ignore, treat as no changes
   }
@@ -36,16 +38,15 @@ export function checkLocalChanges(worktreePath: string): LocalChanges {
   let hasLocalCommits = false;
   try {
     // upstream が無い場合エラーになる
-    execSync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', {
+    await execAsync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', {
       cwd: worktreePath,
-      stdio: 'ignore',
     });
 
-    const cherry = execSync('git cherry -v', {
+    const { stdout: cherryOut } = await execAsync('git cherry -v', {
       cwd: worktreePath,
       encoding: 'utf8',
-    }).trim();
-    if (cherry.length > 0) hasLocalCommits = true;
+    });
+    if (cherryOut.trim().length > 0) hasLocalCommits = true;
   } catch {
     // upstreamが無い -> リモートに存在しない or 削除済み。未プッシュコミットは無視
     hasLocalCommits = false;
@@ -93,7 +94,7 @@ export async function getCleanableWorktrees(): Promise<CleanableWorktree[]> {
     if (!isDeleted && !isMerged) continue;
 
     // 2. ローカル変更なし
-    const local = checkLocalChanges(wt.path);
+    const local = await checkLocalChanges(wt.path);
     if (hasAnyLocalChanges(local)) continue;
 
     results.push({
