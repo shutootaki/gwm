@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="README.md">English</a> | <strong>日本語</strong>
+</p>
+
 # gwm – Git Worktree Manager
 
 > ⚡ **Git のコンテキストをミリ秒で切り替え**。PR のレビュー、フィーチャーブランチの作成、ワークスペースのクリーンアップまで、すべてを 1 つの対話型 CLI で。

@@ -85,7 +85,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
         for (const br of candidateBranches) {
           const unmerged = hasUnmergedCommits(br);
           try {
-            await deleteLocalBranch(br, unmerged);
+            deleteLocalBranch(br, unmerged);
             deleted.push(br + (unmerged ? ' (forced)' : ''));
           } catch (e) {
             errors.push(`branch ${br}: ${e instanceof Error ? e.message : e}`);
