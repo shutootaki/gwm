@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { execSync } from 'child_process';
 import { SelectList } from './SelectList.js';
 import {
   TextInput,
@@ -12,7 +11,7 @@ import { useWorktree } from '../hooks/useWorktree.js';
 import { LoadingSpinner } from './ui/LoadingSpinner.js';
 import { Notice } from './ui/Notice.js';
 import { getRemoteBranchesWithInfo } from '../utils/git.js';
-import { escapeShellArg } from '../utils/shell.js';
+import { escapeShellArg, execAsync } from '../utils/shell.js';
 
 interface WorktreeAddProps {
   branchName?: string;
@@ -82,23 +81,24 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   const fetchRemoteBranches = async () => {
     try {
       // リモート一覧を取得して fetch
-      const remotes = execSync('git remote', {
+      const { stdout } = await execAsync('git remote', {
         cwd: process.cwd(),
         encoding: 'utf8',
-      })
+      });
+      const remotes = stdout
         .split('\n')
         .map((r) => r.trim())
         .filter(Boolean);
 
       const targetRemotes = remotes.includes('origin') ? ['origin'] : remotes;
       for (const remote of targetRemotes) {
-        execSync(`git fetch --prune ${escapeShellArg(remote)}`, {
+        await execAsync(`git fetch --prune ${escapeShellArg(remote)}`, {
           cwd: process.cwd(),
         });
       }
 
       // リモートブランチの詳細情報を取得
-      const branches = getRemoteBranchesWithInfo();
+      const branches = await getRemoteBranchesWithInfo();
 
       setRemoteBranches(branches);
       setIsRemoteBranchesLoaded(true);

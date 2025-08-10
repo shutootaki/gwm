@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { escapeShellArg } from '../shell.js';
+import { escapeShellArg, execAsync } from '../shell.js';
 
 /**
  * Gitリポジトリかどうかをチェックする
@@ -19,10 +19,9 @@ export function isGitRepository(): boolean {
 /**
  * git fetch --prune origin を実行
  */
-export function fetchAndPrune(): void {
+export async function fetchAndPrune(): Promise<void> {
   try {
-    execSync('git fetch --prune origin', {
-      stdio: 'ignore',
+    await execAsync('git fetch --prune origin', {
       cwd: process.cwd(),
     });
   } catch (err) {
@@ -41,10 +40,13 @@ export function fetchAndPrune(): void {
 /**
  * worktreeを削除する
  */
-export function removeWorktree(path: string, force: boolean = false): void {
+export async function removeWorktree(
+  path: string,
+  force: boolean = false
+): Promise<void> {
   try {
     const forceFlag = force ? ' --force' : '';
-    execSync(`git worktree remove ${escapeShellArg(path)}${forceFlag}`, {
+    await execAsync(`git worktree remove ${escapeShellArg(path)}${forceFlag}`, {
       cwd: process.cwd(),
     });
   } catch (err) {

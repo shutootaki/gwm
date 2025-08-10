@@ -53,7 +53,7 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
       try {
         setLoading(true);
         setLoadingStage('fetch');
-        fetchAndPrune();
+        await fetchAndPrune();
         // fetch 完了後にスキャンフェーズへ
         setLoadingStage('scan');
         const list = await getCleanableWorktrees();

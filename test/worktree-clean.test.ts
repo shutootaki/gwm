@@ -65,10 +65,13 @@ describe('WorktreeClean', () => {
 
     render(React.createElement(WorktreeClean));
 
-    // fetchAndPrune は1回呼ばれる
-    expect(mockFetchAndPrune).toHaveBeenCalledTimes(1);
-    // getCleanableWorktrees は1回呼ばれる
-    expect(mockGetCleanableWorktrees).toHaveBeenCalledTimes(1);
+    // Wait for useEffect to complete
+    await vi.waitFor(() => {
+      // fetchAndPrune は1回呼ばれる
+      expect(mockFetchAndPrune).toHaveBeenCalledTimes(1);
+      // getCleanableWorktrees は1回呼ばれる
+      expect(mockGetCleanableWorktrees).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('should show message when no cleanable worktrees found', async () => {
@@ -83,7 +86,7 @@ describe('WorktreeClean', () => {
 
   it('force mode should remove all listed worktrees on Enter', async () => {
     mockGetCleanableWorktrees.mockResolvedValue(sampleCleanables);
-    mockRemoveWorktree.mockReturnValue(undefined);
+    mockRemoveWorktree.mockResolvedValue(undefined);
 
     const { lastFrame } = render(
       React.createElement(WorktreeClean, { force: true })

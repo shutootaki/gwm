@@ -1,30 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'child_process';
 import { getRemoteBranchesWithInfo } from '../src/utils/git/index.js';
 
 // execSyncをモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
-const mockExecSync = vi.mocked(execSync);
+// execAsyncをモック化
+vi.mock('../src/utils/shell.js', () => ({
+  execAsync: vi.fn(),
+  escapeShellArg: vi.fn((arg) => arg),
+}));
+
+import { execAsync } from '../src/utils/shell.js';
+
+const mockExecAsync = vi.mocked(execAsync);
 
 describe('getRemoteBranchesWithInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should parse remote branches with info correctly', () => {
+  it('should parse remote branches with info correctly', async () => {
     const gitOutput = `origin/main|2024-01-15T10:30:00+09:00|John Doe|Initial commit
 origin/feature/user-auth|2024-01-14T15:45:30+09:00|Jane Smith|feat: add user authentication
 origin/fix/bug-123|2024-01-13T09:20:15+09:00|Bob Johnson|fix: resolve issue #123
 origin/HEAD|2024-01-15T10:30:00+09:00|John Doe|Initial commit`;
 
-    mockExecSync.mockReturnValue(gitOutput);
+    mockExecAsync.mockResolvedValue({
+      stdout: gitOutput,
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
-    expect(mockExecSync).toHaveBeenCalledWith(
+    expect(mockExecAsync).toHaveBeenCalledWith(
       'git for-each-ref refs/remotes --format="%(refname:short)|%(committerdate:iso8601-strict)|%(committername)|%(subject)"',
       {
         cwd: process.cwd(),
@@ -33,7 +44,7 @@ origin/HEAD|2024-01-15T10:30:00+09:00|John Doe|Initial commit`;
     );
 
     expect(result).toHaveLength(3); // HEADは除外される
-    
+
     expect(result[0]).toEqual({
       name: 'main',
       fullName: 'origin/main',
@@ -59,22 +70,28 @@ origin/HEAD|2024-01-15T10:30:00+09:00|John Doe|Initial commit`;
     });
   });
 
-  it('should handle empty output', () => {
-    mockExecSync.mockReturnValue('');
+  it('should handle empty output', async () => {
+    mockExecAsync.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
     expect(result).toEqual([]);
   });
 
-  it('should handle branches with missing fields', () => {
+  it('should handle branches with missing fields', async () => {
     const gitOutput = `origin/branch1|||
 origin/branch2|2024-01-15T10:30:00+09:00||
 origin/branch3||Alice|Some commit`;
 
-    mockExecSync.mockReturnValue(gitOutput);
+    mockExecAsync.mockResolvedValue({
+      stdout: gitOutput,
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
     expect(result).toHaveLength(3);
 
@@ -103,12 +120,15 @@ origin/branch3||Alice|Some commit`;
     });
   });
 
-  it('should handle branches with pipe characters in commit message', () => {
+  it('should handle branches with pipe characters in commit message', async () => {
     const gitOutput = `origin/feature|2024-01-15T10:30:00+09:00|Developer|feat: add feature|with pipe`;
 
-    mockExecSync.mockReturnValue(gitOutput);
+    mockExecAsync.mockResolvedValue({
+      stdout: gitOutput,
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
@@ -120,20 +140,23 @@ origin/branch3||Alice|Some commit`;
     });
   });
 
-  it('should filter out HEAD references', () => {
+  it('should filter out HEAD references', async () => {
     const gitOutput = `origin/main|2024-01-15T10:30:00+09:00|John Doe|Initial commit
 origin/HEAD|2024-01-15T10:30:00+09:00|John Doe|Initial commit
 upstream/HEAD|2024-01-15T10:30:00+09:00|John Doe|Initial commit`;
 
-    mockExecSync.mockReturnValue(gitOutput);
+    mockExecAsync.mockResolvedValue({
+      stdout: gitOutput,
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('main');
   });
 
-  it('should handle newlines in output correctly', () => {
+  it('should handle newlines in output correctly', async () => {
     const gitOutput = `origin/branch1|2024-01-15T10:30:00+09:00|Dev1|Commit 1
 
 origin/branch2|2024-01-14T10:30:00+09:00|Dev2|Commit 2
@@ -141,31 +164,30 @@ origin/branch2|2024-01-14T10:30:00+09:00|Dev2|Commit 2
 
 `;
 
-    mockExecSync.mockReturnValue(gitOutput);
+    mockExecAsync.mockResolvedValue({
+      stdout: gitOutput,
+      stderr: '',
+    });
 
-    const result = getRemoteBranchesWithInfo();
+    const result = await getRemoteBranchesWithInfo();
 
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('branch1');
     expect(result[1].name).toBe('branch2');
   });
 
-  it('should throw error when git command fails', () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error('git command failed');
-    });
+  it('should throw error when git command fails', async () => {
+    mockExecAsync.mockRejectedValue(new Error('git command failed'));
 
-    expect(() => getRemoteBranchesWithInfo()).toThrow(
+    await expect(getRemoteBranchesWithInfo()).rejects.toThrow(
       'Failed to get remote branches: git command failed'
     );
   });
 
-  it('should handle non-Error exceptions', () => {
-    mockExecSync.mockImplementation(() => {
-      throw 'string error';
-    });
+  it('should handle non-Error exceptions', async () => {
+    mockExecAsync.mockRejectedValue('string error');
 
-    expect(() => getRemoteBranchesWithInfo()).toThrow(
+    await expect(getRemoteBranchesWithInfo()).rejects.toThrow(
       'Failed to get remote branches: Unknown error'
     );
   });

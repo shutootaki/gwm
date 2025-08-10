@@ -61,7 +61,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
 
     for (const item of selectedItems) {
       try {
-        removeWorktree(item.value, force);
+        await removeWorktree(item.value, force);
         removedPaths.push(item.value);
 
         const wt = worktrees.find((w) => w.path === item.value);
@@ -82,7 +82,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
 
       if (cleanMode === 'auto') {
         const deleted: string[] = [];
-        candidateBranches.forEach((br) => {
+        for (const br of candidateBranches) {
           const unmerged = hasUnmergedCommits(br);
           try {
             deleteLocalBranch(br, unmerged);
@@ -90,7 +90,7 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
           } catch (e) {
             errors.push(`branch ${br}: ${e instanceof Error ? e.message : e}`);
           }
-        });
+        }
         if (deleted.length > 0) {
           setBranchSuccess(deleted);
         }

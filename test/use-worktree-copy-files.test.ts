@@ -14,6 +14,7 @@ import { loadConfig } from '../src/config.js';
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
   spawnSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 vi.mock('../src/config.js', () => ({
@@ -91,8 +92,8 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     expect(mockGetMainWorktreePath).toHaveBeenCalled();
     // 第3引数 (excludePatterns) には仮想環境パターンも追加されるため配列内容を柔軟に検証
@@ -108,14 +109,16 @@ describe('useWorktree copy_ignored_files', () => {
       '/Users/test/git-worktrees/project/feature-test',
       ['.env', '.env.local']
     );
-    expect(onSuccess).toHaveBeenCalledWith({
-      path: '/Users/test/git-worktrees/project/feature-test',
-      actions: ['Copied 2 ignored file(s): .env, .env.local'],
-    });
+
+    const call = onSuccess.mock.calls[0][0];
+    expect(call.path).toBe('/Users/test/git-worktrees/project/feature-test');
+    expect(call.actions).toEqual([
+      'Copied 2 ignored file(s): .env, .env.local',
+    ]);
   });
 
   // ファイルが見つからない場合のテスト
-  it('should not add action when no files to copy', () => {
+  it('should not add action when no files to copy', async () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue('/Users/test/project');
     mockGetIgnoredFiles.mockReturnValue([]);
@@ -134,14 +137,16 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
-    expect(onSuccess).toHaveBeenCalledWith({
-      path: '/Users/test/git-worktrees/project/feature-test',
-      actions: [],
-    });
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
+    const call = onSuccess.mock.calls[0][0];
+    expect(call.path).toBe('/Users/test/git-worktrees/project/feature-test');
+    expect(call.actions).toEqual([]);
   });
 
   // メインワークツリーが見つからない場合のテスト
-  it('should skip copy when main worktree not found', () => {
+  it('should skip copy when main worktree not found', async () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue(null);
 
@@ -154,16 +159,19 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
     expect(mockGetIgnoredFiles).not.toHaveBeenCalled();
     expect(mockCopyFiles).not.toHaveBeenCalled();
-    expect(onSuccess).toHaveBeenCalledWith({
-      path: '/Users/test/git-worktrees/project/feature-test',
-      actions: [],
-    });
+
+    const call = onSuccess.mock.calls[0][0];
+    expect(call.path).toBe('/Users/test/git-worktrees/project/feature-test');
+    expect(call.actions).toEqual([]);
   });
 
   // 同じワークツリーの場合のスキップテスト
-  it('should skip copy when source and target are the same', () => {
+  it('should skip copy when source and target are the same', async () => {
     const onSuccess = vi.fn();
     mockGetMainWorktreePath.mockReturnValue(
       '/Users/test/git-worktrees/project/feature-test'
@@ -178,12 +186,15 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
     expect(mockGetIgnoredFiles).not.toHaveBeenCalled();
     expect(mockCopyFiles).not.toHaveBeenCalled();
   });
 
   // copy_ignored_filesが無効な場合のテスト
-  it('should not copy files when copy_ignored_files is disabled', () => {
+  it('should not copy files when copy_ignored_files is disabled', async () => {
     mockLoadConfig.mockReturnValue({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main'],
@@ -205,6 +216,9 @@ describe('useWorktree copy_ignored_files', () => {
         },
       })
     );
+
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     // copy_ignored_filesが無効で隔離も無効なので、getMainWorktreePath等は呼ばれない
     expect(mockGetMainWorktreePath).not.toHaveBeenCalled();
@@ -232,18 +246,22 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(mockCopyFiles).toHaveBeenCalled());
 
     expect(mockCopyFiles).toHaveBeenCalledWith(
       '/Users/test/project',
       '/Users/test/git-worktrees/project/feature-test',
       ['.env', '.env.local', '.env.test']
     );
-    expect(onSuccess).toHaveBeenCalledWith({
-      path: '/Users/test/git-worktrees/project/feature-test',
-      actions: ['Copied 2 ignored file(s): .env, .env.local'],
-    });
+
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
+    const call = onSuccess.mock.calls[0][0];
+    expect(call.path).toBe('/Users/test/git-worktrees/project/feature-test');
+    expect(call.actions).toEqual([
+      'Copied 2 ignored file(s): .env, .env.local',
+    ]);
   });
 
   // 複数のアクションと組み合わせたテスト
@@ -270,12 +288,14 @@ describe('useWorktree copy_ignored_files', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
-    expect(onSuccess).toHaveBeenCalledWith({
-      path: '/Users/test/git-worktrees/project/feature-test',
-      actions: ['Copied 1 ignored file(s): .env', 'VS Code opened'],
-    });
+    const call = onSuccess.mock.calls[0][0];
+    expect(call.path).toBe('/Users/test/git-worktrees/project/feature-test');
+    expect(call.actions).toEqual([
+      'Copied 1 ignored file(s): .env',
+      'VS Code opened',
+    ]);
   });
 });

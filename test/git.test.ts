@@ -31,6 +31,13 @@ import { isVirtualEnv } from '../src/utils/virtualenv.js';
 // execSyncをモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
+}));
+
+// shell.jsをモック化
+vi.mock('../src/utils/shell.js', () => ({
+  execAsync: vi.fn(),
+  escapeShellArg: vi.fn((arg) => `'${arg}'`),
 }));
 
 // fsモジュールをモック化
@@ -71,7 +78,10 @@ vi.mock('../src/config/index.js', () => ({
   })),
 }));
 
+import { execAsync } from '../src/utils/shell.js';
+
 const mockExecSync = vi.mocked(execSync);
+const mockExecAsync = vi.mocked(execAsync);
 const mockExistsSync = vi.mocked(existsSync);
 const mockMkdirSync = vi.mocked(mkdirSync);
 const mockReaddirSync = vi.mocked(readdirSync);
@@ -247,10 +257,12 @@ branch refs/heads/feature-1`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const result = await getWorktreesWithStatus();
@@ -267,35 +279,32 @@ describe('fetchAndPrune', () => {
   });
 
   // git fetch --prune originの正常実行をテスト
-  it('should execute git fetch --prune origin successfully', () => {
-    mockExecSync.mockReturnValue('');
+  it('should execute git fetch --prune origin successfully', async () => {
+    mockExecAsync.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+    });
 
-    expect(() => fetchAndPrune()).not.toThrow();
-    expect(mockExecSync).toHaveBeenCalledWith('git fetch --prune origin', {
-      stdio: 'ignore',
+    await expect(fetchAndPrune()).resolves.not.toThrow();
+    expect(mockExecAsync).toHaveBeenCalledWith('git fetch --prune origin', {
       cwd: process.cwd(),
     });
   });
 
   // リモートoriginが存在しない場合のエラーハンドリングをテスト
-  it('should throw error when no remote origin exists', () => {
-    mockExecSync.mockImplementation(() => {
-      const error = new Error("No such remote 'origin'");
-      throw error;
-    });
+  it('should throw error when no remote origin exists', async () => {
+    mockExecAsync.mockRejectedValue(new Error("No such remote 'origin'"));
 
-    expect(() => fetchAndPrune()).toThrow(
+    await expect(fetchAndPrune()).rejects.toThrow(
       'No remote named "origin" found. Please configure a remote repository.'
     );
   });
 
   // その他のエラーの汎用エラーハンドリングをテスト
-  it('should throw generic error for other failures', () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error('Network error');
-    });
+  it('should throw generic error for other failures', async () => {
+    mockExecAsync.mockRejectedValue(new Error('Network error'));
 
-    expect(() => fetchAndPrune()).toThrow(
+    await expect(fetchAndPrune()).rejects.toThrow(
       'Failed to fetch and prune from remote: Network error'
     );
   });
@@ -307,34 +316,42 @@ describe('removeWorktree', () => {
   });
 
   // worktreeの正常な削除をテスト
-  it('should remove worktree successfully', () => {
-    mockExecSync.mockReturnValue('');
+  it('should remove worktree successfully', async () => {
+    mockExecAsync.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+    });
 
-    expect(() => removeWorktree('/path/to/worktree')).not.toThrow();
-    expect(mockExecSync).toHaveBeenCalledWith(
+    await expect(removeWorktree('/path/to/worktree')).resolves.not.toThrow();
+    expect(mockExecAsync).toHaveBeenCalledWith(
       "git worktree remove '/path/to/worktree'",
       { cwd: process.cwd() }
     );
   });
 
   // --forceフラグ付きworktree削除をテスト
-  it('should remove worktree with force flag', () => {
-    mockExecSync.mockReturnValue('');
+  it('should remove worktree with force flag', async () => {
+    mockExecAsync.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+    });
 
-    expect(() => removeWorktree('/path/to/worktree', true)).not.toThrow();
-    expect(mockExecSync).toHaveBeenCalledWith(
+    await expect(
+      removeWorktree('/path/to/worktree', true)
+    ).resolves.not.toThrow();
+    expect(mockExecAsync).toHaveBeenCalledWith(
       "git worktree remove '/path/to/worktree' --force",
       { cwd: process.cwd() }
     );
   });
 
   // worktree削除失敗時のエラーハンドリングをテスト
-  it('should throw error when removal fails', () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error('worktree has uncommitted changes');
-    });
+  it('should throw error when removal fails', async () => {
+    mockExecAsync.mockRejectedValue(
+      new Error('worktree has uncommitted changes')
+    );
 
-    expect(() => removeWorktree('/path/to/worktree')).toThrow(
+    await expect(removeWorktree('/path/to/worktree')).rejects.toThrow(
       'Failed to remove worktree /path/to/worktree: worktree has uncommitted changes'
     );
   });

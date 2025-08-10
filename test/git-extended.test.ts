@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 // child_process.execSync をモック
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 const mockExecSync = vi.mocked(execSync);

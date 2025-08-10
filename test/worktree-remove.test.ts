@@ -1,4 +1,3 @@
- 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
@@ -31,7 +30,10 @@ vi.mock('../src/components/MultiSelectList.js', () => ({
   },
 }));
 
-import { getWorktreesWithStatus, removeWorktree } from '../src/utils/git/index.js';
+import {
+  getWorktreesWithStatus,
+  removeWorktree,
+} from '../src/utils/git/index.js';
 
 const mockGetWorktreesWithStatus = vi.mocked(getWorktreesWithStatus);
 const mockRemoveWorktree = vi.mocked(removeWorktree);
@@ -68,13 +70,16 @@ describe('WorktreeRemove', () => {
     vi.clearAllMocks();
   });
 
-  it('should load and display non-main worktrees', () => {
+  it('should load and display non-main worktrees', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 
   it('should show no removable worktrees message when only main worktree exists', async () => {
@@ -82,29 +87,39 @@ describe('WorktreeRemove', () => {
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
     expect(lastFrame()).toBeDefined();
   });
 
-  it('should remove selected worktrees successfully', () => {
+  it('should remove selected worktrees successfully', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
-    mockRemoveWorktree.mockReturnValue(undefined);
+    mockRemoveWorktree.mockResolvedValue(undefined);
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 
   it('should remove worktrees with force flag when specified', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
-    mockRemoveWorktree.mockReturnValue(undefined);
+    mockRemoveWorktree.mockResolvedValue(undefined);
 
     const { lastFrame } = render(
       React.createElement(WorktreeRemove, { force: true })
     );
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 
   it('should handle worktree removal errors', async () => {
@@ -115,8 +130,11 @@ describe('WorktreeRemove', () => {
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 
   it('should show error when no worktrees are selected', async () => {
@@ -124,8 +142,11 @@ describe('WorktreeRemove', () => {
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 
   it('should handle loading errors', async () => {
@@ -133,6 +154,10 @@ describe('WorktreeRemove', () => {
 
     const { lastFrame } = render(React.createElement(WorktreeRemove));
 
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
     expect(lastFrame()).toBeDefined();
   });
 
@@ -143,7 +168,10 @@ describe('WorktreeRemove', () => {
       React.createElement(WorktreeRemove, { query: 'feature' })
     );
 
-    expect(lastFrame()).toBeDefined();
+    // Wait for useEffect to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(mockGetWorktreesWithStatus).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).toBeDefined();
   });
 });

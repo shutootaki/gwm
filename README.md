@@ -1,3 +1,7 @@
+<p align="center">
+  <strong>English</strong> | <a href="README_JA.md">日本語</a>
+</p>
+
 # gwm – Git Worktree Manager
 
 > ⚡ **Switch Git contexts in milliseconds**. Review pull requests, create feature branches, and clean up your workspace—all from a single interactive CLI.

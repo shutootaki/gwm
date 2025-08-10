@@ -6,6 +6,7 @@ import { loadConfig } from '../src/config/index.js';
 // 依存関数をモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 vi.mock('fs', () => ({

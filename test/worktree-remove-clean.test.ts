@@ -1,4 +1,3 @@
- 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
@@ -73,7 +72,7 @@ describe('WorktreeRemove – branch clean flow', () => {
       .mockResolvedValueOnce(sampleWorktrees)
       .mockResolvedValueOnce([sampleWorktrees[0]]);
 
-    mockRemoveWorktree.mockReturnValue(undefined);
+    mockRemoveWorktree.mockResolvedValue(undefined);
     mockLocalBranchExists.mockReturnValue(true);
     mockHasUnmergedCommits.mockReturnValue(false);
 
@@ -94,7 +93,7 @@ describe('WorktreeRemove – branch clean flow', () => {
       .mockResolvedValueOnce(sampleWorktrees)
       .mockResolvedValueOnce([sampleWorktrees[0]]);
 
-    mockRemoveWorktree.mockReturnValue(undefined);
+    mockRemoveWorktree.mockResolvedValue(undefined);
     mockLocalBranchExists.mockReturnValue(true);
     mockHasUnmergedCommits.mockReturnValue(false);
 
