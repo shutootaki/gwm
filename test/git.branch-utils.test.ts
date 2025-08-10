@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // child_process の execSync をモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 import { execSync } from 'child_process';

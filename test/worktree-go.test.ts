@@ -8,6 +8,7 @@ import { WorktreeGo } from '../src/components/WorktreeGo.js';
 // execSyncをモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 // WorktreeSelectorをモック化

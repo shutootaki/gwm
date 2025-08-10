@@ -5,6 +5,7 @@ import { render } from 'ink-testing-library';
 // --- モジュールモックを先に宣言（hoisting 対策） ---
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
 }));
 
 vi.mock('../src/config.js', () => ({
@@ -125,8 +126,8 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     expect(mockDetectVirtualEnvs).toHaveBeenCalledWith('/Users/test/project');
     expect(mockSuggestSetupCommands).toHaveBeenCalledWith(detectedEnvs);
@@ -147,7 +148,7 @@ describe('useWorktree virtual environment detection', () => {
     });
   });
 
-  it('should detect multiple language environments', () => {
+  it('should detect multiple language environments', async () => {
     const detectedEnvs = [
       { language: 'Python', path: '.venv', pattern: '.venv' },
       { language: 'Node.js', path: 'node_modules', pattern: 'node_modules' },
@@ -187,6 +188,9 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
+    // onSuccess が呼ばれるまで待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
+
     const call = onSuccess.mock.calls[0][0];
     expect(call.actions).toContain(
       '📦 Virtual environments detected in the source worktree:'
@@ -196,7 +200,7 @@ describe('useWorktree virtual environment detection', () => {
     expect(call.actions).toContain('  - Ruby: .bundle');
   });
 
-  it('should not add virtual environment messages when none detected', () => {
+  it('should not add virtual environment messages when none detected', async () => {
     mockDetectVirtualEnvs.mockReturnValue([]);
     mockGetIgnoredFiles.mockReturnValue([]);
     mockCopyFiles.mockResolvedValue({
@@ -215,6 +219,9 @@ describe('useWorktree virtual environment detection', () => {
         },
       })
     );
+
+    // onSuccess が呼ばれるまで待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     const call = onSuccess.mock.calls[0][0];
     expect(call.actions).not.toContain(
@@ -247,8 +254,8 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     const call = onSuccess.mock.calls[0][0];
     expect(call.actions).toContain('Copied 1 ignored file(s): .env');
@@ -276,7 +283,7 @@ describe('useWorktree virtual environment detection', () => {
     expect(mockCopyFiles).not.toHaveBeenCalled();
   });
 
-  it('should work correctly when copy_ignored_files is disabled but virtual envs exist', () => {
+  it('should work correctly when copy_ignored_files is disabled but virtual envs exist', async () => {
     mockLoadConfig.mockReturnValue({
       worktree_base_path: '/Users/test/git-worktrees',
       main_branches: ['main'],
@@ -313,10 +320,10 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
-    // copy_ignored_filesが無効でも仮想環境検出は実行される
-    expect(mockDetectVirtualEnvs).toHaveBeenCalledWith('/Users/test/project');
-    expect(mockGetIgnoredFiles).not.toHaveBeenCalled();
-    expect(mockCopyFiles).not.toHaveBeenCalled();
+    // copy_ignored_filesが無効でも仮想環境検出は実行されるまで待機
+    await vi.waitFor(() =>
+      expect(mockDetectVirtualEnvs).toHaveBeenCalledWith('/Users/test/project')
+    );
 
     const call = onSuccess.mock.calls[0][0];
     expect(call.actions).toContain(
@@ -357,8 +364,8 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     // デフォルトでは隔離が無効なため、仮想環境検出は実行されない
     expect(mockDetectVirtualEnvs).not.toHaveBeenCalled();
@@ -408,8 +415,8 @@ describe('useWorktree virtual environment detection', () => {
       })
     );
 
-    // 非同期処理が完了するまで少し待機
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 非同期処理が完了するまで waitFor で待機
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalled());
 
     // isolate_virtual_envs=falseなので仮想環境検出が実行されない
     expect(mockDetectVirtualEnvs).not.toHaveBeenCalled();

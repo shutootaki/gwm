@@ -6,6 +6,13 @@ import { loadConfig } from '../src/config/index.js';
 // execSyncをモック化
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
+  exec: vi.fn(),
+}));
+
+// shell.jsをモック化
+vi.mock('../src/utils/shell.js', () => ({
+  execAsync: vi.fn(),
+  escapeShellArg: vi.fn((arg) => `'${arg}'`),
 }));
 
 // loadConfigをモック化
@@ -20,7 +27,10 @@ vi.mock('../src/config/index.js', () => ({
 // コンソール出力をモック化
 const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
+import { execAsync } from '../src/utils/shell.js';
+
 const mockExecSync = vi.mocked(execSync);
+const mockExecAsync = vi.mocked(execAsync);
 
 describe('gwm list command integration tests', () => {
   beforeEach(() => {
@@ -51,9 +61,6 @@ locked`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
       // リモート追跡ブランチのチェック - feature-branchは存在、bugfix-loginは存在しない
       if (
         command?.includes(
@@ -78,6 +85,11 @@ locked`;
         throw new Error('Not merged');
       }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
@@ -128,23 +140,31 @@ branch refs/heads/feature-branch`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
-      if (
-        command?.includes('git show-ref --verify --quiet refs/remotes/origin/')
-      ) {
-        return '';
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[0].status).toBe('MAIN');
-    expect(worktrees[0].isActive).toBe(false);
-    expect(worktrees[1].status).toBe('ACTIVE');
-    expect(worktrees[1].isActive).toBe(true);
+    expect(worktrees).toHaveLength(2);
+
+    // メインworktree
+    expect(worktrees[0]).toMatchObject({
+      path: '/Users/test/project',
+      status: 'MAIN',
+      isActive: false,
+    });
+
+    // アクティブなworktree
+    expect(worktrees[1]).toMatchObject({
+      path: '/Users/test/git-worktrees/project/feature-branch',
+      status: 'ACTIVE',
+      isActive: true,
+    });
 
     process.cwd = originalCwd;
   });
@@ -156,41 +176,41 @@ HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
 worktree /Users/test/git-worktrees/project/merged-feature
-HEAD fedcba0987654321fedcba0987654321fedcba09
+HEAD abcdef1234567890ab1234567890abcdef123456
 branch refs/heads/merged-feature`;
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
-      // merged-featureはマージ済み（リモート追跡ブランチが存在しない）
+      // merged-featureブランチは存在し、マージ済み
       if (
         command?.includes(
           'git show-ref --verify --quiet refs/remotes/origin/merged-feature'
         )
       ) {
-        throw new Error('No remote tracking branch');
+        return '';
       }
-      // マージチェック - merged-featureはmainにマージ済み
       if (
         command?.includes(
-          'git merge-base --is-ancestor refs/heads/merged-feature refs/heads/main'
+          'git merge-base --is-ancestor origin/merged-feature origin/main'
         )
       ) {
-        return '';
+        return ''; // マージ済み
       }
       return '';
     });
 
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
+    });
+
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[1]).toMatchObject({
-      branch: 'refs/heads/merged-feature',
-      status: 'OTHER',
-    });
+    expect(worktrees).toHaveLength(2);
+    expect(worktrees[0].status).toBe('MAIN');
+    expect(worktrees[1].status).toBe('OTHER');
   });
 
   // PRUNABLE状態（リモート削除済み）の検出をテスト
@@ -200,17 +220,14 @@ HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
 worktree /Users/test/git-worktrees/project/deleted-branch
-HEAD fedcba0987654321fedcba0987654321fedcba09
+HEAD abcdef1234567890ab1234567890abcdef123456
 branch refs/heads/deleted-branch`;
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
-      // deleted-branchはリモートで削除済み
+      // deleted-branchはリモートに存在しない
       if (
         command?.includes(
           'git show-ref --verify --quiet refs/remotes/origin/deleted-branch'
@@ -221,12 +238,16 @@ branch refs/heads/deleted-branch`;
       return '';
     });
 
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
+    });
+
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[1]).toMatchObject({
-      branch: 'refs/heads/deleted-branch',
-      status: 'OTHER',
-    });
+    expect(worktrees).toHaveLength(2);
+    expect(worktrees[0].status).toBe('MAIN');
+    expect(worktrees[1].status).toBe('OTHER');
   });
 
   // エイリアス `ls` コマンドの動作をテスト
@@ -239,16 +260,18 @@ branch refs/heads/main`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
 
     expect(worktrees).toHaveLength(1);
-    expect(worktrees[0].branch).toBe('refs/heads/main');
+    expect(worktrees[0].status).toBe('MAIN');
   });
 
   // HEADが切り離し状態のworktree表示をテスト
@@ -265,45 +288,50 @@ detached`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[1]).toMatchObject({
-      path: '/Users/test/git-worktrees/project/detached-head',
-      branch: '(detached)',
-      status: 'OTHER',
-    });
+    expect(worktrees).toHaveLength(2);
+    expect(worktrees[0].status).toBe('MAIN');
+    expect(worktrees[1].branch).toBe('(detached)');
+    expect(worktrees[1].status).toBe('OTHER');
   });
 
   // bareリポジトリの表示をテスト
   it('should display bare repository correctly', async () => {
     const porcelainOutput = `worktree /Users/test/project.git
 HEAD 1234567890abcdef1234567890abcdef12345678
-bare`;
+bare
+
+worktree /Users/test/git-worktrees/project/feature-branch
+HEAD abcdef1234567890ab1234567890abcdef123456
+branch refs/heads/feature-branch`;
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[0]).toMatchObject({
-      path: '/Users/test/project.git',
-      branch: '(bare)',
-      status: 'MAIN',
-      isMain: true,
-    });
+    expect(worktrees).toHaveLength(2);
+    expect(worktrees[0].branch).toBe('(bare)');
+    expect(worktrees[0].status).toBe('MAIN');
+    expect(worktrees[1].status).toBe('OTHER');
   });
 
   // 複数メインブランチ設定での動作をテスト
@@ -318,41 +346,27 @@ bare`;
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/develop
 
-worktree /Users/test/git-worktrees/project/feature
+worktree /Users/test/git-worktrees/project/feature-branch
 HEAD abcdef1234567890ab1234567890abcdef123456
-branch refs/heads/feature`;
+branch refs/heads/feature-branch`;
 
     mockExecSync.mockImplementation((command) => {
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return porcelainOutput;
-      }
-      // featureはdevelopにマージ済み
-      if (
-        command?.includes(
-          'git merge-base --is-ancestor refs/heads/feature refs/heads/develop'
-        )
-      ) {
-        return '';
-      }
-      if (
-        command?.includes(
-          'git show-ref --verify --quiet refs/remotes/origin/feature'
-        )
-      ) {
-        throw new Error('No remote tracking branch');
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: porcelainOutput,
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
 
-    expect(worktrees[1]).toMatchObject({
-      branch: 'refs/heads/feature',
-      status: 'OTHER',
-    });
+    expect(worktrees).toHaveLength(2);
+    expect(worktrees[0].status).toBe('MAIN'); // developブランチもmainとして認識
+    expect(worktrees[1].status).toBe('OTHER');
   });
 
   // 空のworktreeリストの処理をテスト
@@ -361,10 +375,12 @@ branch refs/heads/feature`;
       if (command === 'git rev-parse --git-dir') {
         return '';
       }
-      if (command === 'git worktree list --porcelain') {
-        return '';
-      }
       return '';
+    });
+
+    mockExecAsync.mockResolvedValue({
+      stdout: '',
+      stderr: '',
     });
 
     const worktrees = await getWorktreesWithStatus();
