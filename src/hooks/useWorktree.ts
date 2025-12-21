@@ -7,6 +7,7 @@ import {
   getMainWorktreePath,
   getIgnoredFiles,
   copyFiles,
+  getRepoRoot,
 } from '../utils/git.js';
 import {
   detectVirtualEnvs,
@@ -16,14 +17,17 @@ import {
 import { escapeShellArg } from '../utils/shell.js';
 import { openWithEditor } from '../utils/editor.js';
 import { formatErrorForDisplay } from '../utils/index.js';
+import { runPostCreateHooks } from './runner/index.js';
 
 interface UseWorktreeOptions {
   fromBranch?: string;
   openCode?: boolean;
   openCursor?: boolean;
   outputPath?: boolean;
+  skipHooks?: boolean;
   onSuccess?: (data: { path: string; actions: string[] }) => void;
   onError?: (message: string) => void;
+  onHooksStart?: () => void;
 }
 
 export function useWorktree({
@@ -31,8 +35,10 @@ export function useWorktree({
   openCode = false,
   openCursor = false,
   outputPath = false,
+  skipHooks = false,
   onSuccess,
   onError,
+  onHooksStart,
 }: UseWorktreeOptions) {
   const config = useMemo(() => loadConfig(), []);
 
@@ -146,6 +152,7 @@ export function useWorktree({
           }
         }
 
+        // エディタを先に開く（hooks 実行中にコードを確認できるように）
         if (openCode) {
           const ok = openWithEditor(worktreePath, 'code');
           actions.push(
@@ -159,6 +166,31 @@ export function useWorktree({
             ok ? 'Cursor opened' : 'Cursor failed to open (not installed?)'
           );
         }
+
+        // post_create hook の実行
+        if (!skipHooks) {
+          onHooksStart?.();
+          const hookContext = {
+            worktreePath,
+            branchName: branch,
+            repoRoot: getRepoRoot(),
+            repoName,
+          };
+
+          const hookResult = await runPostCreateHooks(config, hookContext);
+
+          if (!hookResult.success) {
+            // hook 失敗時は actions に情報を追加するが、worktree は残す
+            actions.push(`Hook failed: ${hookResult.failedCommand}`);
+          } else if (hookResult.executedCount > 0) {
+            actions.push(
+              `Executed ${hookResult.executedCount} post_create hook(s)`
+            );
+          }
+        }
+
+        // すべての処理完了後に通知
+        onSuccess?.({ path: worktreePath, actions });
 
         if (outputPath) {
           const userShell =
@@ -176,13 +208,21 @@ export function useWorktree({
           // サブシェル終了後に CLI も終了
           process.exit(0);
         }
-
-        onSuccess?.({ path: worktreePath, actions });
       } catch (err) {
         onError?.(formatErrorForDisplay(err));
       }
     },
-    [config, fromBranch, openCode, openCursor, outputPath, onSuccess, onError]
+    [
+      config,
+      fromBranch,
+      openCode,
+      openCursor,
+      outputPath,
+      skipHooks,
+      onSuccess,
+      onError,
+      onHooksStart,
+    ]
   );
 
   return { createWorktree };

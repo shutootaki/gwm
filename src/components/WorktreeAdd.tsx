@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import { SelectList } from './SelectList.js';
 import {
   TextInput,
@@ -20,6 +26,7 @@ interface WorktreeAddProps {
   openCode?: boolean;
   openCursor?: boolean;
   outputPath?: boolean;
+  skipHooks?: boolean;
 }
 
 interface RemoteBranch {
@@ -30,7 +37,7 @@ interface RemoteBranch {
   lastCommitMessage: string;
 }
 
-type ViewMode = 'input' | 'select' | 'loading';
+type ViewMode = 'input' | 'select' | 'loading' | 'hooks';
 
 export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   branchName,
@@ -39,6 +46,7 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   openCode = false,
   openCursor = false,
   outputPath = false,
+  skipHooks = false,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -57,6 +65,11 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
+  // ローディング時のラベル（状況に応じて変更）
+  const [loadingLabel, setLoadingLabel] = useState<string>(
+    branchName ? 'Creating worktree...' : 'Fetching remote branches...'
+  );
+
   // onSuccess / onError の参照が毎レンダー変わらないように useCallback でメモ化
   const handleSuccess = useCallback(
     (data: { path: string; actions: string[] }) => {
@@ -69,14 +82,26 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     setError(message);
   }, []);
 
+  const handleHooksStart = useCallback(() => {
+    setViewMode('hooks');
+  }, []);
+
   const { createWorktree } = useWorktree({
     fromBranch,
     openCode,
     openCursor,
     outputPath,
+    skipHooks,
     onSuccess: handleSuccess,
     onError: handleError,
+    onHooksStart: handleHooksStart,
   });
+
+  // createWorktree の最新参照を保持（useEffect の依存配列から除外するため）
+  const createWorktreeRef = useRef(createWorktree);
+  useEffect(() => {
+    createWorktreeRef.current = createWorktree;
+  }, [createWorktree]);
 
   const fetchRemoteBranches = async () => {
     try {
@@ -111,16 +136,17 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   useEffect(() => {
     if (branchName) {
       // 引数でブランチ名が指定された場合、直接作成
-      createWorktree(branchName, isRemote);
+      createWorktreeRef.current(branchName, isRemote);
     } else if (isRemote) {
       // -r フラグが指定された場合、リモートブランチ選択モードに
+      setLoadingLabel('Fetching remote branches...');
       setViewMode('loading');
       fetchRemoteBranches();
     } else {
       // 引数なしの場合、デフォルトで新規ブランチ入力モード
       setViewMode('input');
     }
-  }, [branchName, isRemote, createWorktree]);
+  }, [branchName, isRemote]);
 
   // remoteBranches の SelectList 用変換をメモ化
   const selectItems: SelectItem[] = useMemo(
@@ -154,6 +180,7 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     if (viewMode === 'input') {
       // 新規ブランチ入力からリモートブランチ選択に切り替え
       if (!isRemoteBranchesLoaded) {
+        setLoadingLabel('Fetching remote branches...');
         setViewMode('loading');
         fetchRemoteBranches();
       } else {
@@ -177,21 +204,33 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     // エディタを開くオプションが指定されている場合は簡易表示
     if (openCode || openCursor) {
       let worktreePath: string;
+      let actions: string[] = [];
 
       try {
         const parsed = JSON.parse(success);
         worktreePath = parsed.path;
+        actions = parsed.actions || [];
       } catch {
         worktreePath = success;
       }
 
       const editorName = openCode ? 'VS Code' : 'Cursor';
 
+      // hooks実行結果をフィルタリング（Executedまたはfailedを含むもの）
+      const hookMessages = actions.filter(
+        (a) => a.includes('hook') || a.includes('Hook')
+      );
+
+      const messages = [
+        `✓ ${worktreePath}`,
+        ...hookMessages.map((h) => `• ${h}`),
+      ];
+
       return (
         <Notice
           variant="success"
           title={`Worktree created and opened in ${editorName}`}
-          messages={`✓ ${worktreePath}`}
+          messages={messages}
         />
       );
     }
@@ -208,6 +247,9 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
       worktreePath = success;
     }
 
+    // worktreePathからブランチ名を抽出（最後のディレクトリ名）
+    const branchName = worktreePath.split('/').pop() || '';
+
     return (
       <Notice
         variant="success"
@@ -215,7 +257,9 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
         messages={[
           `Location: ${worktreePath}`,
           ...actions.map((a) => `• ${a}`),
-          `Use: cd "${worktreePath}" to navigate`,
+          'To navigate to the created worktree, run:',
+          `  $ gwm go ${branchName}`,
+          `  $ cd "${worktreePath}"`,
         ]}
       />
     );
@@ -257,6 +301,11 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     );
   }
 
+  // viewMode === 'hooks'（フック実行中はスピナーを非表示）
+  if (viewMode === 'hooks') {
+    return null;
+  }
+
   // viewMode === 'loading'
-  return <LoadingSpinner label="Fetching remote branches..." />;
+  return <LoadingSpinner label={loadingLabel} />;
 };

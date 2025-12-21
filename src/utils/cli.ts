@@ -5,6 +5,7 @@ export interface AddArgs {
   openCode: boolean;
   openCursor: boolean;
   outputPath: boolean;
+  skipHooks: boolean;
 }
 
 export interface RemoveArgs {
@@ -47,6 +48,7 @@ export function parseAddArgs(args: string[]): AddArgs {
   const openCode = hasFlag(args, ['--code']);
   const openCursor = hasFlag(args, ['--cursor']);
   const outputPath = hasFlag(args, ['--cd']);
+  const skipHooks = hasFlag(args, ['--skip-hooks']);
 
   // 位置引数（ブランチ名）は --from の値を除外した最初の非フラグ
   for (let i = 1; i < args.length; i++) {
@@ -63,7 +65,15 @@ export function parseAddArgs(args: string[]): AddArgs {
     }
   }
 
-  return { branchName, isRemote, fromBranch, openCode, openCursor, outputPath };
+  return {
+    branchName,
+    isRemote,
+    fromBranch,
+    openCode,
+    openCursor,
+    outputPath,
+    skipHooks,
+  };
 }
 
 export function parseRemoveArgs(args: string[]): RemoveArgs {
