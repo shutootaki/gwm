@@ -42,7 +42,7 @@ function logInfo(message: string): void {
 async function executeCommand(
   command: string,
   cwd: string,
-  env: NodeJS.ProcessEnv
+  env: typeof process.env
 ): Promise<{ success: boolean; exitCode: number }> {
   return new Promise((resolve) => {
     const child = spawn(command, {
@@ -93,7 +93,7 @@ export async function runPostCreateHooks(
   }
 
   // hook 用環境変数を準備
-  const hookEnv: NodeJS.ProcessEnv = {
+  const hookEnv: typeof process.env = {
     ...process.env,
     GWM_WORKTREE_PATH: context.worktreePath,
     GWM_BRANCH_NAME: context.branchName,
