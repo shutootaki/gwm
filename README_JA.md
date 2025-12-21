@@ -34,20 +34,31 @@
 | `gwm remove` / `gwm rm` | ワークツリーを削除                                 | 複数選択、強制モード、ブランチの後始末         |
 | `gwm clean`             | 安全に削除可能なワークツリーを自動検出し一括削除   | Enter で全件削除 / -n でドライラン             |
 | `gwm pull-main`         | すべての main 系ワークツリーで `git pull` を実行   | ベースを最新状態に保つ                         |
+| `gwm completion`        | シェル補完スクリプトの管理                         | bash, zsh, fish, Kiro CLI                      |
 
 _注: `gwm help <command>` で各コマンドの詳細を確認できます。_
 
 ## 📦 インストール
 
-### npm（推奨）
+### Homebrew（macOS/Linux 推奨）
 
 ```bash
-# Global install
+brew install shutootaki/formulae/gwm
+```
+
+シェル補完は自動的にインストールされます - 追加の設定は不要です。
+
+### npm
+
+```bash
+# グローバルインストール
 npm install -g @shutootaki/gwm
 
-# or use npx (no installation needed)
+# または npx を使用（インストール不要）
 npx @shutootaki/gwm
 ```
+
+npm でインストールした場合のシェル補完については、[シェル補完](#️-シェル補完)セクションを参照してください。
 
 ### 代替インストール方法
 
@@ -241,6 +252,63 @@ gwm remove pr-branch       # 完了後にクリーンアップ
 - `gwm help <command>` で特定のコマンドのヘルプを表示
 - [GitHub Issues](https://github.com/shutootaki/gwm/issues) で既知の問題を確認
 - バグを発見した場合は新しい Issue を作成してください
+
+## ⌨️ シェル補完
+
+gwm は bash、zsh、fish、および Kiro CLI（旧 Fig / Amazon Q Developer CLI）のタブ補完をサポートしています。
+
+> **注意:** Homebrew でインストールした場合、シェル補完は自動的に設定されています。以下の手順は npm/pnpm/yarn でインストールした場合のものです。
+
+### 標準シェル補完
+
+```bash
+# zsh（macOS 推奨）
+gwm completion install --shell zsh
+
+# bash
+gwm completion install --shell bash
+
+# fish
+gwm completion install --shell fish
+```
+
+インストール後、シェルを再起動するか設定ファイルを再読み込みしてください:
+
+```bash
+# zsh
+source ~/.zshrc
+
+# bash
+source ~/.bashrc
+
+# fish（自動的に適用）
+```
+
+### Kiro CLI（旧 Fig）
+
+```bash
+gwm completion install --kiro
+```
+
+### 補完の管理
+
+```bash
+# インストール状況を確認
+gwm completion status
+
+# 補完をアンインストール
+gwm completion uninstall --shell zsh
+gwm completion uninstall --kiro
+
+# 補完スクリプトを標準出力に表示（手動セットアップ用）
+gwm completion script --shell zsh
+```
+
+### 補完される内容
+
+- **サブコマンド**: `gwm <TAB>` で `list`, `add`, `go`, `remove`, `clean` などを表示
+- **オプション**: `gwm add --<TAB>` で `--remote`, `--from`, `--code` などを表示
+- **動的な値**: `gwm go <TAB>` でワークツリー一覧、`gwm add -r <TAB>` でリモートブランチを表示
 
 ## 📄 ライセンス
 

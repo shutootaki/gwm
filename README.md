@@ -34,12 +34,21 @@ When you're juggling multiple pull requests or hotfixes at once, running `git ch
 | `gwm remove` / `gwm rm` | Remove worktrees                                    | Multi-select, force mode, branch cleanup       |
 | `gwm clean`             | Auto-detect safe-to-delete worktrees and clean them | Enter deletes all / -n dry-run                 |
 | `gwm pull-main`         | Run `git pull` in all main worktrees                | Keep bases up to date                          |
+| `gwm completion`        | Manage shell completion scripts                     | bash, zsh, fish, Kiro CLI                      |
 
 _Note: Run `gwm help <command>` for details on each command._
 
 ## 📦 Installation
 
-### npm (Recommended)
+### Homebrew (Recommended for macOS/Linux)
+
+```bash
+brew install shutootaki/formulae/gwm
+```
+
+Shell completions are installed automatically - no extra setup needed.
+
+### npm
 
 ```bash
 # Global install
@@ -48,6 +57,8 @@ npm install -g @shutootaki/gwm
 # or use npx (no installation needed)
 npx @shutootaki/gwm
 ```
+
+For shell completion with npm install, see [Shell Completion](#️-shell-completion) section.
 
 ### Alternative Installation Methods
 
@@ -243,6 +254,63 @@ gwm remove pr-branch       # Clean up when done
 - Run `gwm help <command>` for specific command help
 - Check the [GitHub Issues](https://github.com/shutootaki/gwm/issues) for known problems
 - Create a new issue if you encounter a bug
+
+## ⌨️ Shell Completion
+
+gwm supports tab completion for bash, zsh, fish, and Kiro CLI (formerly Fig/Amazon Q Developer CLI).
+
+> **Note:** If you installed via Homebrew, shell completions are already set up. The following instructions are for npm/pnpm/yarn installations.
+
+### Standard Shell Completion
+
+```bash
+# zsh (recommended for macOS)
+gwm completion install --shell zsh
+
+# bash
+gwm completion install --shell bash
+
+# fish
+gwm completion install --shell fish
+```
+
+After installation, restart your shell or source the configuration file:
+
+```bash
+# zsh
+source ~/.zshrc
+
+# bash
+source ~/.bashrc
+
+# fish (automatic)
+```
+
+### Kiro CLI (formerly Fig)
+
+```bash
+gwm completion install --kiro
+```
+
+### Managing Completions
+
+```bash
+# Check installation status
+gwm completion status
+
+# Uninstall completions
+gwm completion uninstall --shell zsh
+gwm completion uninstall --kiro
+
+# Output completion script to stdout (for manual setup)
+gwm completion script --shell zsh
+```
+
+### What Gets Completed
+
+- **Subcommands**: `gwm <TAB>` shows `list`, `add`, `go`, `remove`, `clean`, etc.
+- **Options**: `gwm add --<TAB>` shows `--remote`, `--from`, `--code`, etc.
+- **Dynamic values**: `gwm go <TAB>` shows your worktrees, `gwm add -r <TAB>` shows remote branches
 
 ## 📄 License
 
