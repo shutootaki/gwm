@@ -198,12 +198,12 @@ function parseHooks(parsed: RawParsedConfig): Config['hooks'] {
       enabled:
         typeof pc.enabled === 'boolean'
           ? pc.enabled
-          : defaultHooks?.post_create?.enabled ?? true,
+          : (defaultHooks?.post_create?.enabled ?? true),
       commands: Array.isArray(pc.commands)
         ? (pc.commands as unknown[]).filter(
             (v): v is string => typeof v === 'string'
           )
-        : defaultHooks?.post_create?.commands ?? [],
+        : (defaultHooks?.post_create?.commands ?? []),
     };
   } else {
     result.post_create = defaultHooks?.post_create;

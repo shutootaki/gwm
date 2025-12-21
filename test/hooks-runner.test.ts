@@ -32,19 +32,6 @@ function mockSpawnSuccess() {
   mockSpawn.mockReturnValue(mockProcess as any);
 }
 
-// 失敗する spawn をシミュレート
-function mockSpawnFailure(exitCode: number) {
-  const mockProcess = {
-    on: vi.fn((event: string, callback: (code: number) => void) => {
-      if (event === 'close') {
-        setTimeout(() => callback(exitCode), 0);
-      }
-      return mockProcess;
-    }),
-  };
-  mockSpawn.mockReturnValue(mockProcess as any);
-}
-
 describe('runPostCreateHooks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
