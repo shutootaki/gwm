@@ -44,36 +44,39 @@ function parseCleanBranch(parsed: RawParsedConfig): 'auto' | 'ask' | 'never' {
 
 /**
  * copy_ignored_files設定を検証・処理
+ *
+ * セクションが存在する場合、enabled のデフォルトは true
+ * （設定を書いたら有効になる、という直感的な動作）
  */
 function parseCopyIgnoredFiles(
   parsed: RawParsedConfig
 ): Config['copy_ignored_files'] {
-  let copyIgnoredFiles = DEFAULT_CONFIG.copy_ignored_files;
+  const defaults = DEFAULT_CONFIG.copy_ignored_files!;
 
+  // セクションが存在しない場合はデフォルト設定を返す
   if (
-    parsed.copy_ignored_files &&
-    typeof parsed.copy_ignored_files === 'object'
+    !parsed.copy_ignored_files ||
+    typeof parsed.copy_ignored_files !== 'object'
   ) {
-    const cif = parsed.copy_ignored_files as Record<string, unknown>;
-    copyIgnoredFiles = {
-      enabled:
-        typeof cif.enabled === 'boolean'
-          ? cif.enabled
-          : DEFAULT_CONFIG.copy_ignored_files!.enabled,
-      patterns: Array.isArray(cif.patterns)
-        ? (cif.patterns as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
-          )
-        : DEFAULT_CONFIG.copy_ignored_files!.patterns,
-      exclude_patterns: Array.isArray(cif.exclude_patterns)
-        ? (cif.exclude_patterns as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
-          )
-        : DEFAULT_CONFIG.copy_ignored_files!.exclude_patterns,
-    };
+    return defaults;
   }
 
-  return copyIgnoredFiles;
+  const cif = parsed.copy_ignored_files as Record<string, unknown>;
+
+  return {
+    // セクションが存在する場合、enabled のデフォルトは true
+    enabled: typeof cif.enabled === 'boolean' ? cif.enabled : true,
+    patterns: Array.isArray(cif.patterns)
+      ? (cif.patterns as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : defaults.patterns,
+    exclude_patterns: Array.isArray(cif.exclude_patterns)
+      ? (cif.exclude_patterns as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : defaults.exclude_patterns,
+  };
 }
 
 /**
@@ -180,12 +183,16 @@ function parseVirtualEnvHandling(
 
 /**
  * hooks設定を検証・処理
+ *
+ * セクションが存在する場合、enabled のデフォルトは true
+ * （設定を書いたら有効になる、という直感的な動作）
  */
 function parseHooks(parsed: RawParsedConfig): Config['hooks'] {
-  const defaultHooks = DEFAULT_CONFIG.hooks;
+  const defaults = DEFAULT_CONFIG.hooks;
 
+  // hooks セクションが存在しない場合はデフォルト設定を返す
   if (!parsed.hooks || typeof parsed.hooks !== 'object') {
-    return defaultHooks;
+    return defaults;
   }
 
   const hooksRaw = parsed.hooks as Record<string, unknown>;
@@ -195,18 +202,16 @@ function parseHooks(parsed: RawParsedConfig): Config['hooks'] {
   if (hooksRaw.post_create && typeof hooksRaw.post_create === 'object') {
     const pc = hooksRaw.post_create as Record<string, unknown>;
     result.post_create = {
-      enabled:
-        typeof pc.enabled === 'boolean'
-          ? pc.enabled
-          : (defaultHooks?.post_create?.enabled ?? true),
+      // セクションが存在する場合、enabled のデフォルトは true
+      enabled: typeof pc.enabled === 'boolean' ? pc.enabled : true,
       commands: Array.isArray(pc.commands)
         ? (pc.commands as unknown[]).filter(
             (v): v is string => typeof v === 'string'
           )
-        : (defaultHooks?.post_create?.commands ?? []),
+        : (defaults?.post_create?.commands ?? []),
     };
   } else {
-    result.post_create = defaultHooks?.post_create;
+    result.post_create = defaults?.post_create;
   }
 
   return result;
