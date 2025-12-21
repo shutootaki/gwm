@@ -8,8 +8,7 @@ import {
 import { SelectItem } from '../types/index.js';
 import { formatErrorForDisplay } from '../utils/index.js';
 import { useWorktree } from '../hooks/useWorktree.js';
-import { LoadingSpinner } from './ui/LoadingSpinner.js';
-import { Notice } from './ui/Notice.js';
+import { OperationResult } from './ui/OperationResult.js';
 import { getRemoteBranchesWithInfo } from '../utils/git.js';
 import { escapeShellArg, execAsync } from '../utils/shell.js';
 
@@ -174,28 +173,6 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   }, [success, openCode, openCursor]);
 
   if (success) {
-    // エディタを開くオプションが指定されている場合は簡易表示
-    if (openCode || openCursor) {
-      let worktreePath: string;
-
-      try {
-        const parsed = JSON.parse(success);
-        worktreePath = parsed.path;
-      } catch {
-        worktreePath = success;
-      }
-
-      const editorName = openCode ? 'VS Code' : 'Cursor';
-
-      return (
-        <Notice
-          variant="success"
-          title={`Worktree created and opened in ${editorName}`}
-          messages={`✓ ${worktreePath}`}
-        />
-      );
-    }
-
     let worktreePath: string;
     let actions: string[] = [];
 
@@ -204,13 +181,23 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
       worktreePath = parsed.path;
       actions = parsed.actions || [];
     } catch {
-      // 後方互換性のため、文字列の場合はそのままパスとして扱う
       worktreePath = success;
     }
 
+    if (openCode || openCursor) {
+      const editorName = openCode ? 'VS Code' : 'Cursor';
+      return (
+        <OperationResult
+          status="success"
+          title={`Worktree created and opened in ${editorName}`}
+          messages={[`✓ ${worktreePath}`]}
+        />
+      );
+    }
+
     return (
-      <Notice
-        variant="success"
+      <OperationResult
+        status="success"
         title="Worktree created successfully!"
         messages={[
           `Location: ${worktreePath}`,
@@ -223,10 +210,11 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
 
   if (error) {
     return (
-      <Notice
-        variant="error"
+      <OperationResult
+        status="error"
         title="Failed to create worktree"
-        messages={[error, 'Branch may already exist or permission issue']}
+        message={error}
+        helpText="Branch may already exist or permission issue"
       />
     );
   }
@@ -258,5 +246,7 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
   }
 
   // viewMode === 'loading'
-  return <LoadingSpinner label="Fetching remote branches..." />;
+  return (
+    <OperationResult status="loading" message="Fetching remote branches..." />
+  );
 };

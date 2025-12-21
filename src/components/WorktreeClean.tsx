@@ -6,7 +6,7 @@ import {
   removeWorktree,
   CleanableWorktree,
 } from '../utils/index.js';
-import Spinner from 'ink-spinner';
+import { OperationResult } from './ui/OperationResult.js';
 import { WorktreeTable } from './WorktreeTable.js';
 
 interface WorktreeCleanProps {
@@ -154,67 +154,57 @@ export const WorktreeClean: React.FC<WorktreeCleanProps> = ({
   };
 
   // --------------- RENDERING -----------------
+
+  // ローディング表示
   if (loading) {
-    const msg =
+    const message =
       loadingStage === 'fetch'
-        ? 'Fetching remote status (git fetch --prune)…'
-        : 'Analyzing worktrees…';
-    return (
-      <Box>
-        <Text>
-          <Text color="cyan">
-            <Spinner type="dots" />{' '}
-          </Text>
-          {msg}
-        </Text>
-      </Box>
-    );
+        ? 'Fetching remote status (git fetch --prune)...'
+        : 'Analyzing worktrees...';
+    return <OperationResult status="loading" message={message} />;
   }
 
+  // 削除中表示
   if (removing) {
-    if (progress) {
-      return (
-        <Box>
-          <Text>
-            <Text color="cyan">
-              <Spinner type="dots" />{' '}
-            </Text>
-            {`Removing (${progress.current}/${progress.total}) ${progress.path}`}
-          </Text>
-        </Box>
-      );
-    }
     return (
-      <Box>
-        <Text>
-          <Text color="cyan">
-            <Spinner type="dots" />{' '}
-          </Text>
-          Removing worktrees...
-        </Text>
-      </Box>
+      <OperationResult
+        status="loading"
+        message="Removing worktrees..."
+        progress={
+          progress
+            ? {
+                current: progress.current,
+                total: progress.total,
+                detail: progress.path,
+              }
+            : undefined
+        }
+      />
     );
   }
 
+  // 成功表示
   if (success.length > 0) {
     return (
-      <Box flexDirection="column">
-        <Text color="green" bold>
-          ✓ Successfully cleaned {success.length} worktree(s):
-        </Text>
-        {success.map((p) => (
-          <Text key={p}> {p}</Text>
-        ))}
-        {error && <Text color="red">Some errors occurred:\n{error}</Text>}
-      </Box>
+      <OperationResult
+        status="success"
+        title={`Successfully cleaned ${success.length} worktree(s)`}
+        messages={[
+          ...success.map((p) => `✓ ${p}`),
+          ...(error ? [`Some errors occurred: ${error}`] : []),
+        ]}
+      />
     );
   }
 
+  // エラー表示
   if (error && stage === 'done') {
     return (
-      <Box>
-        <Text color="red">✗ Error: {error}</Text>
-      </Box>
+      <OperationResult
+        status="error"
+        title="Failed to clean worktrees"
+        message={error}
+      />
     );
   }
 

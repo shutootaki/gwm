@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, Box } from 'ink';
+import { OperationResult } from './ui/OperationResult.js';
 import {
   pullMainBranch,
   PullResult,
@@ -29,17 +30,20 @@ export const WorktreePullMain: React.FC = () => {
 
   if (loading) {
     return (
-      <Box>
-        <Text>Updating main branch worktrees...</Text>
-      </Box>
+      <OperationResult
+        status="loading"
+        message="Updating main branch worktrees..."
+      />
     );
   }
 
   if (error) {
     return (
-      <Box>
-        <Text color="red">❌ Error: {error}</Text>
-      </Box>
+      <OperationResult
+        status="error"
+        title="Failed to update main branches"
+        message={error}
+      />
     );
   }
 

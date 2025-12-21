@@ -11,8 +11,7 @@ import {
   Worktree,
 } from '../utils/index.js';
 import { loadConfig } from '../config.js';
-import { Notice } from './ui/Notice.js';
-import { LoadingSpinner } from './ui/LoadingSpinner.js';
+import { OperationResult } from './ui/OperationResult.js';
 
 interface WorktreeRemoveProps {
   query?: string;
@@ -120,10 +119,14 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
     setError('Cancelled');
   };
 
+  if (removing) {
+    return <OperationResult status="loading" message="Removing worktrees..." />;
+  }
+
   if (success.length > 0) {
     return (
-      <Notice
-        variant="success"
+      <OperationResult
+        status="success"
         title={`Successfully removed ${success.length} worktree(s)`}
         messages={[
           ...success.map((p) => `✓ ${p}`),
@@ -134,11 +137,13 @@ export const WorktreeRemove: React.FC<WorktreeRemoveProps> = ({
   }
 
   if (error) {
-    return <Notice variant="error" title="Error" messages={error} />;
-  }
-
-  if (removing) {
-    return <LoadingSpinner label="Removing worktrees..." color="yellow" />;
+    return (
+      <OperationResult
+        status="error"
+        title="Failed to remove worktree"
+        message={error}
+      />
+    );
   }
 
   if (worktrees.length === 0) {

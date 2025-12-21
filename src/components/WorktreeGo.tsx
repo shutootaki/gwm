@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Text, Box } from 'ink';
 import { execSync, spawnSync } from 'child_process';
 import { WorktreeSelector } from './WorktreeSelector.js';
+import { OperationResult } from './ui/OperationResult.js';
 import { formatErrorForDisplay } from '../utils/index.js';
 import { escapeShellArg } from '../utils/shell.js';
 
@@ -93,18 +93,16 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
       : 'Select a worktree to go to:';
 
   if (success) {
-    return (
-      <Box>
-        <Text color="green">✓ {success}</Text>
-      </Box>
-    );
+    return <OperationResult status="success" title={success} />;
   }
 
   if (error) {
     return (
-      <Box>
-        <Text color="red">✗ Error: {error}</Text>
-      </Box>
+      <OperationResult
+        status="error"
+        title="Failed to open worktree"
+        message={error}
+      />
     );
   }
 
