@@ -179,6 +179,40 @@ function parseVirtualEnvHandling(
 }
 
 /**
+ * hooks設定を検証・処理
+ */
+function parseHooks(parsed: RawParsedConfig): Config['hooks'] {
+  const defaultHooks = DEFAULT_CONFIG.hooks;
+
+  if (!parsed.hooks || typeof parsed.hooks !== 'object') {
+    return defaultHooks;
+  }
+
+  const hooksRaw = parsed.hooks as Record<string, unknown>;
+  const result: Config['hooks'] = {};
+
+  // post_create の解析
+  if (hooksRaw.post_create && typeof hooksRaw.post_create === 'object') {
+    const pc = hooksRaw.post_create as Record<string, unknown>;
+    result.post_create = {
+      enabled:
+        typeof pc.enabled === 'boolean'
+          ? pc.enabled
+          : defaultHooks?.post_create?.enabled ?? true,
+      commands: Array.isArray(pc.commands)
+        ? (pc.commands as unknown[]).filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : defaultHooks?.post_create?.commands ?? [],
+    };
+  } else {
+    result.post_create = defaultHooks?.post_create;
+  }
+
+  return result;
+}
+
+/**
  * パースされたTOMLデータを設定オブジェクトに変換
  */
 export function parseConfigFromTOML(parsed: RawParsedConfig): Config {
@@ -188,5 +222,6 @@ export function parseConfigFromTOML(parsed: RawParsedConfig): Config {
     clean_branch: parseCleanBranch(parsed),
     copy_ignored_files: parseCopyIgnoredFiles(parsed),
     virtual_env_handling: parseVirtualEnvHandling(parsed),
+    hooks: parseHooks(parsed),
   };
 }
