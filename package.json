@@ -12,6 +12,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:all": "tsc && pnpm run build:completions",
+    "build:completions": "node scripts/generate-completions.js",
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
     "fix": "pnpm format && pnpm lint:fix",
@@ -19,7 +21,7 @@
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' 'test/**/*.{ts,tsx}' --fix",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'test/**/*.{ts,tsx}'",
-    "prepublishOnly": "pnpm lint && pnpm build && pnpm test:run && node scripts/prepublish.js",
+    "prepublishOnly": "pnpm lint && pnpm build:all && pnpm test:run && node scripts/prepublish.js",
     "publish:dry": "pnpm run build && pnpm publish --dry-run",
     "release:local": "pnpm run build && pnpm publish --access public",
     "start": "node dist/index.js",
@@ -28,6 +30,7 @@
     "test:ui": "vitest --ui",
     "test": "vitest",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "update:homebrew": "npx tsx scripts/update-homebrew-sha.ts",
     "validate": "pnpm run lint && pnpm run typecheck"
   },
   "keywords": [
