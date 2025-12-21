@@ -19,6 +19,13 @@ export const DEFAULT_CONFIG: Config = {
     max_scan_depth: 5,
     copy_parallelism: 4,
   },
+
+  hooks: {
+    post_create: {
+      enabled: true,
+      commands: [],
+    },
+  },
 };
 
 /**
