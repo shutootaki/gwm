@@ -64,6 +64,7 @@ const AddHelp: React.FC = () => (
       {' '}
       --cd Output the path to the new worktree (for shell integration)
     </Text>
+    <Text> --skip-hooks Skip post_create hooks execution</Text>
     <Text />
     <Text bold>EXAMPLES:</Text>
     <Text> # Interactively create a new branch and worktree</Text>

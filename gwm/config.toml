@@ -1,0 +1,6 @@
+[hooks.post_create]
+# enabled = true
+commands = [
+  "pnpm install",
+  # "claude",
+]

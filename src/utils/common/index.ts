@@ -37,3 +37,6 @@ export {
   CONFIG,
   UI,
 } from './constants.js';
+
+// 環境判定
+export { isTestEnvironment } from './environment.js';

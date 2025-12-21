@@ -1,19 +1,8 @@
 import type { Config } from './types.js';
+import { isPlainObject } from './guards.js';
 
 type ConfigValue = unknown;
 type ConfigObject = Record<string, ConfigValue>;
-
-/**
- * 値がプレーンオブジェクトかどうかを判定
- */
-function isPlainObject(value: unknown): value is ConfigObject {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.prototype.toString.call(value) === '[object Object]'
-  );
-}
 
 /**
  * 2つの設定オブジェクトを深くマージする
