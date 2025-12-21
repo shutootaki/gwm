@@ -28,8 +28,8 @@ export interface Config {
    * gitignoreされたファイルのコピー設定
    */
   copy_ignored_files?: {
-    enabled: boolean;
-    patterns: string[];
+    enabled?: boolean;
+    patterns?: string[];
     exclude_patterns?: string[];
   };
 

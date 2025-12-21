@@ -99,7 +99,7 @@ export function useWorktree({
           if (mainWorktreePath && mainWorktreePath !== worktreePath) {
             const ignoredFiles = getIgnoredFiles(
               mainWorktreePath,
-              config.copy_ignored_files.patterns,
+              config.copy_ignored_files.patterns ?? [],
               [
                 ...(config.copy_ignored_files.exclude_patterns ?? []),
                 ...(isIsolationEnabled ? getVirtualEnvExcludePatterns() : []),
