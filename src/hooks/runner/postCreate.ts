@@ -1,40 +1,10 @@
 import { spawn } from 'child_process';
 import type { Config } from '../../config/types.js';
 import type { HookContext, HookResult } from './types.js';
+import { createLogger } from '../../utils/logger.js';
 
-// テスト環境かどうかを判定
-const isTestEnvironment =
-  process.env.VITEST !== undefined || process.env.NODE_ENV === 'test';
-
-// ANSI カラーコード（Notice コンポーネントと一貫したスタイル）
-const colors = {
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  gray: '\x1b[90m',
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-} as const;
-
-/**
- * 色付きログ出力ヘルパー（テスト環境では出力を抑制）
- */
-function logSuccess(message: string): void {
-  if (!isTestEnvironment) {
-    console.log(`${colors.green}${message}${colors.reset}`);
-  }
-}
-
-function logError(message: string): void {
-  if (!isTestEnvironment) {
-    console.error(`${colors.red}${message}${colors.reset}`);
-  }
-}
-
-function logInfo(message: string): void {
-  if (!isTestEnvironment) {
-    console.log(`${colors.gray}${message}${colors.reset}`);
-  }
-}
+// テスト環境では出力抑制するロガー
+const log = createLogger();
 
 /**
  * シェルコマンドを実行し、標準出力/エラーをそのまま端末に流す
@@ -60,7 +30,7 @@ async function executeCommand(
     });
 
     child.on('error', (err) => {
-      logError(`Command spawn error: ${err.message}`);
+      log.error(`Command spawn error: ${err.message}`);
       resolve({
         success: false,
         exitCode: 1,
@@ -101,19 +71,19 @@ export async function runPostCreateHooks(
     GWM_REPO_NAME: context.repoName,
   };
 
-  logInfo(
+  log.info(
     `Running post_create hooks (${commands.length} command${commands.length > 1 ? 's' : ''})...`
   );
 
   for (let i = 0; i < commands.length; i++) {
     const cmd = commands[i];
-    logInfo(`  [${i + 1}/${commands.length}] Executing: ${cmd}`);
+    log.info(`  [${i + 1}/${commands.length}] Executing: ${cmd}`);
 
     const result = await executeCommand(cmd, context.worktreePath, hookEnv);
 
     if (!result.success) {
-      logError(`  ✗ [${i + 1}/${commands.length}] ${cmd} (failed)`);
-      logError(`    Exit code: ${result.exitCode}`);
+      log.error(`  ✗ [${i + 1}/${commands.length}] ${cmd} (failed)`);
+      log.error(`    Exit code: ${result.exitCode}`);
       return {
         success: false,
         executedCount: i + 1,
@@ -123,11 +93,11 @@ export async function runPostCreateHooks(
     }
 
     // 各コマンド完了時のログ
-    logSuccess(`  ✓ [${i + 1}/${commands.length}] ${cmd} (completed)`);
+    log.success(`  ✓ [${i + 1}/${commands.length}] ${cmd} (completed)`);
   }
 
   // 完了ログを出力
-  logSuccess(
+  log.success(
     `✓ post_create hooks completed (${commands.length}/${commands.length})`
   );
 

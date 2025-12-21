@@ -1,4 +1,4 @@
-// エラーハンドリング共通ユーティリティ
+// Common error handling utilities
 
 export interface AppError {
   type: 'git' | 'network' | 'filesystem' | 'validation' | 'unknown';
@@ -24,7 +24,7 @@ export function handleGitError(error: Error): AppError {
   if (message.includes('not a git repository')) {
     return createAppError(
       'git',
-      'このディレクトリはGitリポジトリではありません。Gitリポジトリ内で実行してください。',
+      'This directory is not a Git repository. Please run this command inside a Git repository.',
       error
     );
   }
@@ -32,7 +32,7 @@ export function handleGitError(error: Error): AppError {
   if (message.includes('no such remote')) {
     return createAppError(
       'git',
-      'リモート "origin" が見つかりません。リモートリポジトリを設定してください。',
+      'Remote "origin" not found. Please configure a remote repository.',
       error
     );
   }
@@ -40,7 +40,7 @@ export function handleGitError(error: Error): AppError {
   if (message.includes('network') || message.includes('fetch')) {
     return createAppError(
       'network',
-      'ネットワークエラーが発生しました。インターネット接続を確認してください。',
+      'A network error occurred. Please check your internet connection.',
       error
     );
   }
@@ -48,7 +48,7 @@ export function handleGitError(error: Error): AppError {
   if (message.includes('worktree') && message.includes('already exists')) {
     return createAppError(
       'filesystem',
-      'このワークツリーは既に存在します。別の名前を使用してください。',
+      'This worktree already exists. Please use a different name.',
       error
     );
   }
@@ -56,12 +56,12 @@ export function handleGitError(error: Error): AppError {
   if (message.includes('permission denied')) {
     return createAppError(
       'filesystem',
-      'ファイルシステムの権限エラーです。ディレクトリの権限を確認してください。',
+      'File system permission error. Please check directory permissions.',
       error
     );
   }
 
-  return createAppError('git', `Gitコマンドエラー: ${error.message}`, error);
+  return createAppError('git', `Git command error: ${error.message}`, error);
 }
 
 export function formatErrorMessage(error: AppError): string {
@@ -74,5 +74,5 @@ export function formatErrorForDisplay(error: unknown): string {
     return formatErrorMessage(appError);
   }
 
-  return '不明なエラーが発生しました';
+  return 'An unknown error occurred';
 }

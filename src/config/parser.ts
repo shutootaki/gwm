@@ -1,6 +1,13 @@
 import TOML from '@ltd/j-toml';
 import { DEFAULT_CONFIG } from './defaults.js';
 import type { Config, RawParsedConfig } from './types.js';
+import {
+  isCleanBranchMode,
+  isCustomVirtualEnvPattern,
+  isModeString,
+  isPlainObject,
+  isStringArray,
+} from './guards.js';
 
 /**
  * TOML文字列をパースする
@@ -36,10 +43,7 @@ function parseMainBranches(parsed: RawParsedConfig): string[] {
  * clean_branch設定を検証・処理
  */
 function parseCleanBranch(parsed: RawParsedConfig): 'auto' | 'ask' | 'never' {
-  const cleanBranchRaw = parsed.clean_branch;
-  return cleanBranchRaw === 'auto' || cleanBranchRaw === 'never'
-    ? cleanBranchRaw
-    : 'ask';
+  return isCleanBranchMode(parsed.clean_branch) ? parsed.clean_branch : 'ask';
 }
 
 /**
@@ -54,27 +58,18 @@ function parseCopyIgnoredFiles(
   const defaults = DEFAULT_CONFIG.copy_ignored_files!;
 
   // セクションが存在しない場合はデフォルト設定を返す
-  if (
-    !parsed.copy_ignored_files ||
-    typeof parsed.copy_ignored_files !== 'object'
-  ) {
+  if (!isPlainObject(parsed.copy_ignored_files)) {
     return defaults;
   }
 
-  const cif = parsed.copy_ignored_files as Record<string, unknown>;
+  const cif = parsed.copy_ignored_files;
 
   return {
     // セクションが存在する場合、enabled のデフォルトは true
     enabled: typeof cif.enabled === 'boolean' ? cif.enabled : true,
-    patterns: Array.isArray(cif.patterns)
-      ? (cif.patterns as unknown[]).filter(
-          (v): v is string => typeof v === 'string'
-        )
-      : defaults.patterns,
-    exclude_patterns: Array.isArray(cif.exclude_patterns)
-      ? (cif.exclude_patterns as unknown[]).filter(
-          (v): v is string => typeof v === 'string'
-        )
+    patterns: isStringArray(cif.patterns) ? cif.patterns : defaults.patterns,
+    exclude_patterns: isStringArray(cif.exclude_patterns)
+      ? cif.exclude_patterns
       : defaults.exclude_patterns,
   };
 }
@@ -88,11 +83,8 @@ function parseVirtualEnvHandling(
   let virtualEnvHandling: Config['virtual_env_handling'] =
     DEFAULT_CONFIG.virtual_env_handling;
 
-  if (
-    parsed.virtual_env_handling &&
-    typeof parsed.virtual_env_handling === 'object'
-  ) {
-    const veh = parsed.virtual_env_handling as Record<string, unknown>;
+  if (isPlainObject(parsed.virtual_env_handling)) {
+    const veh = parsed.virtual_env_handling;
 
     const isolateRaw = veh['isolate_virtual_envs'];
     const modeRaw = veh['mode']; // deprecated
@@ -101,10 +93,8 @@ function parseVirtualEnvHandling(
     let isolate_virtual_envs: boolean;
     if (typeof isolateRaw === 'boolean') {
       isolate_virtual_envs = isolateRaw;
-    } else if (modeRaw === 'ignore') {
-      isolate_virtual_envs = false;
-    } else if (modeRaw === 'skip') {
-      isolate_virtual_envs = true;
+    } else if (isModeString(modeRaw)) {
+      isolate_virtual_envs = modeRaw === 'skip';
     } else {
       isolate_virtual_envs = false; // デフォルト
     }
@@ -137,29 +127,9 @@ function parseVirtualEnvHandling(
         : 4;
 
     const customRaw = veh['custom_patterns'];
-    let customPatternsFiltered:
-      | {
-          language: string;
-          patterns: string[];
-          commands?: string[];
-        }[]
-      | undefined;
-
-    if (Array.isArray(customRaw)) {
-      customPatternsFiltered = (customRaw as unknown[]).filter(
-        (
-          p
-        ): p is {
-          language: string;
-          patterns: string[];
-          commands?: string[];
-        } =>
-          typeof p === 'object' &&
-          p !== null &&
-          typeof (p as { language?: unknown }).language === 'string' &&
-          Array.isArray((p as { patterns?: unknown }).patterns)
-      );
-    }
+    const customPatternsFiltered = Array.isArray(customRaw)
+      ? customRaw.filter(isCustomVirtualEnvPattern)
+      : undefined;
 
     virtualEnvHandling = {
       isolate_virtual_envs,
@@ -171,10 +141,7 @@ function parseVirtualEnvHandling(
       // backward compatibility
       max_copy_size_mb:
         typeof maxCopySizeRaw === 'number' ? maxCopySizeRaw : undefined,
-      mode:
-        typeof modeRaw === 'string'
-          ? (modeRaw as 'skip' | 'ignore')
-          : undefined,
+      mode: isModeString(modeRaw) ? modeRaw : undefined,
     };
   }
 
@@ -191,23 +158,21 @@ function parseHooks(parsed: RawParsedConfig): Config['hooks'] {
   const defaults = DEFAULT_CONFIG.hooks;
 
   // hooks セクションが存在しない場合はデフォルト設定を返す
-  if (!parsed.hooks || typeof parsed.hooks !== 'object') {
+  if (!isPlainObject(parsed.hooks)) {
     return defaults;
   }
 
-  const hooksRaw = parsed.hooks as Record<string, unknown>;
+  const hooksRaw = parsed.hooks;
   const result: Config['hooks'] = {};
 
   // post_create の解析
-  if (hooksRaw.post_create && typeof hooksRaw.post_create === 'object') {
-    const pc = hooksRaw.post_create as Record<string, unknown>;
+  if (isPlainObject(hooksRaw.post_create)) {
+    const pc = hooksRaw.post_create;
     result.post_create = {
       // セクションが存在する場合、enabled のデフォルトは true
       enabled: typeof pc.enabled === 'boolean' ? pc.enabled : true,
-      commands: Array.isArray(pc.commands)
-        ? (pc.commands as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
-          )
+      commands: isStringArray(pc.commands)
+        ? pc.commands
         : (defaults?.post_create?.commands ?? []),
     };
   } else {

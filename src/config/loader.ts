@@ -4,23 +4,17 @@ import { join } from 'path';
 import { DEFAULT_CONFIG, getConfigPaths } from './defaults.js';
 import { parseTOML, parseConfigFromTOML } from './parser.js';
 import { deepMerge } from './merger.js';
+import { isTestEnvironment } from '../utils/common/index.js';
 import type { Config } from './types.js';
 
 // キャッシュされた設定
 let _cachedConfig: Config | undefined;
 
 /**
- * テスト環境かどうかを判定
- */
-function isTestEnvironment(): boolean {
-  return process.env.VITEST !== undefined || process.env.NODE_ENV === 'test';
-}
-
-/**
  * Git リポジトリのルートディレクトリを取得
  * @returns リポジトリルートのパス、またはリポジトリ外なら null
  */
-function tryGetRepoRoot(): string | null {
+export function tryGetRepoRoot(): string | null {
   try {
     return execSync('git rev-parse --show-toplevel', {
       encoding: 'utf8',
@@ -35,7 +29,7 @@ function tryGetRepoRoot(): string | null {
  * プロジェクト設定ファイルのパスを取得
  * @returns プロジェクト設定パス、またはリポジトリ外なら null
  */
-function getProjectConfigPath(): string | null {
+export function getProjectConfigPath(): string | null {
   const repoRoot = tryGetRepoRoot();
   if (!repoRoot) {
     return null;
@@ -119,4 +113,44 @@ export function loadConfig(forceReload: boolean = false): Config {
  */
 export function __resetConfigCache(): void {
   _cachedConfig = undefined;
+}
+
+/**
+ * 設定のソース情報付きで設定を読み込む
+ */
+export interface ConfigWithSource {
+  config: Config;
+  /** プロジェクト設定にhooksが含まれるか */
+  hasProjectHooks: boolean;
+  /** プロジェクト設定ファイルのパス（なければnull） */
+  projectConfigPath: string | null;
+  /** リポジトリルートパス（なければnull） */
+  repoRoot: string | null;
+}
+
+/**
+ * 設定をソース情報付きで読み込む
+ * 信頼確認のために、プロジェクト設定にhooksが含まれるかを判定する
+ */
+export function loadConfigWithSource(): ConfigWithSource {
+  const repoRoot = tryGetRepoRoot();
+  const globalConfig = loadGlobalConfig();
+  const projectConfig = loadProjectConfig();
+  const projectConfigPath = getProjectConfigPath();
+
+  // プロジェクト設定にhooksが含まれるかどうかを判定
+  const hasProjectHooks = !!(
+    projectConfig?.hooks?.post_create?.commands?.length &&
+    projectConfig?.hooks?.post_create?.enabled !== false
+  );
+
+  return {
+    config: deepMerge(globalConfig, projectConfig),
+    hasProjectHooks,
+    projectConfigPath:
+      projectConfigPath && existsSync(projectConfigPath)
+        ? projectConfigPath
+        : null,
+    repoRoot,
+  };
 }

@@ -8,3 +8,4 @@ export * from './shell.js';
 export * from './editor.js';
 export * from './presentation.js';
 export * from './common/index.js';
+export * from './logger.js';
