@@ -19,6 +19,7 @@ const GlobalHelp: React.FC = () => (
     <Text> pull-main Update the main branch worktree</Text>
     <Text> remove (rm) Remove one or more worktrees</Text>
     <Text> clean Clean up safe-to-delete worktrees</Text>
+    <Text> completion Manage shell completion</Text>
     <Text> help Show help for gwm or a specific command</Text>
     <Text />
     <Text>
@@ -231,13 +232,55 @@ const CleanHelp: React.FC = () => (
   </Box>
 );
 
+const CompletionHelp: React.FC = () => (
+  <Box flexDirection="column">
+    <Text>Manage shell completion for gwm.</Text>
+    <Text />
+    <Text bold>USAGE:</Text>
+    <Text> gwm completion &lt;subcommand&gt; [options]</Text>
+    <Text />
+    <Text bold>SUBCOMMANDS:</Text>
+    <Text> script Output completion script to stdout</Text>
+    <Text> install Install completion for your shell</Text>
+    <Text> uninstall Uninstall completion</Text>
+    <Text> status Show completion installation status</Text>
+    <Text />
+    <Text bold>SCRIPT OPTIONS:</Text>
+    <Text> --shell &lt;bash|zsh|fish&gt; Shell type (required)</Text>
+    <Text />
+    <Text bold>INSTALL OPTIONS:</Text>
+    <Text> --shell &lt;bash|zsh|fish&gt; Shell type</Text>
+    <Text> --kiro Install Kiro/Fig completion spec</Text>
+    <Text> --dry-run Show what would be done</Text>
+    <Text> --modify-rc Modify shell rc file</Text>
+    <Text> --path &lt;path&gt; Custom installation path</Text>
+    <Text />
+    <Text bold>UNINSTALL OPTIONS:</Text>
+    <Text> --shell &lt;bash|zsh|fish&gt; Shell type</Text>
+    <Text> --kiro Uninstall Kiro/Fig completion spec</Text>
+    <Text />
+    <Text bold>EXAMPLES:</Text>
+    <Text> # Install zsh completion</Text>
+    <Text> $ gwm completion install --shell zsh</Text>
+    <Text />
+    <Text> # Install Kiro/Fig completion</Text>
+    <Text> $ gwm completion install --kiro</Text>
+    <Text />
+    <Text> # Check installation status</Text>
+    <Text> $ gwm completion status</Text>
+    <Text />
+    <Text> # Output zsh completion script</Text>
+    <Text> $ gwm completion script --shell zsh</Text>
+  </Box>
+);
+
 const UnknownCommandHelp: React.FC<{ command: string }> = ({ command }) => (
   <Box flexDirection="column">
     <Text color="red">Unknown command: {command}</Text>
     <Text />
     <Text>
       Available commands: add, list (ls), remove (rm), clean, go, pull-main,
-      help
+      completion, help
     </Text>
     <Text />
     <Text>Use &quot;gwm help&quot; to see all available commands.</Text>
@@ -251,6 +294,7 @@ const commandHelpComponents: { [key: string]: React.FC } = {
   remove: RemoveHelp,
   rm: RemoveHelp,
   clean: CleanHelp,
+  completion: CompletionHelp,
   go: GoHelp,
   'pull-main': PullMainHelp,
   help: HelpHelp,

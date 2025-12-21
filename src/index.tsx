@@ -11,6 +11,7 @@ import { WorktreeGo } from './components/WorktreeGo.js';
 import { WorktreeList } from './components/WorktreeList.js';
 import { WorktreeRemove } from './components/WorktreeRemove.js';
 import { WorktreePullMain } from './components/WorktreePullMain.js';
+import { Completion } from './components/Completion.js';
 import React from 'react';
 import {
   parseAddArgs,
@@ -21,6 +22,7 @@ import {
   parseHelpArgs,
   isHelpRequested,
 } from './utils/index.js';
+import { runInternalCommand } from './completion/commands/index.js';
 
 const App: React.FC = () => {
   const args = process.argv.slice(2);
@@ -86,6 +88,17 @@ const App: React.FC = () => {
     case 'help': {
       const { command: helpCommand } = parseHelpArgs(args);
       return <Help command={helpCommand} />;
+    }
+    case 'completion': {
+      const subCommand = args[1];
+      // 隠しコマンド（__で始まる）は直接実行してReactを使わない
+      if (subCommand?.startsWith('__')) {
+        runInternalCommand(subCommand, args.slice(2))
+          .then(() => process.exit(0))
+          .catch(() => process.exit(1));
+        return null;
+      }
+      return <Completion subCommand={subCommand} args={args.slice(2)} />;
     }
     case 'config':
       return <ConfigTest />;
