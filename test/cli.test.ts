@@ -21,6 +21,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -36,6 +37,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -51,6 +53,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -66,6 +69,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -81,6 +85,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -96,6 +101,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -111,6 +117,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -125,6 +132,7 @@ describe('parseAddArgs', () => {
       openCode: true,
       openCursor: false,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -139,6 +147,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: true,
       outputPath: false,
+      skipHooks: false,
     });
   });
 
@@ -153,6 +162,7 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: true,
+      skipHooks: false,
     });
   });
 
@@ -167,6 +177,7 @@ describe('parseAddArgs', () => {
       openCode: true,
       openCursor: true,
       outputPath: false,
+      skipHooks: false,
     });
   });
 });

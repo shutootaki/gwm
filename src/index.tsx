@@ -50,6 +50,7 @@ const App: React.FC = () => {
         openCode,
         openCursor,
         outputPath,
+        skipHooks,
       } = parseAddArgs(args);
       return (
         <WorktreeAdd
@@ -59,6 +60,7 @@ const App: React.FC = () => {
           openCode={openCode}
           openCursor={openCursor}
           outputPath={outputPath}
+          skipHooks={skipHooks}
         />
       );
     }

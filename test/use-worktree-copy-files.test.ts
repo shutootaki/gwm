@@ -26,10 +26,17 @@ vi.mock('../src/utils/git.js', () => ({
   getMainWorktreePath: vi.fn(),
   getIgnoredFiles: vi.fn(),
   copyFiles: vi.fn(),
+  getRepoRoot: vi.fn(() => '/Users/test/project'),
 }));
 
 vi.mock('../src/utils/editor.js', () => ({
   openWithEditor: vi.fn(() => true),
+}));
+
+vi.mock('../src/hooks/runner/index.js', () => ({
+  runPostCreateHooks: vi.fn(() =>
+    Promise.resolve({ success: true, executedCount: 0 })
+  ),
 }));
 
 const mockExecSync = vi.mocked(execSync);

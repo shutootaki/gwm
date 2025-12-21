@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { homedir } from 'os';
 import TOML from '@ltd/j-toml';
 import { loadConfig } from '../src/config/index.js';
@@ -8,6 +9,10 @@ import { loadConfig } from '../src/config/index.js';
 vi.mock('fs', () => ({
   readFileSync: vi.fn(),
   existsSync: vi.fn(),
+}));
+
+vi.mock('child_process', () => ({
+  execSync: vi.fn(),
 }));
 
 vi.mock('os', () => ({
@@ -20,6 +25,8 @@ vi.mock('@ltd/j-toml', () => ({
   },
 }));
 
+const mockExecSync = vi.mocked(execSync);
+
 const mockReadFileSync = vi.mocked(readFileSync);
 const mockExistsSync = vi.mocked(existsSync);
 const mockTOMLParse = vi.mocked(TOML.parse);
@@ -29,6 +36,10 @@ describe('loadConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockHomedir.mockReturnValue('/Users/test');
+    // デフォルトでプロジェクト設定ファイルは存在しない（git リポジトリ外）
+    mockExecSync.mockImplementation(() => {
+      throw new Error('Not a git repository');
+    });
   });
 
   // 設定ファイルが存在しない場合のデフォルト設定返却をテスト

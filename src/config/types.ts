@@ -1,3 +1,21 @@
+/**
+ * 個別 hook の設定
+ */
+export interface HookConfig {
+  /** hook を有効にするかどうか（省略時は true） */
+  enabled?: boolean;
+  /** 実行するコマンドの配列 */
+  commands?: string[];
+}
+
+/**
+ * hooks セクションの設定
+ */
+export interface HooksConfig {
+  /** worktree 作成後に実行する hook */
+  post_create?: HookConfig;
+}
+
 export interface Config {
   worktree_base_path: string;
   main_branches: string[];
@@ -10,8 +28,8 @@ export interface Config {
    * gitignoreされたファイルのコピー設定
    */
   copy_ignored_files?: {
-    enabled: boolean;
-    patterns: string[];
+    enabled?: boolean;
+    patterns?: string[];
     exclude_patterns?: string[];
   };
 
@@ -51,6 +69,11 @@ export interface Config {
      */
     max_copy_size_mb?: number;
   };
+
+  /**
+   * hooks 設定
+   */
+  hooks?: HooksConfig;
 }
 
 export type RawParsedConfig = Partial<Record<string, unknown>>;
