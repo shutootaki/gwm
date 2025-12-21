@@ -25,6 +25,7 @@ vi.mock('../src/utils/git.js', () => ({
   getMainWorktreePath: vi.fn(() => '/Users/test/project'),
   getIgnoredFiles: vi.fn(() => []),
   copyFiles: vi.fn(() => []),
+  getRepoRoot: vi.fn(() => '/Users/test/project'),
 }));
 
 vi.mock('../src/utils/editor.js', () => ({
@@ -34,6 +35,12 @@ vi.mock('../src/utils/editor.js', () => ({
 vi.mock('../src/utils/virtualenv.js', () => ({
   detectVirtualEnvs: vi.fn(() => []),
   suggestSetupCommands: vi.fn(() => []),
+}));
+
+vi.mock('../src/hooks/runner/index.js', () => ({
+  runPostCreateHooks: vi.fn(() =>
+    Promise.resolve({ success: true, executedCount: 0 })
+  ),
 }));
 
 // プロセス関連をスパイ
