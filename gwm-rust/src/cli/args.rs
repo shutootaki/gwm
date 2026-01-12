@@ -155,7 +155,7 @@ pub struct CleanArgs {
     pub dry_run: bool,
 
     /// Skip confirmation prompt
-    #[arg(short = 'y', long = "force")]
+    #[arg(long = "force")]
     pub force: bool,
 }
 

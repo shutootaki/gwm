@@ -32,6 +32,9 @@ const App: React.FC = () => {
       // `gwm help [command]` の場合
       const { command: helpCommand } = parseHelpArgs(args);
       return <Help command={helpCommand} />;
+    } else if (command === '-h' || command === '--help') {
+      // `gwm -h` または `gwm --help` の場合（グローバルヘルプ）
+      return <Help />;
     } else {
       // `gwm <command> --help` の場合
       return <Help command={command} />;
@@ -93,8 +96,13 @@ const App: React.FC = () => {
       return <ConfigTest />;
     case 'select-test':
       return <SelectTest />;
-    default:
+    case undefined:
+    case '':
+      // 引数なしの場合はウェルカム画面
       return <Welcome />;
+    default:
+      // 未知のコマンドはエラー表示
+      return <Help command={command} />;
   }
 };
 

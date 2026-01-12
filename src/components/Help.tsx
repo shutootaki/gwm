@@ -128,6 +128,10 @@ const RemoveHelp: React.FC = () => (
     <Text />
     <Text bold>OPTIONS:</Text>
     <Text> -f, --force Force remove worktree without confirmation</Text>
+    <Text>
+      {' '}
+      --clean-branch &lt;mode&gt; Local branch cleanup mode (auto|ask|never)
+    </Text>
     <Text />
     <Text bold>EXAMPLES:</Text>
     <Text> # Interactively select worktrees to remove</Text>
@@ -138,6 +142,9 @@ const RemoveHelp: React.FC = () => (
     <Text />
     <Text> # Force remove without confirmation</Text>
     <Text> $ gwm remove old-branch --force</Text>
+    <Text />
+    <Text> # Remove and auto-delete local branch if merged</Text>
+    <Text> $ gwm remove --clean-branch auto</Text>
   </Box>
 );
 
