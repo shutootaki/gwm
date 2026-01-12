@@ -166,9 +166,6 @@ const GoHelp: React.FC = () => (
     <Text> # Open worktree in VS Code</Text>
     <Text> $ gwm go main --code</Text>
     <Text />
-    <Text color="gray">
-      Note: Use with shell function wgo() for directory navigation
-    </Text>
   </Box>
 );
 

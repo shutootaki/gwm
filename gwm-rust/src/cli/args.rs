@@ -45,7 +45,6 @@ pub enum Commands {
     /// Navigate to a worktree
     ///
     /// Output the path of a worktree for shell integration.
-    /// Use with the wgo() shell function for seamless navigation.
     Go(GoArgs),
 
     /// Clean up merged/deleted worktrees

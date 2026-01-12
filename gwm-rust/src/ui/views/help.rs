@@ -52,19 +52,6 @@ CONFIGURATION:
         [hooks.post_create]
         enabled = true
         commands = ["npm install"]
-
-SHELL INTEGRATION:
-    Add this function to your ~/.zshrc or ~/.bashrc:
-
-        wgo() {
-            local path
-            path="$(gwm go "$1")"
-            if [ -n "$path" ]; then
-                cd "$path"
-            fi
-        }
-
-    Usage: wgo feature  # Navigate to worktree matching "feature"
 "#;
 
     pub const LIST: &str = r#"
@@ -175,22 +162,10 @@ DESCRIPTION:
     Without options, prints the worktree path to stdout.
     With --code or --cursor, opens the worktree in the editor.
 
-SHELL INTEGRATION:
-    Add to ~/.zshrc or ~/.bashrc:
-
-        wgo() {
-            local path
-            path="$(gwm go "$1")"
-            if [ -n "$path" ]; then
-                cd "$path"
-            fi
-        }
-
 EXAMPLES:
     gwm go                  Interactive selection
     gwm go feature          Select matching "feature"
     gwm go main --code      Open main worktree in VS Code
-    wgo feature             Shell function: cd to worktree
 "#;
 
     pub const CLEAN: &str = r#"

@@ -61,26 +61,6 @@ gwm clean
 gwm pull-main
 ```
 
-## Shell Integration
-
-Add this function to your `~/.zshrc` or `~/.bashrc`:
-
-```bash
-wgo() {
-    local path
-    path="$(gwm go "$1")"
-    if [ -n "$path" ]; then
-        cd "$path"
-    fi
-}
-```
-
-Now you can navigate to worktrees with:
-
-```bash
-wgo feature  # Navigate to worktree matching "feature"
-```
-
 ## Configuration
 
 Create `~/.config/gwm/config.toml`:
