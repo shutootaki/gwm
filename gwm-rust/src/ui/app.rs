@@ -20,10 +20,16 @@ pub enum AppState {
     Loading { message: String },
 
     /// 成功表示
-    Success { title: String, messages: Vec<String> },
+    Success {
+        title: String,
+        messages: Vec<String>,
+    },
 
     /// エラー表示
-    Error { title: String, messages: Vec<String> },
+    Error {
+        title: String,
+        messages: Vec<String>,
+    },
 
     /// テキスト入力（新規ブランチ作成）
     TextInput {
@@ -52,6 +58,7 @@ pub enum AppState {
         message: String,
         commands: Vec<String>,
         selected: ConfirmChoice,
+        metadata: Option<ConfirmMetadata>,
     },
 }
 
@@ -64,6 +71,21 @@ pub enum ConfirmChoice {
     Once,
     /// キャンセル
     Cancel,
+}
+
+/// 確認ダイアログ用メタデータ（フック実行時に使用）
+#[derive(Debug, Clone)]
+pub struct ConfirmMetadata {
+    /// リポジトリルートパス
+    pub repo_root: Option<std::path::PathBuf>,
+    /// プロジェクト設定ファイルのパス
+    pub config_path: std::path::PathBuf,
+    /// 設定ファイルのハッシュ
+    pub config_hash: String,
+    /// 作成されたworktreeのパス
+    pub worktree_path: String,
+    /// ブランチ名
+    pub branch_name: String,
 }
 
 impl ConfirmChoice {
@@ -334,7 +356,34 @@ impl App {
             message: message.into(),
             commands,
             selected: ConfirmChoice::Once,
+            metadata: None,
         };
+    }
+
+    /// 確認ダイアログ状態に遷移（メタデータ付き）
+    pub fn set_confirm_with_metadata(
+        &mut self,
+        title: impl Into<String>,
+        message: impl Into<String>,
+        commands: Vec<String>,
+        metadata: ConfirmMetadata,
+    ) {
+        self.state = AppState::Confirm {
+            title: title.into(),
+            message: message.into(),
+            commands,
+            selected: ConfirmChoice::Once,
+            metadata: Some(metadata),
+        };
+    }
+
+    /// 現在の確認ダイアログのメタデータを取得
+    pub fn get_confirm_metadata(&self) -> Option<&ConfirmMetadata> {
+        if let AppState::Confirm { metadata, .. } = &self.state {
+            metadata.as_ref()
+        } else {
+            None
+        }
     }
 }
 

@@ -244,7 +244,6 @@ fn handle_confirm_key(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Enter => {
                 // 選択確定は呼び出し元で処理
-                return;
             }
             KeyCode::Left | KeyCode::Up => {
                 *selected = selected.prev();

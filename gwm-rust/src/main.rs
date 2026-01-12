@@ -28,122 +28,33 @@ async fn main() {
             }
         }
         Some(Commands::Remove(args)) => {
-            println!("gwm remove - Remove worktree (not yet implemented)");
-            println!();
-            if let Some(ref query) = args.query {
-                println!("Query: {}", query);
-            }
-            if args.force {
-                println!("Force: enabled");
+            if let Err(e) = gwm::ui::views::run_remove(args) {
+                eprintln!("\x1b[31mError: {}\x1b[0m", e);
+                std::process::exit(1);
             }
         }
         Some(Commands::Go(args)) => {
-            println!("gwm go - Navigate to worktree (not yet implemented)");
-            println!();
-            if let Some(ref query) = args.query {
-                println!("Query: {}", query);
+            if let Err(e) = gwm::ui::views::run_go(args) {
+                eprintln!("\x1b[31mError: {}\x1b[0m", e);
+                std::process::exit(1);
             }
         }
         Some(Commands::Clean(args)) => {
-            println!("gwm clean - Clean worktrees (not yet implemented)");
-            println!();
-            if args.dry_run {
-                println!("Mode: Dry run");
+            if let Err(e) = gwm::ui::views::run_clean(args) {
+                eprintln!("\x1b[31mError: {}\x1b[0m", e);
+                std::process::exit(1);
             }
         }
         Some(Commands::PullMain) => {
-            println!("gwm pull-main - Update main branches (not yet implemented)");
+            if let Err(e) = gwm::ui::views::run_pull_main() {
+                eprintln!("\x1b[31mError: {}\x1b[0m", e);
+                std::process::exit(1);
+            }
         }
         Some(Commands::Help(args)) => {
-            match args.command.as_deref() {
-                Some("list") | Some("ls") => {
-                    println!("gwm list (alias: ls)");
-                    println!();
-                    println!("Display a table of all worktrees with their status.");
-                    println!();
-                    println!("Status indicators:");
-                    println!("  [*] ACTIVE - Current worktree (yellow)");
-                    println!("  [M] MAIN   - Main branch worktree (cyan)");
-                    println!("  [-] OTHER  - Other worktrees (white)");
-                }
-                Some("add") => {
-                    println!("gwm add [OPTIONS] [BRANCH_NAME]");
-                    println!();
-                    println!("Create a new worktree.");
-                    println!();
-                    println!("Options:");
-                    println!("  -r, --remote       Select from remote branches");
-                    println!("      --from <BRANCH> Base branch for new worktree");
-                    println!("      --code         Open in VS Code after creation");
-                    println!("      --cursor       Open in Cursor after creation");
-                    println!("      --cd           Output path only");
-                    println!("      --skip-hooks   Skip post_create hooks");
-                }
-                Some("remove") | Some("rm") => {
-                    println!("gwm remove (alias: rm) [OPTIONS] [QUERY]");
-                    println!();
-                    println!("Remove one or more worktrees.");
-                    println!();
-                    println!("Options:");
-                    println!("  -f, --force              Force removal");
-                    println!("      --clean-branch MODE  Branch cleanup mode (auto|ask|never)");
-                }
-                Some("go") => {
-                    println!("gwm go [OPTIONS] [QUERY]");
-                    println!();
-                    println!("Navigate to a worktree.");
-                    println!();
-                    println!("Options:");
-                    println!("      --code    Open in VS Code");
-                    println!("      --cursor  Open in Cursor");
-                    println!();
-                    println!("Shell integration:");
-                    println!("  Add this to your ~/.zshrc or ~/.bashrc:");
-                    println!();
-                    println!("  function wgo() {{");
-                    println!("    local path");
-                    println!("    path=\"$(gwm go \"$1\")\"");
-                    println!("    if [ -n \"$path\" ]; then");
-                    println!("      cd \"$path\"");
-                    println!("    fi");
-                    println!("  }}");
-                }
-                Some("clean") => {
-                    println!("gwm clean [OPTIONS]");
-                    println!();
-                    println!("Clean up merged or deleted worktrees.");
-                    println!();
-                    println!("Options:");
-                    println!("  -n, --dry-run  Show what would be cleaned");
-                    println!("  -y, --force    Skip confirmation prompt");
-                }
-                Some("pull-main") => {
-                    println!("gwm pull-main");
-                    println!();
-                    println!("Update all main branch worktrees to latest.");
-                    println!();
-                    println!("Main branches are configured in config.toml:");
-                    println!("  main_branches = [\"main\", \"master\", \"develop\"]");
-                }
-                Some(cmd) => {
-                    eprintln!("Unknown command: {}", cmd);
-                    eprintln!("Run 'gwm --help' for available commands.");
-                    std::process::exit(1);
-                }
-                None => {
-                    println!("gwm - Git Worktree Manager");
-                    println!();
-                    println!("Commands:");
-                    println!("  list (ls)    List all worktrees");
-                    println!("  add          Add a new worktree");
-                    println!("  remove (rm)  Remove worktree(s)");
-                    println!("  go           Navigate to a worktree");
-                    println!("  clean        Clean up merged/deleted worktrees");
-                    println!("  pull-main    Update main branch worktrees");
-                    println!("  help         Show help for a command");
-                    println!();
-                    println!("Run 'gwm help <command>' for more information.");
-                }
+            if let Err(e) = gwm::ui::views::run_help(args) {
+                eprintln!("\x1b[31mError: {}\x1b[0m", e);
+                std::process::exit(1);
             }
         }
         None => {

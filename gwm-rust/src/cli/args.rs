@@ -140,7 +140,7 @@ pub struct GoArgs {
     pub query: Option<String>,
 
     /// Open in VS Code
-    #[arg(long = "code")]
+    #[arg(short = 'c', long = "code")]
     pub open_code: bool,
 
     /// Open in Cursor

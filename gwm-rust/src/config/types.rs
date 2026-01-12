@@ -6,7 +6,7 @@
 use serde::Deserialize;
 
 /// Branch cleanup mode after worktree removal.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CleanBranchMode {
     /// Automatically delete the local branch
@@ -76,7 +76,7 @@ pub struct CustomVirtualEnvPattern {
 }
 
 /// Configuration for virtual environment handling.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct VirtualEnvConfig {
     /// Whether to isolate virtual environments (don't copy, rewrite symlinks)
     #[serde(default)]
@@ -109,24 +109,6 @@ pub struct VirtualEnvConfig {
     /// Deprecated: use max_file_size_mb instead
     #[serde(default)]
     pub max_copy_size_mb: Option<i64>,
-}
-
-impl Default for VirtualEnvConfig {
-    fn default() -> Self {
-        // Note: All fields are None to distinguish "not set" from "set to default value"
-        // during config merging. Use the accessor methods (e.g., should_isolate()) to get
-        // the effective value with proper defaults applied.
-        Self {
-            isolate_virtual_envs: None,
-            mode: None,
-            custom_patterns: Vec::new(),
-            max_file_size_mb: None,
-            max_dir_size_mb: None,
-            max_scan_depth: None,
-            copy_parallelism: None,
-            max_copy_size_mb: None,
-        }
-    }
 }
 
 /// Default values for VirtualEnvConfig (matching TypeScript version)
@@ -308,10 +290,7 @@ mod tests {
     fn test_default_config() {
         let config = Config::default();
         assert_eq!(config.worktree_base_path, "~/git-worktrees");
-        assert_eq!(
-            config.main_branches,
-            vec!["main", "master", "develop"]
-        );
+        assert_eq!(config.main_branches, vec!["main", "master", "develop"]);
         assert_eq!(config.clean_branch, CleanBranchMode::Ask);
 
         // Verify hooks default

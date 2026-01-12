@@ -39,12 +39,7 @@ pub fn run_list() -> Result<()> {
     // 列幅計算
     let items: Vec<(String, String)> = worktrees
         .iter()
-        .map(|w| {
-            (
-                w.display_branch().to_string(),
-                w.path.display().to_string(),
-            )
-        })
+        .map(|w| (w.display_branch().to_string(), w.path.display().to_string()))
         .collect();
     let column_widths = calculate_column_widths(&items, width);
 

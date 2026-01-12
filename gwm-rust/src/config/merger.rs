@@ -36,9 +36,9 @@ pub fn merge_configs(global: &Config, project: &Config) -> Config {
 
         // Enum: project overrides if not default
         clean_branch: if project.clean_branch != CleanBranchMode::Ask {
-            project.clean_branch.clone()
+            project.clean_branch
         } else {
-            global.clean_branch.clone()
+            global.clean_branch
         },
 
         // Nested objects: deep merge
@@ -112,10 +112,7 @@ fn merge_hooks(global: Option<&HooksConfig>, project: Option<&HooksConfig>) -> O
         (Some(g), None) => Some(g.clone()),
         (None, Some(p)) => Some(p.clone()),
         (Some(g), Some(p)) => Some(HooksConfig {
-            post_create: merge_hook_config(
-                g.post_create.as_ref(),
-                p.post_create.as_ref(),
-            ),
+            post_create: merge_hook_config(g.post_create.as_ref(), p.post_create.as_ref()),
         }),
     }
 }

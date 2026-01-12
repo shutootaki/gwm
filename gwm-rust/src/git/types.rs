@@ -127,6 +127,109 @@ pub struct PullResult {
     pub message: String,
 }
 
+/// クリーンアップ理由
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CleanReason {
+    /// リモートブランチが削除された
+    RemoteDeleted,
+    /// メインブランチにマージ済み
+    Merged,
+}
+
+impl CleanReason {
+    /// 表示用ラベルを取得
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::RemoteDeleted => "remote deleted",
+            Self::Merged => "merged",
+        }
+    }
+
+    /// 詳細メッセージを取得
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::RemoteDeleted => "Remote branch has been deleted",
+            Self::Merged => "Branch has been merged into main",
+        }
+    }
+
+    /// ANSIカラーコードを取得
+    pub fn ansi_color(&self) -> &'static str {
+        match self {
+            Self::RemoteDeleted => "\x1b[31m", // Red
+            Self::Merged => "\x1b[32m",        // Green
+        }
+    }
+}
+
+/// クリーンアップ可能なworktree
+#[derive(Debug, Clone)]
+pub struct CleanableWorktree {
+    /// 対象worktree
+    pub worktree: Worktree,
+    /// クリーンアップ理由
+    pub reason: CleanReason,
+    /// マージ先ブランチ（マージ済みの場合）
+    pub merged_into: Option<String>,
+}
+
+impl CleanableWorktree {
+    /// 表示用の理由テキストを取得
+    pub fn reason_text(&self) -> String {
+        match self.reason {
+            CleanReason::RemoteDeleted => "remote deleted".to_string(),
+            CleanReason::Merged => {
+                if let Some(ref target) = self.merged_into {
+                    format!("merged into {}", target)
+                } else {
+                    "merged".to_string()
+                }
+            }
+        }
+    }
+}
+
+/// ローカル変更情報
+#[derive(Debug, Default)]
+pub struct LocalChanges {
+    /// ステージされていない変更があるか
+    pub has_unstaged_changes: bool,
+    /// 追跡されていないファイルがあるか
+    pub has_untracked_files: bool,
+    /// ステージされた変更があるか
+    pub has_staged_changes: bool,
+    /// ローカルにしかないコミットがあるか
+    pub has_local_commits: bool,
+}
+
+impl LocalChanges {
+    /// 何らかの変更があるかどうか
+    pub fn has_any(&self) -> bool {
+        self.has_unstaged_changes
+            || self.has_untracked_files
+            || self.has_staged_changes
+            || self.has_local_commits
+    }
+
+    /// 変更の概要を文字列で取得
+    pub fn summary(&self) -> Vec<String> {
+        let mut items = Vec::new();
+        if self.has_staged_changes {
+            items.push("staged changes".to_string());
+        }
+        if self.has_unstaged_changes {
+            items.push("unstaged changes".to_string());
+        }
+        if self.has_untracked_files {
+            items.push("untracked files".to_string());
+        }
+        if self.has_local_commits {
+            items.push("unpushed commits".to_string());
+        }
+        items
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -87,17 +87,13 @@ pub fn add_worktree(config: &Config, options: &AddWorktreeOptions) -> Result<Add
         ]
     } else {
         // 新規ブランチを作成
-        let base = options
-            .from_branch
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or_else(|| {
-                config
-                    .main_branches
-                    .first()
-                    .map(|s| s.as_str())
-                    .unwrap_or("main")
-            });
+        let base = options.from_branch.as_deref().unwrap_or_else(|| {
+            config
+                .main_branches
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("main")
+        });
 
         actions.push(format!(
             "Creating new branch '{}' from '{}'",

@@ -80,13 +80,11 @@ pub fn find_repo_root_from(start: &Path) -> Option<PathBuf> {
 
 /// Load configuration from a TOML file.
 fn load_config_from_file(path: &Path) -> Result<Config> {
-    let content = fs::read_to_string(path).map_err(|e| {
-        GwmError::config(format!("failed to read config file {:?}: {}", path, e))
-    })?;
+    let content = fs::read_to_string(path)
+        .map_err(|e| GwmError::config(format!("failed to read config file {:?}: {}", path, e)))?;
 
-    toml::from_str(&content).map_err(|e| {
-        GwmError::config(format!("failed to parse config file {:?}: {}", path, e))
-    })
+    toml::from_str(&content)
+        .map_err(|e| GwmError::config(format!("failed to parse config file {:?}: {}", path, e)))
 }
 
 /// Load the global configuration.
@@ -205,7 +203,10 @@ clean_branch = "auto"
         let config = load_config_from_file(&config_path).unwrap();
         assert_eq!(config.worktree_base_path, "/custom/path");
         assert_eq!(config.main_branches, vec!["main", "develop"]);
-        assert_eq!(config.clean_branch, super::super::types::CleanBranchMode::Auto);
+        assert_eq!(
+            config.clean_branch,
+            super::super::types::CleanBranchMode::Auto
+        );
     }
 
     #[test]

@@ -67,9 +67,7 @@ pub fn exec(program: &str, args: &[&str], cwd: Option<&Path>) -> Result<String> 
 /// * 失敗時: GwmError::GitCommand
 pub fn exec_silent(program: &str, args: &[&str], cwd: Option<&Path>) -> Result<()> {
     let mut cmd = Command::new(program);
-    cmd.args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+    cmd.args(args).stdout(Stdio::null()).stderr(Stdio::null());
 
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
@@ -128,12 +126,14 @@ pub async fn exec_async(program: &str, args: &[&str], cwd: Option<&Path>) -> Res
 /// シェル引数を安全にエスケープ
 ///
 /// シングルクォートで囲み、内部のシングルクォートをエスケープします。
+/// フック機能でシェルコマンドを実行する際に使用予定。
 ///
 /// # Example
 /// ```ignore
 /// assert_eq!(escape_shell_arg("test"), "'test'");
 /// assert_eq!(escape_shell_arg("it's"), "'it'\\''s'");
 /// ```
+#[allow(dead_code)]
 pub fn escape_shell_arg(arg: &str) -> String {
     format!("'{}'", arg.replace('\'', "'\\''"))
 }

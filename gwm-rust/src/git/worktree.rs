@@ -132,7 +132,7 @@ fn set_worktree_statuses(worktrees: &mut [Worktree]) {
                     .path
                     .canonicalize()
                     .ok()
-                    .map_or(false, |canonical_wt| canonical_wt == *canonical_current)
+                    .is_some_and(|canonical_wt| canonical_wt == *canonical_current)
             }
             None => {
                 // canonicalize 失敗時は直接比較
