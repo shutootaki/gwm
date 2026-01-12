@@ -199,23 +199,36 @@ pub fn isolate_python_venv(
 }
 
 /// ディレクトリを再帰的にコピー
+///
+/// # Safety
+///
+/// シンボリックリンクは再帰せず、リンク自体をコピーします。
+/// これにより無限ループや意図しないディレクトリへのアクセスを防ぎます。
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
     fs::create_dir_all(dst)?;
 
     for entry in fs::read_dir(src)? {
         let entry = entry?;
+        // Use file_type() which doesn't follow symlinks, unlike is_dir()/is_file()
+        let file_type = entry.file_type()?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
 
-        if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
-        } else if src_path.is_symlink() {
-            // シンボリックリンクをコピー
+        // Check symlink FIRST to avoid following symlinks to directories
+        if file_type.is_symlink() {
+            // シンボリックリンクをコピー (do not follow)
             let target = fs::read_link(&src_path)?;
             create_symlink(&target, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path)?;
+            continue;
         }
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+            continue;
+        }
+
+        // Regular file
+        fs::copy(&src_path, &dst_path)?;
     }
 
     Ok(())

@@ -39,9 +39,29 @@ pub fn verify_trust(
     }
 
     // Get project config path
+    // SECURITY: If project hooks exist but config path is missing or invalid,
+    // require confirmation to prevent trust-bypass attacks
     let config_path = match project_config_path {
         Some(path) if path.exists() => path,
-        _ => return TrustStatus::GlobalConfig,
+        Some(path) => {
+            // Config path provided but file doesn't exist - require confirmation
+            return TrustStatus::NeedsConfirmation {
+                reason: ConfirmationReason::FirstTime,
+                commands,
+                config_path: path.to_path_buf(),
+                config_hash: String::new(),
+            };
+        }
+        None => {
+            // No config path but project hooks exist - require confirmation
+            // Use repo root as fallback path for display purposes
+            return TrustStatus::NeedsConfirmation {
+                reason: ConfirmationReason::FirstTime,
+                commands,
+                config_path: repo_root.to_path_buf(),
+                config_hash: String::new(),
+            };
+        }
     };
 
     // Compute current hash

@@ -28,27 +28,40 @@ use super::worktree::get_worktrees;
 /// # Returns
 ///
 /// A `LocalChanges` struct indicating what types of changes exist.
+///
+/// # Safety
+///
+/// If git commands fail (e.g., corrupted repository, permission issues),
+/// this function conservatively treats the worktree as having local changes
+/// to prevent accidental data loss.
 pub fn check_local_changes(worktree_path: &Path) -> LocalChanges {
     let mut result = LocalChanges::default();
 
     // Check git status --porcelain
-    if let Ok(output) = exec("git", &["status", "--porcelain"], Some(worktree_path)) {
-        for line in output.lines() {
-            if line.starts_with("??") {
-                result.has_untracked_files = true;
-            } else {
-                let chars: Vec<char> = line.chars().collect();
-                if chars.len() >= 2 {
-                    // First column: staged changes
-                    if chars[0] != ' ' && chars[0] != '?' {
-                        result.has_staged_changes = true;
-                    }
-                    // Second column: unstaged changes
-                    if chars[1] != ' ' && chars[1] != '?' {
-                        result.has_unstaged_changes = true;
+    match exec("git", &["status", "--porcelain"], Some(worktree_path)) {
+        Ok(output) => {
+            for line in output.lines() {
+                if line.starts_with("??") {
+                    result.has_untracked_files = true;
+                } else {
+                    let chars: Vec<char> = line.chars().collect();
+                    if chars.len() >= 2 {
+                        // First column: staged changes
+                        if chars[0] != ' ' && chars[0] != '?' {
+                            result.has_staged_changes = true;
+                        }
+                        // Second column: unstaged changes
+                        if chars[1] != ' ' && chars[1] != '?' {
+                            result.has_unstaged_changes = true;
+                        }
                     }
                 }
             }
+        }
+        Err(_) => {
+            // If we can't determine status safely, treat as having local changes
+            // to prevent accidental data loss during cleanup
+            result.has_unstaged_changes = true;
         }
     }
 
