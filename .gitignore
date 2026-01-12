@@ -7,6 +7,9 @@ dist/
 build/
 lib/
 
+# Rust build artifacts
+target/
+
 # TypeScript
 *.tsbuildinfo
 
@@ -123,3 +126,10 @@ Thumbs.db
 
 # Claude
 settings.local.json
+
+
+# Serena
+.serena/
+
+# docs
+**/.003_local_temp_docs/*
