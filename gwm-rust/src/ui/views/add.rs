@@ -19,7 +19,8 @@ use ratatui::Terminal;
 
 use crate::cli::AddArgs;
 use crate::config::{load_config, Config};
-use crate::error::Result;
+use crate::error::{GwmError, Result};
+use crate::utils::validate_branch_name;
 use crate::git::{
     add_worktree, fetch_and_prune, get_remote_branches_with_info, AddWorktreeOptions,
 };
@@ -63,6 +64,11 @@ pub async fn run_add(args: AddArgs) -> Result<()> {
 
 /// 直接指定モードでWorktreeを作成
 async fn execute_add_direct(config: &Config, branch: String, args: &AddArgs) -> Result<()> {
+    // CLIからの入力もバリデーション
+    if let Some(error) = validate_branch_name(&branch) {
+        return Err(GwmError::invalid_argument(error));
+    }
+
     let options = AddWorktreeOptions {
         branch,
         is_remote: args.remote,
