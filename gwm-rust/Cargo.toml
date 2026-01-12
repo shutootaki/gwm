@@ -1,13 +1,17 @@
 [package]
 name = "gwm"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["shutootaki"]
-description = "Git Worktree Manager - A CLI tool for managing Git worktrees"
+description = "Git Worktree Manager - A CLI tool for managing Git worktrees with an interactive TUI"
 license = "MIT"
 repository = "https://github.com/shutootaki/gwm"
+homepage = "https://github.com/shutootaki/gwm"
+documentation = "https://docs.rs/gwm"
+readme = "README.md"
 keywords = ["git", "worktree", "cli", "terminal", "tui"]
 categories = ["command-line-utilities", "development-tools"]
+rust-version = "1.70"
 
 [[bin]]
 name = "gwm"
@@ -41,6 +45,12 @@ dirs = "6.0"
 
 # Date/time
 chrono = "0.4"
+
+# JSON serialization (for trust cache)
+serde_json = "1.0"
+
+# Glob pattern matching (for copy feature)
+glob = "0.3"
 
 [dev-dependencies]
 tempfile = "3"

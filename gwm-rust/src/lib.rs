@@ -23,12 +23,10 @@ pub mod cli;
 pub mod config;
 pub mod error;
 pub mod git;
+pub mod hooks;
 pub mod shell;
+pub mod trust;
 pub mod ui;
 pub mod utils;
-
-// These modules will be implemented in later phases
-// pub mod hooks;
-// pub mod trust;
 
 pub use error::{GwmError, Result};
