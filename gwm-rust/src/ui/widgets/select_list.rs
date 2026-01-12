@@ -231,10 +231,15 @@ impl Widget for SelectListWidget<'_> {
                         Style::default().fg(Color::DarkGray),
                     );
 
-                    // コミットメッセージを切り詰め
+                    // コミットメッセージを切り詰め（UTF-8安全）
                     let max_msg_len = (preview_width as usize).saturating_sub(18);
-                    let commit_msg = if metadata.last_commit_message.len() > max_msg_len {
-                        format!("{}...", &metadata.last_commit_message[..max_msg_len - 3])
+                    let commit_msg = if metadata.last_commit_message.chars().count() > max_msg_len {
+                        let truncated: String = metadata
+                            .last_commit_message
+                            .chars()
+                            .take(max_msg_len.saturating_sub(3))
+                            .collect();
+                        format!("{}...", truncated)
                     } else {
                         metadata.last_commit_message.clone()
                     };

@@ -138,7 +138,7 @@ fn print_worktree_row(worktree: &Worktree, base_path: &str, widths: &ColumnWidth
     let branch_display = format!("{}{}\x1b[0m", status.ansi_bold_color(), branch);
 
     println!(
-        "{}{} {:<8}\x1b[0m {} \x1b[90m{}\x1b[0m \x1b[90m{}\x1b[0m",
+        "{}{} {:<STATUS_HEADER_WIDTH$}\x1b[0m {} \x1b[90m{}\x1b[0m \x1b[90m{}\x1b[0m",
         status.ansi_color(),
         status.icon(),
         status.label(),
