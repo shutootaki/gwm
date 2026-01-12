@@ -151,7 +151,8 @@ impl Widget for SelectListWidget<'_> {
             }
 
             // 表示アイテム
-            let visible_end = (self.scroll_offset + self.max_display).min(self.filtered_indices.len());
+            let visible_end =
+                (self.scroll_offset + self.max_display).min(self.filtered_indices.len());
             for display_idx in self.scroll_offset..visible_end {
                 if y >= area.y + area.height - 8 {
                     break;
@@ -220,13 +221,13 @@ impl Widget for SelectListWidget<'_> {
                     buf.set_string(
                         area.x + 2,
                         y + 2,
-                        &format!("Updated: {}", relative_time),
+                        format!("Updated: {}", relative_time),
                         Style::default().fg(Color::DarkGray),
                     );
                     buf.set_string(
                         area.x + 2,
                         y + 3,
-                        &format!("By: {}", metadata.last_committer_name),
+                        format!("By: {}", metadata.last_committer_name),
                         Style::default().fg(Color::DarkGray),
                     );
 
@@ -240,7 +241,7 @@ impl Widget for SelectListWidget<'_> {
                     buf.set_string(
                         area.x + 2,
                         y + 4,
-                        &format!("Last commit: {}", commit_msg),
+                        format!("Last commit: {}", commit_msg),
                         Style::default().fg(Color::DarkGray),
                     );
                 }

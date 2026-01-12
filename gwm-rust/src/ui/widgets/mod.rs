@@ -7,9 +7,11 @@
 //! - `notice`: 成功/エラー通知
 //! - `text_input`: テキスト入力フィールド
 //! - `select_list`: 選択リスト
+//! - `multi_select_list`: 複数選択リスト
 //! - `confirm`: 確認ダイアログ
 
 pub mod confirm;
+pub mod multi_select_list;
 pub mod notice;
 pub mod select_list;
 pub mod spinner;
@@ -17,6 +19,7 @@ pub mod table;
 pub mod text_input;
 
 pub use confirm::ConfirmWidget;
+pub use multi_select_list::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 pub use notice::{NoticeVariant, NoticeWidget};
 pub use select_list::SelectListWidget;
 pub use spinner::SpinnerWidget;

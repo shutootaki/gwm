@@ -36,7 +36,12 @@ impl Widget for SpinnerWidget<'_> {
         let spinner_char = Self::FRAMES[self.frame % Self::FRAMES.len()];
 
         // スピナー文字
-        buf.set_string(area.x, area.y, spinner_char, Style::default().fg(Color::Cyan));
+        buf.set_string(
+            area.x,
+            area.y,
+            spinner_char,
+            Style::default().fg(Color::Cyan),
+        );
 
         // ラベル
         if area.width > 2 {

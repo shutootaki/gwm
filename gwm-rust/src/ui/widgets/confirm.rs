@@ -79,7 +79,7 @@ impl Widget for ConfirmWidget<'_> {
                 buf.set_string(
                     area.x + 2,
                     y + 1 + i as u16,
-                    &format!("$ {}", cmd),
+                    format!("$ {}", cmd),
                     Style::default().fg(Color::Cyan),
                 );
             }
@@ -88,7 +88,11 @@ impl Widget for ConfirmWidget<'_> {
         }
 
         // 選択肢
-        let choices = [ConfirmChoice::Trust, ConfirmChoice::Once, ConfirmChoice::Cancel];
+        let choices = [
+            ConfirmChoice::Trust,
+            ConfirmChoice::Once,
+            ConfirmChoice::Cancel,
+        ];
 
         for choice in &choices {
             if y >= area.y + area.height - 2 {
@@ -110,14 +114,18 @@ impl Widget for ConfirmWidget<'_> {
             buf.set_string(area.x, y, prefix, style);
 
             // 選択肢のラベル
-            let label = format!("[{}] {}", choice.label().chars().next().unwrap_or('?'), choice.label());
+            let label = format!(
+                "[{}] {}",
+                choice.label().chars().next().unwrap_or('?'),
+                choice.label()
+            );
             buf.set_string(area.x + 2, y, &label, style);
 
             // 説明
             buf.set_string(
                 area.x + 15,
                 y,
-                &format!("- {}", choice.description()),
+                format!("- {}", choice.description()),
                 Style::default().fg(Color::DarkGray),
             );
 

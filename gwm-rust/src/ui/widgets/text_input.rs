@@ -148,26 +148,27 @@ impl Widget for TextInputWidget<'_> {
 
         // プレビュー
         if let Some(preview) = self.preview {
-            if self.validation_error.is_none() && !self.state.value.trim().is_empty() {
-                if y + 5 < area.y + area.height {
-                    let block = Block::default()
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(Color::Green))
-                        .title("Preview");
+            if self.validation_error.is_none()
+                && !self.state.value.trim().is_empty()
+                && y + 5 < area.y + area.height
+            {
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Green))
+                    .title("Preview");
 
-                    let preview_width = area.width.min(60);
-                    let preview_area = Rect::new(area.x, y, preview_width, 5);
-                    block.render(preview_area, buf);
+                let preview_width = area.width.min(60);
+                let preview_area = Rect::new(area.x, y, preview_width, 5);
+                block.render(preview_area, buf);
 
-                    buf.set_string(
-                        area.x + 2,
-                        y + 1,
-                        "Worktree will be created at:",
-                        Style::default().fg(Color::DarkGray),
-                    );
-                    buf.set_string(area.x + 2, y + 2, preview, Style::default().fg(Color::Cyan));
-                    y += 6;
-                }
+                buf.set_string(
+                    area.x + 2,
+                    y + 1,
+                    "Worktree will be created at:",
+                    Style::default().fg(Color::DarkGray),
+                );
+                buf.set_string(area.x + 2, y + 2, preview, Style::default().fg(Color::Cyan));
+                y += 6;
             }
         }
 

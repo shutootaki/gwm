@@ -53,10 +53,7 @@ pub struct ColumnWidths {
 /// # Arguments
 /// * `_items` - ブランチ名とパスのペアのリスト（将来の拡張用）
 /// * `terminal_width` - ターミナル幅
-pub fn calculate_column_widths(
-    _items: &[(String, String)],
-    terminal_width: u16,
-) -> ColumnWidths {
+pub fn calculate_column_widths(_items: &[(String, String)], terminal_width: u16) -> ColumnWidths {
     let available = terminal_width.saturating_sub(FIXED_COLUMN_WIDTH) as usize;
 
     // 4:6 の比率で分配
