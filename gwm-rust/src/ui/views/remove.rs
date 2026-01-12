@@ -7,10 +7,9 @@ use std::time::Duration;
 
 use crossterm::{
     event::{Event, KeyCode, KeyModifiers},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{backend::CrosstermBackend, Terminal, TerminalOptions, Viewport};
 
 use crate::cli::RemoveArgs;
 use crate::config::{load_config, CleanBranchMode};
@@ -96,10 +95,12 @@ fn run_remove_tui(
 ) -> Result<Vec<MultiSelectItem>> {
     // ターミナル初期化
     enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    let stdout = stdout();
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(15),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
 
     // 状態初期化
     let (mut input, mut state) = match initial_query {
@@ -180,7 +181,6 @@ fn run_remove_tui(
 
     // ターミナル復元
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
 
     Ok(result)
 }

@@ -4,13 +4,10 @@ use std::io::{self, stdout};
 use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::Terminal;
+use ratatui::layout::Rect;
+use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::cli::AddArgs;
 use crate::config::{load_config_with_source, ConfigWithSource};
@@ -37,7 +34,6 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(stdout(), LeaveAlternateScreen);
     }
 }
 
@@ -173,11 +169,13 @@ fn open_in_editor(editor: &str, path: &str) -> Result<()> {
 
 async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<()> {
     enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
     let _guard = TerminalGuard;
 
     let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(15),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
     let mut app = App::new(config_source.config.clone());
 
     if args.remote {
@@ -224,7 +222,7 @@ async fn run_main_loop(
 
     loop {
         terminal.draw(|f| {
-            let area = centered_rect(80, 90, f.area());
+            let area = f.area();
             render_app(f.buffer_mut(), area, app, frame_count);
         })?;
 
@@ -362,6 +360,12 @@ fn execute_hooks_and_finish(
     config_source: &ConfigWithSource,
 ) {
     if let Some((path, branch_name)) = created_worktree {
+        // フック実行前にrawモードを無効化してTUIを停止
+        let _ = disable_raw_mode();
+
+        // 改行を出力してTUI描画領域から抜ける
+        println!();
+
         let repo_name = config_source
             .repo_root
             .as_ref()
@@ -378,12 +382,11 @@ fn execute_hooks_and_finish(
 
         match run_post_create_hooks(&config_source.config, &context) {
             Ok(result) if result.success => {
-                app.set_success(
-                    "Worktree created!",
-                    vec![
-                        format!("Path: {}", path),
-                        format!("Hooks completed ({} commands)", result.executed_count),
-                    ],
+                println!("\n\x1b[32m✓ Worktree created!\x1b[0m");
+                println!("  Path: {}", path);
+                println!(
+                    "  Hooks completed ({} commands)",
+                    result.executed_count
                 );
             }
             Ok(result) => {
@@ -391,15 +394,18 @@ fn execute_hooks_and_finish(
                     .failed_command
                     .map(|c| format!("Failed: {}", c))
                     .unwrap_or_else(|| "Unknown error".to_string());
-                app.set_error(
-                    "Hook execution failed",
-                    vec![format!("Path: {}", path), failed_msg],
-                );
+                println!("\n\x1b[31m✗ Hook execution failed\x1b[0m");
+                println!("  Path: {}", path);
+                println!("  {}", failed_msg);
             }
             Err(e) => {
-                app.set_error("Hook execution error", vec![e.to_string()]);
+                println!("\n\x1b[31m✗ Hook execution error\x1b[0m");
+                println!("  {}", e);
             }
         }
+
+        // プログラムを終了（TUIには戻らない）
+        app.quit();
     } else {
         app.set_error(
             "Internal error",
@@ -509,26 +515,6 @@ fn handle_creation_success(
     }
 }
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
-}
-
 fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_count: usize) {
     use ratatui::widgets::Widget;
 
@@ -598,19 +584,3 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_centered_rect() {
-        let full = Rect::new(0, 0, 100, 50);
-        let centered = centered_rect(80, 80, full);
-
-        // 80%の矩形が中央に配置される
-        assert!(centered.x > 0);
-        assert!(centered.y > 0);
-        assert!(centered.width < 100);
-        assert!(centered.height < 50);
-    }
-}

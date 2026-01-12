@@ -9,13 +9,10 @@ use std::io::stdout;
 use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::Terminal;
+use ratatui::layout::Rect;
+use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::cli::CleanArgs;
 use crate::config::load_config;
@@ -33,7 +30,6 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(stdout(), LeaveAlternateScreen);
     }
 }
 
@@ -89,12 +85,13 @@ pub fn run_clean(args: CleanArgs) -> Result<()> {
 /// TUIモードでクリーンアップ対象を選択
 fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktree>> {
     enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
-
     let _guard = TerminalGuard;
 
     let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(15),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
 
     // MultiSelectItemに変換
     let items: Vec<MultiSelectItem> = cleanable
@@ -122,7 +119,7 @@ fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktre
 
     loop {
         terminal.draw(|f| {
-            let area = centered_rect(80, 90, f.area());
+            let area = f.area();
             render_clean_ui(f.buffer_mut(), area, &input, &state);
         })?;
 
@@ -166,27 +163,6 @@ fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktre
     } else {
         Ok(vec![])
     }
-}
-
-/// 中央揃えの矩形を計算
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }
 
 /// Clean UIを描画
@@ -258,18 +234,3 @@ fn execute_clean(targets: &[CleanableWorktree]) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_centered_rect() {
-        let full = Rect::new(0, 0, 100, 50);
-        let centered = centered_rect(80, 80, full);
-
-        assert!(centered.x > 0);
-        assert!(centered.y > 0);
-        assert!(centered.width < 100);
-        assert!(centered.height < 50);
-    }
-}
