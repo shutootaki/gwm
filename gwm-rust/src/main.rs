@@ -14,17 +14,21 @@ fn handle_error<E: Display>(result: Result<(), E>) {
 }
 
 fn show_welcome() {
-    println!("gwm - Git Worktree Manager");
+    println!("gwm: A CLI tool to streamline your git worktree workflow.");
     println!();
-    println!("A CLI tool for managing Git worktrees with ease.");
+    println!("\x1b[1mUSAGE:\x1b[0m");
+    println!("  gwm <command> [arguments] [options]");
     println!();
-    println!("Quick start:");
-    println!("  gwm list           List all worktrees");
-    println!("  gwm add            Add a new worktree (interactive)");
-    println!("  gwm add -r         Add from remote branch");
-    println!("  gwm go             Navigate to a worktree");
+    println!("\x1b[1mAVAILABLE COMMANDS:\x1b[0m");
+    println!("  add           Create a new worktree");
+    println!("  go            Go to a worktree directory or open it in an editor");
+    println!("  list (ls)     List all worktrees for the current project");
+    println!("  pull-main     Update the main branch worktree");
+    println!("  remove (rm)   Remove one or more worktrees");
+    println!("  clean         Clean up safe-to-delete worktrees");
+    println!("  help          Show help for gwm or a specific command");
     println!();
-    println!("Run 'gwm --help' for all commands and options.");
+    println!("Use \"gwm help <command>\" for more information about a specific command.");
 }
 
 #[tokio::main]
