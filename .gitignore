@@ -7,6 +7,9 @@ dist/
 build/
 lib/
 
+# Rust build artifacts
+target/
+
 # TypeScript
 *.tsbuildinfo
 
