@@ -1,0 +1,7 @@
+# Rust toolchain configuration
+# This ensures all developers use the same Rust version (MSRV)
+# See: https://rust-lang.github.io/rustup/overrides.html
+
+[toolchain]
+channel = "1.74"
+components = ["rustfmt", "clippy"]

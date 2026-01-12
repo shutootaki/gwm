@@ -11,7 +11,7 @@ documentation = "https://docs.rs/gwm"
 readme = "README.md"
 keywords = ["git", "worktree", "cli", "terminal", "tui"]
 categories = ["command-line-utilities", "development-tools"]
-rust-version = "1.70"
+rust-version = "1.74"
 
 [[bin]]
 name = "gwm"

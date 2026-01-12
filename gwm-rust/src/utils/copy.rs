@@ -196,7 +196,7 @@ mod tests {
 
         // Create .env file in source
         let env_path = source.path().join(".env");
-        let mut file = File::create(&env_path).unwrap();
+        let mut file = File::create(env_path).unwrap();
         writeln!(file, "API_KEY=secret").unwrap();
 
         let config = create_test_config();

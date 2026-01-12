@@ -343,7 +343,7 @@ mod tests {
     fn test_detect_node_modules() {
         let temp_dir = TempDir::new().unwrap();
         let node_path = temp_dir.path().join("node_modules");
-        fs::create_dir(&node_path).unwrap();
+        fs::create_dir(node_path).unwrap();
 
         let detections = detect_virtual_envs(temp_dir.path(), None).unwrap();
         assert_eq!(detections.len(), 1);
@@ -361,7 +361,7 @@ mod tests {
 
         // Node.js
         let node_path = temp_dir.path().join("node_modules");
-        fs::create_dir(&node_path).unwrap();
+        fs::create_dir(node_path).unwrap();
 
         let detections = detect_virtual_envs(temp_dir.path(), None).unwrap();
         assert_eq!(detections.len(), 2);
@@ -373,7 +373,7 @@ mod tests {
 
         // .venv ディレクトリはあるが pyvenv.cfg がない
         let venv_path = temp_dir.path().join(".venv");
-        fs::create_dir(&venv_path).unwrap();
+        fs::create_dir(venv_path).unwrap();
 
         let detections = detect_virtual_envs(temp_dir.path(), None).unwrap();
         assert_eq!(detections.len(), 0);

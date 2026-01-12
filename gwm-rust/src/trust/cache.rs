@@ -23,7 +23,7 @@ pub fn get_cache_path() -> Option<PathBuf> {
 /// Returns the default cache if the file doesn't exist or is invalid.
 pub fn load_cache() -> TrustCache {
     get_cache_path()
-        .and_then(|path| fs::read_to_string(&path).ok())
+        .and_then(|path| fs::read_to_string(path).ok())
         .and_then(|content| serde_json::from_str(&content).ok())
         .unwrap_or_default()
 }

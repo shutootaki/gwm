@@ -54,7 +54,7 @@ pub fn add_worktree(config: &Config, options: &AddWorktreeOptions) -> Result<Add
         .expanded_worktree_base_path()
         .ok_or_else(|| GwmError::Path("Failed to expand worktree base path".to_string()))?;
 
-    let worktree_path = base_path.join(&repo_name).join(&sanitized_branch);
+    let worktree_path = base_path.join(repo_name).join(sanitized_branch);
 
     // ローカルブランチの存在確認
     let local_exists = local_branch_exists(&options.branch);
