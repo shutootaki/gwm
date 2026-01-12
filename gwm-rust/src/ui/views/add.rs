@@ -85,6 +85,12 @@ async fn execute_add_direct(
 
     let result = add_worktree(&config_source.config, &options)?;
 
+    // パス出力モード（シェル統合用）: パスのみ出力して早期リターン
+    if args.output_path {
+        println!("{}", result.path.display());
+        return Ok(());
+    }
+
     // アクションログを出力
     for action in &result.actions {
         println!("\x1b[90m{}\x1b[0m", action);
@@ -258,6 +264,14 @@ async fn run_main_loop(
             render_app(f.buffer_mut(), area, app, frame_count);
         })?;
 
+        // 遅延リモートフェッチ処理（Loading画面描画後に実行）
+        if app.pending_remote_fetch {
+            app.pending_remote_fetch = false;
+            let items = fetch_remote_branches_as_items().await?;
+            app.set_select_list("Select remote branch", "Search branches...", items);
+            continue; // 次のループで新しい状態を描画
+        }
+
         // イベント処理
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
             // 状態固有のキー処理
@@ -290,10 +304,10 @@ async fn run_main_loop(
                             }
                         }
                     } else if key.code == KeyCode::Tab && !args.remote {
-                        // リモートモードに切り替え
+                        // リモートモードに切り替え（遅延フェッチ）
+                        // フラグをセットし、次のループでLoading画面を描画してからフェッチ実行
                         app.set_loading("Fetching remote branches...");
-                        let items = fetch_remote_branches_as_items().await?;
-                        app.set_select_list("Select remote branch", "Search branches...", items);
+                        app.pending_remote_fetch = true;
                     } else {
                         handle_key_event(app, key);
                     }

@@ -12,6 +12,9 @@ pub struct App {
     pub config: Config,
     /// 終了フラグ
     pub should_quit: bool,
+    /// リモートブランチフェッチ待機フラグ
+    /// Loading画面描画後にフェッチを実行するために使用
+    pub pending_remote_fetch: bool,
 }
 
 /// 画面状態の列挙型
@@ -282,6 +285,7 @@ impl App {
             },
             config,
             should_quit: false,
+            pending_remote_fetch: false,
         }
     }
 
