@@ -7,13 +7,17 @@ use crate::git::get_repository_name;
 
 /// ブランチ名のバリデーション
 ///
-/// # ルール
+/// # ルール（Git公式の制約に準拠）
 /// - 空白不可
-/// - 使用禁止文字: ~ ^ : ? * [ ] \
+/// - 使用禁止文字: ~ ^ : ? * [ ] \ @
 /// - 先頭/末尾のドット不可
 /// - 連続ドット不可
 /// - スペース不可
 /// - 最大50文字
+/// - `.lock` サフィックス不可
+/// - `@{` を含めない（reflog構文との衝突回避）
+/// - 連続スラッシュ不可
+/// - 末尾スラッシュ不可
 ///
 /// # Returns
 /// - `None`: バリデーション成功
@@ -32,7 +36,7 @@ pub fn validate_branch_name(name: &str) -> Option<String> {
     }
 
     // 禁止文字チェック
-    let invalid_chars = ['~', '^', ':', '?', '*', '[', ']', '\\'];
+    let invalid_chars = ['~', '^', ':', '?', '*', '[', ']', '\\', '@'];
     for c in invalid_chars {
         if name.contains(c) {
             return Some(format!("Branch name contains invalid character: {}", c));
@@ -53,6 +57,26 @@ pub fn validate_branch_name(name: &str) -> Option<String> {
 
     if name.len() > 50 {
         return Some("Branch name is too long (max 50 characters)".to_string());
+    }
+
+    // .lock サフィックスの禁止（Gitの内部ファイルとの衝突回避）
+    if name.ends_with(".lock") {
+        return Some("Branch name cannot end with '.lock'".to_string());
+    }
+
+    // 連続スラッシュの禁止
+    if name.contains("//") {
+        return Some("Branch name cannot contain consecutive slashes".to_string());
+    }
+
+    // 末尾スラッシュの禁止
+    if name.ends_with('/') {
+        return Some("Branch name cannot end with '/'".to_string());
+    }
+
+    // 先頭スラッシュの禁止
+    if name.starts_with('/') {
+        return Some("Branch name cannot start with '/'".to_string());
     }
 
     None
@@ -123,6 +147,7 @@ mod tests {
         assert!(validate_branch_name("test[name").is_some());
         assert!(validate_branch_name("test]name").is_some());
         assert!(validate_branch_name("test\\name").is_some());
+        assert!(validate_branch_name("test@name").is_some());
     }
 
     #[test]
@@ -145,6 +170,27 @@ mod tests {
 
         let max_name = "a".repeat(50);
         assert!(validate_branch_name(&max_name).is_none());
+    }
+
+    #[test]
+    fn test_validate_branch_name_lock_suffix() {
+        assert!(validate_branch_name("branch.lock").is_some());
+        assert!(validate_branch_name("feature/test.lock").is_some());
+        // .lock が途中にある場合はOK
+        assert!(validate_branch_name("test.lockfile").is_none());
+    }
+
+    #[test]
+    fn test_validate_branch_name_slashes() {
+        // 連続スラッシュは不可
+        assert!(validate_branch_name("feature//test").is_some());
+        // 末尾スラッシュは不可
+        assert!(validate_branch_name("feature/test/").is_some());
+        // 先頭スラッシュは不可
+        assert!(validate_branch_name("/feature/test").is_some());
+        // 正常なスラッシュはOK
+        assert!(validate_branch_name("feature/test").is_none());
+        assert!(validate_branch_name("feature/user/auth").is_none());
     }
 
     #[test]
