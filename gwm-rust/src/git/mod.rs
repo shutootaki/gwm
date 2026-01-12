@@ -14,7 +14,7 @@ pub mod worktree;
 pub use add::{add_worktree, AddWorktreeOptions, AddWorktreeResult};
 pub use clean::{check_local_changes, get_cleanable_worktrees};
 pub use core::{
-    get_repo_root, get_repository_name, is_git_repository, is_git_repository_at,
+    get_repo_root, get_repo_root_at, get_repository_name, is_git_repository, is_git_repository_at,
     local_branch_exists, parse_repo_name_from_url,
 };
 pub use pull::{is_already_up_to_date, pull_in_directory};

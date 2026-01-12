@@ -88,6 +88,20 @@ pub fn get_repo_root() -> Option<PathBuf> {
         .map(|s| PathBuf::from(s.trim()))
 }
 
+/// 指定パスからGitリポジトリのルートディレクトリを取得
+///
+/// # Arguments
+/// * `path` - 検索開始ディレクトリ
+///
+/// # Returns
+/// * `Some(PathBuf)`: リポジトリルートのパス
+/// * `None`: Gitリポジトリ外の場合
+pub fn get_repo_root_at(path: &Path) -> Option<PathBuf> {
+    exec("git", &["rev-parse", "--show-toplevel"], Some(path))
+        .ok()
+        .map(|s| PathBuf::from(s.trim()))
+}
+
 /// ローカルブランチが存在するか確認
 ///
 /// `git show-ref --verify --quiet refs/heads/<branch>` で確認します。
@@ -140,16 +154,23 @@ mod tests {
     }
 
     #[test]
-    fn test_get_repo_root_in_repo() {
+    fn test_get_repo_root_at_in_repo() {
         let temp = create_test_repo();
-        // 現在のディレクトリを変更してテスト
-        std::env::set_current_dir(temp.path()).unwrap();
-        let root = get_repo_root();
+        // get_repo_root_atを使用して並列テスト安全性を確保
+        let root = get_repo_root_at(temp.path());
         assert!(root.is_some());
         assert_eq!(
             root.unwrap().canonicalize().unwrap(),
             temp.path().canonicalize().unwrap()
         );
+    }
+
+    #[test]
+    fn test_get_repo_root_at_not_repo() {
+        let temp = TempDir::new().unwrap();
+        // Gitリポジトリでないディレクトリ
+        let root = get_repo_root_at(temp.path());
+        assert!(root.is_none());
     }
 
     #[test]
