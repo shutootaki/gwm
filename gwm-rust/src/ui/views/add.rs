@@ -397,10 +397,20 @@ async fn run_main_loop(
                                             );
                                         }
                                     }
-                                    execute_hooks_and_finish(app, &created_worktree, config_source, args);
+                                    execute_hooks_and_finish(
+                                        app,
+                                        &created_worktree,
+                                        config_source,
+                                        args,
+                                    );
                                 }
                                 ConfirmChoice::Once => {
-                                    execute_hooks_and_finish(app, &created_worktree, config_source, args);
+                                    execute_hooks_and_finish(
+                                        app,
+                                        &created_worktree,
+                                        config_source,
+                                        args,
+                                    );
                                 }
                                 ConfirmChoice::Cancel => {
                                     if let Some((path, _)) = &created_worktree {

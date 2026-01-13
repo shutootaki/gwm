@@ -118,4 +118,3 @@ fn print_worktree_row(worktree: &Worktree, base_path: &str, widths: &ColumnWidth
         head,
     );
 }
-

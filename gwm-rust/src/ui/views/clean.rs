@@ -136,7 +136,9 @@ fn render_clean_confirm_ui(
         area.x,
         y,
         &title,
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
     );
     y += 1;
 

@@ -169,7 +169,12 @@ impl Widget for TextInputWidget<'_> {
                     "Worktree will be created at:",
                     Style::default().fg(Color::DarkGray),
                 );
-                buf.set_string(inner.x, inner.y + 1, preview, Style::default().fg(Color::Cyan));
+                buf.set_string(
+                    inner.x,
+                    inner.y + 1,
+                    preview,
+                    Style::default().fg(Color::Cyan),
+                );
                 y += 6;
             }
         }
