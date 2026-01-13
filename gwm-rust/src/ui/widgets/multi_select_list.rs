@@ -321,7 +321,7 @@ impl Widget for MultiSelectListWidget<'_> {
                 .min(self.state.filtered_indices.len());
 
             for display_idx in self.state.scroll_offset..visible_end {
-                if y >= area.y + area.height - 10 {
+                if y >= area.y + area.height - 2 {
                     break;
                 }
 
