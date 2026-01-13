@@ -139,9 +139,10 @@ impl Widget for TextInputWidget<'_> {
 
                 let error_width = area.width.min(60);
                 let error_area = Rect::new(area.x, y, error_width, 4);
+                let inner = block.inner(error_area);
                 block.render(error_area, buf);
 
-                buf.set_string(area.x + 2, y + 1, error, Style::default().fg(Color::Red));
+                buf.set_string(inner.x, inner.y, error, Style::default().fg(Color::Red));
                 y += 5;
             }
         }
@@ -159,15 +160,21 @@ impl Widget for TextInputWidget<'_> {
 
                 let preview_width = area.width.min(60);
                 let preview_area = Rect::new(area.x, y, preview_width, 5);
+                let inner = block.inner(preview_area);
                 block.render(preview_area, buf);
 
                 buf.set_string(
-                    area.x + 2,
-                    y + 1,
+                    inner.x,
+                    inner.y,
                     "Worktree will be created at:",
                     Style::default().fg(Color::DarkGray),
                 );
-                buf.set_string(area.x + 2, y + 2, preview, Style::default().fg(Color::Cyan));
+                buf.set_string(
+                    inner.x,
+                    inner.y + 1,
+                    preview,
+                    Style::default().fg(Color::Cyan),
+                );
                 y += 6;
             }
         }

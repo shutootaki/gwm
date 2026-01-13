@@ -21,14 +21,14 @@ impl WorktreeStatus {
     /// ステータスアイコンを取得
     ///
     /// # Returns
-    /// * Active: `[*]`
-    /// * Main: `[M]`
-    /// * Other: `[-]`
+    /// * Active: `*`
+    /// * Main: `M`
+    /// * Other: `-`
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Active => "[*]",
-            Self::Main => "[M]",
-            Self::Other => "[-]",
+            Self::Active => "*",
+            Self::Main => "M",
+            Self::Other => "-",
         }
     }
 
@@ -80,8 +80,10 @@ pub struct Worktree {
     pub branch: String,
     /// HEADコミットハッシュ（完全形式）
     pub head: String,
-    /// ステータス
+    /// ステータス（表示用）
     pub status: WorktreeStatus,
+    /// メインworktreeかどうか（統計用、statusとは独立）
+    pub is_main: bool,
 }
 
 impl Worktree {
@@ -160,6 +162,14 @@ impl CleanReason {
             Self::Merged => "\x1b[32m",        // Green
         }
     }
+
+    /// 表示色を取得（ratatui用）
+    pub fn color(&self) -> Color {
+        match self {
+            Self::RemoteDeleted => Color::Red,
+            Self::Merged => Color::Green,
+        }
+    }
 }
 
 /// クリーンアップ可能なworktree
@@ -236,9 +246,9 @@ mod tests {
 
     #[test]
     fn test_worktree_status_icon() {
-        assert_eq!(WorktreeStatus::Active.icon(), "[*]");
-        assert_eq!(WorktreeStatus::Main.icon(), "[M]");
-        assert_eq!(WorktreeStatus::Other.icon(), "[-]");
+        assert_eq!(WorktreeStatus::Active.icon(), "*");
+        assert_eq!(WorktreeStatus::Main.icon(), "M");
+        assert_eq!(WorktreeStatus::Other.icon(), "-");
     }
 
     #[test]
@@ -276,6 +286,7 @@ mod tests {
             branch: "refs/heads/feature/test".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -287,6 +298,7 @@ mod tests {
             branch: "(detached)".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "(detached)");
     }
@@ -298,6 +310,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
@@ -309,6 +322,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc");
     }
@@ -320,6 +334,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }

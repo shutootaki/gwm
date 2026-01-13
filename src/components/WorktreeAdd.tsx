@@ -70,14 +70,17 @@ export const WorktreeAdd: React.FC<WorktreeAddProps> = ({
     useState<PendingConfirmation | null>(null);
 
   // 初期表示モードは引数有無に応じて決定する
+  //   * outputPath (--cd) 指定あり → UIなしで処理
   //   * branchName 指定あり → すぐに worktree 作成するので "loading" 表示のみ
   //   * -r 指定でリモート一覧を取りに行く場合も "loading"
   //   * それ以外は新規ブランチ入力モード
-  const initialViewMode: ViewMode = branchName
-    ? 'loading'
-    : isRemote
+  const initialViewMode: ViewMode = outputPath
+    ? 'loading' // --cd の場合はUIなしで処理（process.exitするので表示されない）
+    : branchName
       ? 'loading'
-      : 'input';
+      : isRemote
+        ? 'loading'
+        : 'input';
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 

@@ -8,18 +8,38 @@ use std::time::Duration;
 
 use crossterm::{
     event::{Event, KeyCode, KeyModifiers},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::Rect,
+    style::{Color, Style},
+    text::{Line, Span},
+    widgets::Paragraph,
+    Terminal, TerminalOptions, Viewport,
+};
 
 use crate::cli::GoArgs;
 use crate::error::Result;
 use crate::git::get_worktrees;
-use crate::ui::event::poll_event;
-use crate::ui::widgets::SelectListWidget;
+use crate::ui::event::{is_cancel_key, poll_event};
+use crate::ui::widgets::{SelectListWidget, SelectState};
 use crate::ui::{SelectItem, TextInputState};
 use crate::utils::{open_in_editor, EditorType};
+
+/// TUI用インライン viewport の高さ
+const TUI_GO_INLINE_HEIGHT: u16 = 15;
+
+/// ターミナル復元を保証するガード構造体
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
 
 /// goコマンドを実行
 ///
@@ -37,11 +57,11 @@ pub fn run_go(args: GoArgs) -> Result<()> {
         return Ok(());
     }
 
-    // Worktreeをアイテムに変換
+    // Worktreeをアイテムに変換（ステータスアイコン付き）
     let items: Vec<SelectItem> = worktrees
         .iter()
         .map(|wt| SelectItem {
-            label: wt.display_branch().to_string(),
+            label: format!("[{}] {}", wt.status.icon(), wt.display_branch()),
             value: wt.path.display().to_string(),
             description: Some(wt.path.display().to_string()),
             metadata: None,
@@ -90,6 +110,11 @@ fn handle_selection(item: &SelectItem, args: &GoArgs) -> Result<()> {
 
     if let Some(editor_type) = editor {
         open_in_editor(editor_type, path)?;
+        let editor_name = match editor_type {
+            EditorType::VsCode => "Editor",
+            EditorType::Cursor => "Cursor",
+        };
+        println!("\x1b[32m✓\x1b[0m Opened {} in {}", item.label, editor_name);
         std::thread::sleep(std::time::Duration::from_millis(500));
     } else {
         // パスを標準出力（シェル統合用）
@@ -101,12 +126,15 @@ fn handle_selection(item: &SelectItem, args: &GoArgs) -> Result<()> {
 
 /// TUIモードで選択
 fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Option<SelectItem>> {
-    // ターミナル初期化
+    // ターミナル初期化（インライン表示）
     enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let _guard = TerminalGuard;
+
+    let backend = CrosstermBackend::new(stdout());
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(TUI_GO_INLINE_HEIGHT),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
 
     // 状態初期化
     let mut input = match initial_query {
@@ -114,126 +142,89 @@ fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Optio
         None => TextInputState::new(),
     };
 
-    let mut filtered_indices: Vec<usize> = (0..items.len()).collect();
-    let mut selected_index = 0;
-    let mut scroll_offset = 0;
-    let max_display = 10;
+    let mut state = SelectState::new(items.to_vec()).with_max_display(10);
 
     // 初期フィルタリング（クエリがある場合）
     if !input.value.is_empty() {
-        update_filter(
-            &input,
-            items,
-            &mut filtered_indices,
-            &mut selected_index,
-            &mut scroll_offset,
-        );
+        state.update_filter(&input.value);
     }
 
     let result = loop {
         terminal.draw(|frame| {
-            let widget = SelectListWidget::new(
+            let area = frame.area();
+
+            // SelectListWidget用の領域（下1行を凡例用に確保）
+            let list_area = Rect {
+                height: area.height.saturating_sub(1),
+                ..area
+            };
+
+            let widget = SelectListWidget::with_state(
                 "Go to worktree",
                 "Search worktrees...",
                 &input,
-                items,
-                &filtered_indices,
-                selected_index,
-                scroll_offset,
-                max_display,
+                &state,
+                None,
             );
-            frame.render_widget(widget, frame.area());
+            frame.render_widget(widget, list_area);
+
+            // 凡例表示
+            let legend_area = Rect {
+                y: area.y + area.height.saturating_sub(1),
+                height: 1,
+                ..area
+            };
+            let legend = Line::from(vec![
+                Span::styled("[*]", Style::default().fg(Color::Yellow)),
+                Span::raw(" Active  "),
+                Span::styled("[M]", Style::default().fg(Color::Cyan)),
+                Span::raw(" Main  "),
+                Span::styled("[-]", Style::default().fg(Color::White)),
+                Span::raw(" Other"),
+            ]);
+            frame.render_widget(Paragraph::new(legend), legend_area);
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
+            // Ctrl+C / Escでキャンセル
+            if is_cancel_key(&key) {
+                break None;
+            }
+
             match (key.modifiers, key.code) {
-                (_, KeyCode::Esc) => break None,
                 (_, KeyCode::Enter) => {
-                    if !filtered_indices.is_empty() {
-                        let idx = filtered_indices[selected_index];
-                        break Some(items[idx].clone());
+                    if let Some(item) = state.selected_item() {
+                        break Some(item.clone());
                     }
                 }
                 (_, KeyCode::Up) | (KeyModifiers::CONTROL, KeyCode::Char('p')) => {
-                    if selected_index > 0 {
-                        selected_index -= 1;
-                        if selected_index < scroll_offset {
-                            scroll_offset = selected_index;
-                        }
-                    }
+                    state.move_up();
                 }
                 (_, KeyCode::Down) | (KeyModifiers::CONTROL, KeyCode::Char('n')) => {
-                    if selected_index + 1 < filtered_indices.len() {
-                        selected_index += 1;
-                        if selected_index >= scroll_offset + max_display {
-                            scroll_offset = selected_index - max_display + 1;
-                        }
-                    }
+                    state.move_down();
                 }
                 (_, KeyCode::Backspace) => {
                     input.delete_backward();
-                    update_filter(
-                        &input,
-                        items,
-                        &mut filtered_indices,
-                        &mut selected_index,
-                        &mut scroll_offset,
-                    );
+                    state.update_filter(&input.value);
                 }
                 (KeyModifiers::CONTROL, KeyCode::Char('u')) => {
                     input.clear();
-                    update_filter(
-                        &input,
-                        items,
-                        &mut filtered_indices,
-                        &mut selected_index,
-                        &mut scroll_offset,
-                    );
+                    state.update_filter(&input.value);
                 }
                 (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(c)) => {
                     input.insert(c);
-                    update_filter(
-                        &input,
-                        items,
-                        &mut filtered_indices,
-                        &mut selected_index,
-                        &mut scroll_offset,
-                    );
+                    state.update_filter(&input.value);
                 }
                 _ => {}
             }
         }
     };
 
-    // ターミナル復元
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    // カーソルをインライン領域の外に移動（TerminalGuardがdropされる前に）
+    drop(_guard);
+    println!();
 
     Ok(result)
-}
-
-/// フィルタリングを更新
-fn update_filter(
-    input: &TextInputState,
-    items: &[SelectItem],
-    filtered_indices: &mut Vec<usize>,
-    selected_index: &mut usize,
-    scroll_offset: &mut usize,
-) {
-    let query = input.value.to_lowercase();
-    *filtered_indices = items
-        .iter()
-        .enumerate()
-        .filter(|(_, item)| item.label.to_lowercase().contains(&query))
-        .map(|(i, _)| i)
-        .collect();
-
-    if *selected_index >= filtered_indices.len() {
-        *selected_index = filtered_indices.len().saturating_sub(1);
-    }
-    if *scroll_offset > *selected_index {
-        *scroll_offset = *selected_index;
-    }
 }
 
 #[cfg(test)]

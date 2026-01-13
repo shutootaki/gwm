@@ -89,9 +89,9 @@ impl Widget for NoticeWidget<'_> {
             buf.set_string(inner.x, y, msg, Style::default().fg(Color::White));
         }
 
-        // 続行のヒント
-        let hint_y = inner.y + inner.height.saturating_sub(1);
-        if hint_y > inner.y + 2 {
+        // 続行のヒント（メッセージの直後に配置）
+        let hint_y = inner.y + 2 + self.messages.len() as u16 + 1;
+        if hint_y < inner.y + inner.height {
             buf.set_string(
                 inner.x,
                 hint_y,

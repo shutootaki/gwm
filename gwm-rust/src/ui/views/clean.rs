@@ -9,13 +9,10 @@ use std::io::stdout;
 use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::Terminal;
+use ratatui::layout::Rect;
+use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::cli::CleanArgs;
 use crate::config::load_config;
@@ -23,17 +20,16 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_cleanable_worktrees, remove_worktree, CleanableWorktree,
 };
-use crate::ui::app::TextInputState;
-use crate::ui::event::poll_event;
-use crate::ui::widgets::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
+use crate::ui::event::{is_cancel_key, poll_event};
 
 /// ターミナル復元を保証するガード構造体
 struct TerminalGuard;
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = disable_raw_mode();
-        let _ = execute!(stdout(), LeaveAlternateScreen);
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
     }
 }
 
@@ -86,125 +82,99 @@ pub fn run_clean(args: CleanArgs) -> Result<()> {
     execute_clean(&selected)
 }
 
-/// TUIモードでクリーンアップ対象を選択
+/// TUIモードでクリーンアップ確認を表示
+///
+/// Enter: 全て削除、Esc: キャンセル
 fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktree>> {
     enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
-
     let _guard = TerminalGuard;
 
     let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
-
-    // MultiSelectItemに変換
-    let items: Vec<MultiSelectItem> = cleanable
-        .iter()
-        .map(|cw| {
-            let branch = cw.worktree.display_branch();
-            MultiSelectItem {
-                label: branch.to_string(),
-                value: cw.worktree.path.display().to_string(),
-                description: Some(cw.reason_text()),
-                disabled: false,
-                disabled_reason: None,
-            }
-        })
-        .collect();
-
-    let mut state = MultiSelectState::new(items);
-    let input = TextInputState::new();
-
-    // デフォルトで全選択
-    state.toggle_all();
-
-    let mut should_quit = false;
-    let mut confirmed = false;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(cleanable.len() as u16 + 5),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
 
     loop {
         terminal.draw(|f| {
-            let area = centered_rect(80, 90, f.area());
-            render_clean_ui(f.buffer_mut(), area, &input, &state);
+            let area = f.area();
+            render_clean_confirm_ui(f.buffer_mut(), area, cleanable);
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
-            match key.code {
-                KeyCode::Esc => {
-                    should_quit = true;
-                }
-                KeyCode::Enter => {
-                    confirmed = true;
-                    should_quit = true;
-                }
-                KeyCode::Up => {
-                    state.move_up();
-                }
-                KeyCode::Down => {
-                    state.move_down();
-                }
-                KeyCode::Char(' ') => {
-                    state.toggle_current();
-                }
-                KeyCode::Char('a') => {
-                    state.toggle_all();
-                }
-                _ => {}
+            // Ctrl+C / Escでキャンセル
+            if is_cancel_key(&key) {
+                // カーソルをインライン領域の外に移動
+                drop(_guard);
+                println!();
+                return Ok(vec![]);
+            }
+            if key.code == KeyCode::Enter {
+                // カーソルをインライン領域の外に移動
+                drop(_guard);
+                println!();
+                return Ok(cleanable.to_vec());
             }
         }
-
-        if should_quit {
-            break;
-        }
-    }
-
-    if confirmed {
-        let selected: Vec<CleanableWorktree> = state
-            .selected_indices
-            .iter()
-            .filter_map(|&i| cleanable.get(i).cloned())
-            .collect();
-        Ok(selected)
-    } else {
-        Ok(vec![])
     }
 }
 
-/// 中央揃えの矩形を計算
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
-}
-
-/// Clean UIを描画
-fn render_clean_ui(
+/// Clean確認UIを描画
+fn render_clean_confirm_ui(
     buf: &mut ratatui::buffer::Buffer,
     area: Rect,
-    input: &TextInputState,
-    state: &MultiSelectState,
+    cleanable: &[CleanableWorktree],
 ) {
-    use ratatui::widgets::Widget;
+    use ratatui::style::{Color, Modifier, Style};
 
-    let widget = MultiSelectListWidget::new(
-        "Select worktrees to clean",
-        "Type to filter...",
-        input,
-        state,
+    let mut y = area.y;
+
+    // タイトル: "Found N cleanable worktree(s):"
+    let title = format!("Found {} cleanable worktree(s):", cleanable.len());
+    buf.set_string(
+        area.x,
+        y,
+        &title,
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
     );
-    widget.render(area, buf);
+    y += 1;
+
+    // 一覧表示
+    for cw in cleanable {
+        if y >= area.y + area.height - 2 {
+            break;
+        }
+
+        let branch = cw.worktree.display_branch();
+        let path = cw.worktree.path.display().to_string();
+
+        // 先頭のビュレット
+        buf.set_string(area.x, y, "  ・", Style::default());
+        // ブランチ名（CleanReasonに応じた色）
+        let branch_display = format!("{:30}", branch);
+        buf.set_string(
+            area.x + 4,
+            y,
+            &branch_display,
+            Style::default().fg(cw.reason.color()),
+        );
+        // パス
+        buf.set_string(area.x + 34, y, &path, Style::default().fg(Color::White));
+        y += 1;
+    }
+
+    // フッター（1行空けて）
+    y += 1;
+    if y < area.y + area.height {
+        buf.set_string(
+            area.x,
+            y,
+            "Press Enter to delete all listed worktrees, or Esc to cancel.",
+            Style::default().fg(Color::Cyan),
+        );
+    }
 }
 
 /// 選択されたworktreeを削除
@@ -256,20 +226,4 @@ fn execute_clean(targets: &[CleanableWorktree]) -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_centered_rect() {
-        let full = Rect::new(0, 0, 100, 50);
-        let centered = centered_rect(80, 80, full);
-
-        assert!(centered.x > 0);
-        assert!(centered.y > 0);
-        assert!(centered.width < 100);
-        assert!(centered.height < 50);
-    }
 }

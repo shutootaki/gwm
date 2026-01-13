@@ -176,7 +176,7 @@ USAGE:
 
 OPTIONS:
     -n, --dry-run    Show what would be deleted without deleting
-    -y, --force      Skip confirmation prompt
+        --force      Skip confirmation prompt
 
 DESCRIPTION:
     Safely remove worktrees that are no longer needed. A worktree is
@@ -194,7 +194,7 @@ DESCRIPTION:
 EXAMPLES:
     gwm clean              Show confirmation before cleaning
     gwm clean -n           Dry run: show candidates only
-    gwm clean -y           Clean without confirmation (for CI/CD)
+    gwm clean --force      Clean without confirmation (for CI/CD)
 "#;
 
     pub const PULL_MAIN: &str = r#"

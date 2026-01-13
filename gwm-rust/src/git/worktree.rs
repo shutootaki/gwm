@@ -33,7 +33,8 @@ use crate::shell::exec;
 /// 4. `bare` - ベアリポジトリ
 /// 5. `detached` - デタッチドHEAD状態
 /// 6. 空行 - エントリの区切り
-pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
+/// `git worktree list --porcelain` の出力をパース（内部用）
+fn parse_worktrees_raw(output: &str) -> Vec<Worktree> {
     let mut worktrees = Vec::new();
     let mut current: Option<WorktreeBuilder> = None;
 
@@ -66,9 +67,14 @@ pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
         worktrees.push(builder.build());
     }
 
-    // ステータスを設定
-    set_worktree_statuses(&mut worktrees);
+    worktrees
+}
 
+pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
+    use crate::config::load_config;
+    let config = load_config();
+    let mut worktrees = parse_worktrees_raw(output);
+    set_worktree_statuses(&mut worktrees, &config.main_branches);
     worktrees
 }
 
@@ -100,23 +106,35 @@ impl WorktreeBuilder {
             } else {
                 WorktreeStatus::Other
             },
+            is_main: self.is_main,
         }
     }
 }
 
 /// Worktreeのステータスを設定
 ///
-/// 1. 最初のworktreeをMAINに設定（まだMAINがない場合）
-/// 2. 現在のディレクトリと一致するworktreeをACTIVEに設定
-fn set_worktree_statuses(worktrees: &mut [Worktree]) {
-    // MAINを設定（最初のworktreeがデフォルト）
-    if !worktrees.iter().any(|w| w.status == WorktreeStatus::Main) {
-        if let Some(first) = worktrees.first_mut() {
+/// 1. 最初のworktreeをMAINに設定（TypeScript版と同じ）
+/// 2. main_branchesに含まれるブランチのworktreeもMAINに設定
+/// 3. 現在のディレクトリがworktree配下にある場合ACTIVEに設定
+fn set_worktree_statuses(worktrees: &mut [Worktree], main_branches: &[String]) {
+    // 最初のworktreeをMAINに設定（bareでない場合）
+    if let Some(first) = worktrees.first_mut() {
+        first.is_main = true;
+        if first.status != WorktreeStatus::Main {
             first.status = WorktreeStatus::Main;
         }
     }
 
-    // ACTIVEを設定（現在のディレクトリと一致）
+    // main_branchesに含まれるブランチもMAINに設定
+    for worktree in worktrees.iter_mut() {
+        let branch = worktree.display_branch();
+        if main_branches.iter().any(|main| main == branch) {
+            worktree.is_main = true;
+            worktree.status = WorktreeStatus::Main;
+        }
+    }
+
+    // ACTIVEを設定（現在のディレクトリがworktree配下にある場合）
     let Some(current_dir) = std::env::current_dir().ok() else {
         return;
     };
@@ -127,7 +145,7 @@ fn set_worktree_statuses(worktrees: &mut [Worktree]) {
     for worktree in worktrees.iter_mut() {
         let is_match = match &current_canonical {
             Some(canonical_current) => {
-                // 現在のパスが canonicalize 成功した場合のみ worktree を canonicalize
+                // worktree を canonicalize して完全一致で比較（TypeScript版と同じ）
                 worktree
                     .path
                     .canonicalize()
@@ -141,6 +159,7 @@ fn set_worktree_statuses(worktrees: &mut [Worktree]) {
         };
 
         if is_match {
+            // ACTIVEに設定（is_mainは維持）
             worktree.status = WorktreeStatus::Active;
             break;
         }
@@ -268,6 +287,7 @@ branch refs/heads/feature
             branch: "refs/heads/feature/test".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -279,6 +299,7 @@ branch refs/heads/feature
             branch: "main".to_string(),
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }

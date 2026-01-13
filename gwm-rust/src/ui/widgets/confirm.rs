@@ -70,15 +70,16 @@ impl Widget for ConfirmWidget<'_> {
             let cmd_height = (self.commands.len() as u16 + 2).min(8);
             let cmd_width = area.width.min(60);
             let cmd_area = Rect::new(area.x, y, cmd_width, cmd_height);
+            let inner = block.inner(cmd_area);
             block.render(cmd_area, buf);
 
             for (i, cmd) in self.commands.iter().enumerate() {
-                if y + 1 + i as u16 >= cmd_area.y + cmd_area.height - 1 {
+                if inner.y + i as u16 >= inner.y + inner.height {
                     break;
                 }
                 buf.set_string(
-                    area.x + 2,
-                    y + 1 + i as u16,
+                    inner.x,
+                    inner.y + i as u16,
                     format!("$ {}", cmd),
                     Style::default().fg(Color::Cyan),
                 );

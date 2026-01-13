@@ -4,13 +4,10 @@ use std::io::{self, stdout};
 use std::time::Duration;
 
 use crossterm::event::{Event, KeyCode};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::Terminal;
+use ratatui::layout::Rect;
+use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::cli::AddArgs;
 use crate::config::{load_config_with_source, ConfigWithSource};
@@ -25,19 +22,53 @@ use crate::ui::app::{
 };
 use crate::ui::event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
-    poll_event,
+    is_cancel_key, poll_event,
 };
 use crate::ui::widgets::{
     ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, TextInputWidget,
 };
+use crate::utils::editor::{open_in_editor, EditorType};
 use crate::utils::{copy_ignored_files, validate_branch_name};
+
+/// TUI用インライン viewport の高さ
+/// 内訳: title(2) + stats(2) + search(2) + items(10) + preview(7) = 23
+const TUI_INLINE_HEIGHT: u16 = 23;
 
 struct TerminalGuard;
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = disable_raw_mode();
-        let _ = execute!(stdout(), LeaveAlternateScreen);
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
+
+/// エディタ起動ヘルパー（エラーをユーザーに通知）
+fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
+    let editor_type = if args.open_code {
+        Some(EditorType::VsCode)
+    } else if args.open_cursor {
+        Some(EditorType::Cursor)
+    } else {
+        None
+    };
+
+    if let Some(editor) = editor_type {
+        let editor_name = match editor {
+            EditorType::VsCode => "VS Code",
+            EditorType::Cursor => "Cursor",
+        };
+        if let Err(e) = open_in_editor(editor, path) {
+            eprintln!(
+                "\x1b[33m Warning: Could not open {}: {}\x1b[0m",
+                editor_name, e
+            );
+            eprintln!(
+                "  Make sure '{}' command is in your PATH.",
+                editor_name.to_lowercase().replace(' ', "")
+            );
+        }
     }
 }
 
@@ -97,9 +128,9 @@ async fn execute_add_direct(
     }
 
     if args.open_code {
-        open_in_editor("code", &result.path.display().to_string())?;
+        open_in_editor(EditorType::VsCode, &result.path)?;
     } else if args.open_cursor {
-        open_in_editor("cursor", &result.path.display().to_string())?;
+        open_in_editor(EditorType::Cursor, &result.path)?;
     }
 
     Ok(())
@@ -129,10 +160,16 @@ fn execute_hooks_direct(
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
 
+            // repo_rootが空の場合は警告を出してカレントディレクトリを使用
+            let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
+                eprintln!("\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m");
+                std::path::PathBuf::from(".")
+            });
+
             let context = HookContext {
                 worktree_path: worktree_path.to_path_buf(),
                 branch_name: branch.to_string(),
-                repo_root: config_source.repo_root.clone().unwrap_or_default(),
+                repo_root,
                 repo_name,
             };
 
@@ -165,19 +202,15 @@ fn execute_hooks_direct(
     Ok(())
 }
 
-fn open_in_editor(editor: &str, path: &str) -> Result<()> {
-    use crate::shell::exec;
-    exec(editor, &[path], None)?;
-    Ok(())
-}
-
 async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<()> {
     enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
     let _guard = TerminalGuard;
 
     let backend = CrosstermBackend::new(stdout());
-    let mut terminal = Terminal::new(backend)?;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(TUI_INLINE_HEIGHT),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
     let mut app = App::new(config_source.config.clone());
 
     if args.remote {
@@ -186,7 +219,15 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
         app.set_text_input("Create new worktree", "Enter new branch name:");
     }
 
-    run_main_loop(&mut terminal, &mut app, &args, &config_source).await
+    let result = run_main_loop(&mut terminal, &mut app, &args, &config_source).await;
+
+    // カーソルをインライン領域の外に移動（キャンセル時や正常終了時に必要）
+    // execute_hooks_and_finish経由で終了した場合は既にprintln!()が呼ばれているが、
+    // それ以外のパス（キャンセル、エラー表示後のEsc等）では必要
+    drop(_guard);
+    println!();
+
+    result
 }
 
 async fn fetch_remote_branches_as_items() -> Result<Vec<SelectItem>> {
@@ -214,9 +255,37 @@ async fn run_main_loop(
     args: &AddArgs,
     config_source: &ConfigWithSource,
 ) -> Result<()> {
+    // リモートブランチフェッチ（中断可能）
     if args.remote {
-        let items = fetch_remote_branches_as_items().await?;
-        app.set_select_list("Select remote branch", "Search branches...", items);
+        let fetch_future = fetch_remote_branches_as_items();
+        tokio::pin!(fetch_future);
+
+        let mut frame_count: usize = 0;
+
+        loop {
+            terminal.draw(|f| {
+                let area = f.area();
+                render_app(f.buffer_mut(), area, app, frame_count);
+            })?;
+
+            tokio::select! {
+                result = &mut fetch_future => {
+                    let items = result?;
+                    app.set_select_list("Select remote branch", "Search branches...", items);
+                    break;
+                }
+                _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    // イベントポーリング（ノンブロッキング）
+                    if let Ok(Some(Event::Key(key))) = poll_event(Duration::from_millis(0)) {
+                        if is_cancel_key(&key) {
+                            app.quit();
+                            return Ok(());
+                        }
+                    }
+                    frame_count = frame_count.wrapping_add(1);
+                }
+            }
+        }
     }
 
     let mut frame_count: usize = 0;
@@ -224,14 +293,51 @@ async fn run_main_loop(
 
     loop {
         terminal.draw(|f| {
-            let area = centered_rect(80, 90, f.area());
+            let area = f.area();
             render_app(f.buffer_mut(), area, app, frame_count);
         })?;
 
+        // pending_remote_fetch処理（中断可能）
         if app.pending_remote_fetch {
             app.pending_remote_fetch = false;
-            let items = fetch_remote_branches_as_items().await?;
-            app.set_select_list("Select remote branch", "Search branches...", items);
+
+            let fetch_future = fetch_remote_branches_as_items();
+            tokio::pin!(fetch_future);
+
+            loop {
+                terminal.draw(|f| {
+                    let area = f.area();
+                    render_app(f.buffer_mut(), area, app, frame_count);
+                })?;
+
+                tokio::select! {
+                    result = &mut fetch_future => {
+                        match result {
+                            Ok(items) => {
+                                app.set_select_list("Select remote branch", "Search branches...", items);
+                            }
+                            Err(e) => {
+                                app.set_error("Failed to fetch remote branches", vec![e.to_string()]);
+                            }
+                        }
+                        break;
+                    }
+                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                        // イベントポーリング（ノンブロッキング）
+                        if let Ok(Some(Event::Key(key))) = poll_event(Duration::from_millis(0)) {
+                            if is_cancel_key(&key) {
+                                app.quit();
+                                break;
+                            }
+                        }
+                        frame_count = frame_count.wrapping_add(1);
+                    }
+                }
+            }
+
+            if app.should_quit {
+                break;
+            }
             continue;
         }
 
@@ -246,13 +352,21 @@ async fn run_main_loop(
                                     Ok((path, branch_name)) => {
                                         created_worktree =
                                             Some((path.clone(), branch_name.clone()));
-                                        handle_creation_success(
+                                        let should_execute_hooks = handle_creation_success(
                                             app,
                                             &path,
                                             &branch_name,
                                             args,
                                             config_source,
                                         );
+                                        if should_execute_hooks {
+                                            execute_hooks_and_finish(
+                                                app,
+                                                &created_worktree,
+                                                config_source,
+                                                args,
+                                            );
+                                        }
                                     }
                                     Err(e) => {
                                         app.set_error(
@@ -279,13 +393,21 @@ async fn run_main_loop(
                             match result {
                                 Ok((path, branch_name)) => {
                                     created_worktree = Some((path.clone(), branch_name.clone()));
-                                    handle_creation_success(
+                                    let should_execute_hooks = handle_creation_success(
                                         app,
                                         &path,
                                         &branch_name,
                                         args,
                                         config_source,
                                     );
+                                    if should_execute_hooks {
+                                        execute_hooks_and_finish(
+                                            app,
+                                            &created_worktree,
+                                            config_source,
+                                            args,
+                                        );
+                                    }
                                 }
                                 Err(e) => {
                                     app.set_error("Failed to create worktree", vec![e.to_string()]);
@@ -304,7 +426,7 @@ async fn run_main_loop(
                                 ConfirmChoice::Trust => {
                                     if let Some(metadata) = app.get_confirm_metadata().cloned() {
                                         if let Some(ref repo_root) = metadata.repo_root {
-                                            let _ = trust_repository(
+                                            if let Err(e) = trust_repository(
                                                 &repo_root.display().to_string(),
                                                 metadata.config_path.clone(),
                                                 metadata.config_hash.clone(),
@@ -312,13 +434,25 @@ async fn run_main_loop(
                                                     .post_create_commands()
                                                     .map(|c| c.to_vec())
                                                     .unwrap_or_default(),
-                                            );
+                                            ) {
+                                                eprintln!("\x1b[33m Warning: Could not save trust setting: {}\x1b[0m", e);
+                                            }
                                         }
                                     }
-                                    execute_hooks_and_finish(app, &created_worktree, config_source);
+                                    execute_hooks_and_finish(
+                                        app,
+                                        &created_worktree,
+                                        config_source,
+                                        args,
+                                    );
                                 }
                                 ConfirmChoice::Once => {
-                                    execute_hooks_and_finish(app, &created_worktree, config_source);
+                                    execute_hooks_and_finish(
+                                        app,
+                                        &created_worktree,
+                                        config_source,
+                                        args,
+                                    );
                                 }
                                 ConfirmChoice::Cancel => {
                                     if let Some((path, _)) = &created_worktree {
@@ -360,8 +494,17 @@ fn execute_hooks_and_finish(
     app: &mut App,
     created_worktree: &Option<(String, String)>,
     config_source: &ConfigWithSource,
+    args: &AddArgs,
 ) {
     if let Some((path, branch_name)) = created_worktree {
+        // フック実行前にrawモードを無効化してTUIを停止
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+
+        // 改行を出力してTUI描画領域から抜ける
+        println!();
+
         let repo_name = config_source
             .repo_root
             .as_ref()
@@ -369,37 +512,47 @@ fn execute_hooks_and_finish(
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "unknown".to_string());
 
+        // repo_rootが空の場合は警告を出してカレントディレクトリを使用
+        let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
+            eprintln!(
+                "\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m"
+            );
+            std::path::PathBuf::from(".")
+        });
+
         let context = HookContext {
             worktree_path: std::path::PathBuf::from(path),
             branch_name: branch_name.clone(),
-            repo_root: config_source.repo_root.clone().unwrap_or_default(),
+            repo_root,
             repo_name,
         };
 
         match run_post_create_hooks(&config_source.config, &context) {
             Ok(result) if result.success => {
-                app.set_success(
-                    "Worktree created!",
-                    vec![
-                        format!("Path: {}", path),
-                        format!("Hooks completed ({} commands)", result.executed_count),
-                    ],
-                );
+                println!("\n\x1b[32m✓ Worktree created!\x1b[0m");
+                println!("  Path: {}", path);
+                println!("  Hooks completed ({} commands)", result.executed_count);
             }
             Ok(result) => {
                 let failed_msg = result
                     .failed_command
                     .map(|c| format!("Failed: {}", c))
                     .unwrap_or_else(|| "Unknown error".to_string());
-                app.set_error(
-                    "Hook execution failed",
-                    vec![format!("Path: {}", path), failed_msg],
-                );
+                println!("\n\x1b[31m✗ Hook execution failed\x1b[0m");
+                println!("  Path: {}", path);
+                println!("  {}", failed_msg);
             }
             Err(e) => {
-                app.set_error("Hook execution error", vec![e.to_string()]);
+                println!("\n\x1b[31m✗ Hook execution error\x1b[0m");
+                println!("  {}", e);
             }
         }
+
+        // エディタ起動
+        maybe_open_editor(args, &context.worktree_path);
+
+        // プログラムを終了（TUIには戻らない）
+        app.quit();
     } else {
         app.set_error(
             "Internal error",
@@ -430,22 +583,41 @@ fn create_worktree_from_remote(app: &App, branch: &str) -> Result<(String, Strin
     Ok((result.path.display().to_string(), branch.to_string()))
 }
 
+/// worktree作成成功時の処理
+/// 戻り値: true = 直接フック実行すべき, false = 確認ダイアログ表示または成功表示済み
 fn handle_creation_success(
     app: &mut App,
     path: &str,
     branch_name: &str,
     args: &AddArgs,
     config_source: &ConfigWithSource,
-) {
+) -> bool {
+    // 無視ファイルのコピー（エラーは警告として表示）
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
-            let _ = copy_ignored_files(repo_root, std::path::Path::new(path), copy_config);
+            match copy_ignored_files(repo_root, std::path::Path::new(path), copy_config) {
+                Ok(result) if result.has_copied() => {
+                    // コピー成功は後で成功メッセージと一緒に表示される
+                }
+                Ok(_) => {
+                    // コピー対象なし
+                }
+                Err(e) => {
+                    eprintln!(
+                        "\x1b[33m Warning: Failed to copy ignored files: {}\x1b[0m",
+                        e
+                    );
+                }
+            }
         }
     }
 
+    let worktree_path = std::path::Path::new(path);
+
     if args.skip_hooks {
+        maybe_open_editor(args, worktree_path);
         app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
-        return;
+        return false;
     }
 
     let trust_status = verify_trust(
@@ -460,31 +632,24 @@ fn handle_creation_success(
 
     match trust_status {
         TrustStatus::Trusted | TrustStatus::GlobalConfig => {
-            if let Some(commands) = app.config.post_create_commands() {
-                if !commands.is_empty() {
-                    let metadata = ConfirmMetadata {
-                        repo_root: config_source.repo_root.clone(),
-                        config_path: config_source
-                            .project_config_path
-                            .clone()
-                            .unwrap_or_default(),
-                        config_hash: String::new(),
-                        worktree_path: path.to_string(),
-                        branch_name: branch_name.to_string(),
-                    };
-                    app.set_confirm_with_metadata(
-                        "Running post-create hooks",
-                        "Trusted project - executing hooks:",
-                        commands.to_vec(),
-                        metadata,
-                    );
-                    return;
-                }
+            // 既にトラスト済み: 確認ダイアログなしで直接フック実行
+            if app
+                .config
+                .post_create_commands()
+                .map(|c| !c.is_empty())
+                .unwrap_or(false)
+            {
+                return true; // 直接フック実行
             }
+            // エディタ起動（フックがない場合）
+            maybe_open_editor(args, worktree_path);
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
+            false
         }
         TrustStatus::NoHooks => {
+            maybe_open_editor(args, worktree_path);
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
+            false
         }
         TrustStatus::NeedsConfirmation {
             commands,
@@ -492,6 +657,7 @@ fn handle_creation_success(
             config_path,
             config_hash,
         } => {
+            // 初回またはconfig変更時: 確認ダイアログを表示
             let metadata = ConfirmMetadata {
                 repo_root: config_source.repo_root.clone(),
                 config_path,
@@ -505,28 +671,9 @@ fn handle_creation_success(
                 commands,
                 metadata,
             );
+            false
         }
     }
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }
 
 fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_count: usize) {
@@ -566,22 +713,11 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
             title,
             placeholder,
             input,
-            items,
-            filtered_indices,
-            selected_index,
-            scroll_offset,
-            max_display,
+            state,
+            preview,
         } => {
-            let widget = SelectListWidget::new(
-                title,
-                placeholder,
-                input,
-                items,
-                filtered_indices,
-                *selected_index,
-                *scroll_offset,
-                *max_display,
-            );
+            let widget =
+                SelectListWidget::with_state(title, placeholder, input, state, preview.as_deref());
             widget.render(area, buf);
         }
 
@@ -595,22 +731,5 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
             let widget = ConfirmWidget::new(title, message, commands, *selected);
             widget.render(area, buf);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_centered_rect() {
-        let full = Rect::new(0, 0, 100, 50);
-        let centered = centered_rect(80, 80, full);
-
-        // 80%の矩形が中央に配置される
-        assert!(centered.x > 0);
-        assert!(centered.y > 0);
-        assert!(centered.width < 100);
-        assert!(centered.height < 50);
     }
 }

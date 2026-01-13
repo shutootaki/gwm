@@ -7,10 +7,9 @@ use std::time::Duration;
 
 use crossterm::{
     event::{Event, KeyCode, KeyModifiers},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{backend::CrosstermBackend, Terminal, TerminalOptions, Viewport};
 
 use crate::cli::RemoveArgs;
 use crate::config::{load_config, CleanBranchMode};
@@ -18,9 +17,23 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_worktrees, is_branch_merged, remove_worktree, WorktreeStatus,
 };
-use crate::ui::event::poll_event;
+use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 use crate::ui::TextInputState;
+
+/// TUI用インライン viewport の高さ
+const TUI_INLINE_HEIGHT: u16 = 23;
+
+/// ターミナル復元を保証するガード構造体
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
 
 // ANSI color codes
 const GREEN: &str = "\x1b[32m";
@@ -96,10 +109,14 @@ fn run_remove_tui(
 ) -> Result<Vec<MultiSelectItem>> {
     // ターミナル初期化
     enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    let _guard = TerminalGuard;
+
+    let stdout = stdout();
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(TUI_INLINE_HEIGHT),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
 
     // 状態初期化
     let (mut input, mut state) = match initial_query {
@@ -124,10 +141,12 @@ fn run_remove_tui(
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
-            match (key.modifiers, key.code) {
-                // キャンセル
-                (_, KeyCode::Esc) => break vec![],
+            // Ctrl+C / Escでキャンセル
+            if is_cancel_key(&key) {
+                break vec![];
+            }
 
+            match (key.modifiers, key.code) {
                 // 確定
                 (_, KeyCode::Enter) => {
                     if !state.selected_indices.is_empty() {
@@ -178,9 +197,9 @@ fn run_remove_tui(
         }
     };
 
-    // ターミナル復元
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    // カーソルをインライン領域の外に移動（TerminalGuardがdropされる前に）
+    drop(_guard);
+    println!();
 
     Ok(result)
 }
@@ -274,8 +293,27 @@ fn handle_branch_cleanup(
             }
         }
         CleanBranchMode::Ask => {
-            // TODO: 確認UIを実装（Phase 5）
-            println!("  Skipped branch deletion (ask mode not yet implemented)");
+            let is_merged = is_branch_merged(branch, main_branches);
+            let status = if is_merged { "merged" } else { "unmerged" };
+            print!("  Delete local branch '{branch}' ({status})? [y/N]: ");
+
+            use std::io::{self, Write};
+            let _ = io::stdout().flush();
+
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_ok() {
+                let answer = input.trim().to_lowercase();
+                if answer == "y" || answer == "yes" {
+                    match delete_local_branch(branch, !is_merged) {
+                        Ok(()) => println!("  {GREEN}✓ Deleted local branch: {branch}{RESET}"),
+                        Err(e) => {
+                            println!("  {YELLOW}Warning: Failed to delete branch: {e}{RESET}")
+                        }
+                    }
+                } else {
+                    println!("  Skipped branch deletion");
+                }
+            }
         }
         CleanBranchMode::Never => {}
     }

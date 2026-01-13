@@ -11,6 +11,14 @@ use crate::utils::{generate_worktree_preview, validate_branch_name};
 
 use super::app::{App, AppState, ConfirmChoice};
 
+/// キャンセルキー（Ctrl+C または Esc）の判定
+pub fn is_cancel_key(key: &KeyEvent) -> bool {
+    matches!(
+        (key.modifiers, key.code),
+        (KeyModifiers::CONTROL, KeyCode::Char('c')) | (KeyModifiers::NONE, KeyCode::Esc)
+    )
+}
+
 /// イベントをポーリング
 ///
 /// 指定されたタイムアウト内でイベントがあれば返します。
@@ -28,7 +36,10 @@ pub fn poll_event(timeout: Duration) -> Result<Option<Event>> {
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     match &app.state {
         AppState::Loading { .. } => {
-            // ローディング中はキー入力を無視
+            // ローディング中でもCtrl+C/Escでキャンセル可能
+            if is_cancel_key(&key) {
+                app.quit();
+            }
         }
 
         AppState::Success { .. } | AppState::Error { .. } => {
@@ -52,8 +63,8 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
 
 /// テキスト入力のキーハンドリング
 fn handle_text_input_key(app: &mut App, key: KeyEvent) {
-    // Escapeキーは常にキャンセル
-    if key.code == KeyCode::Esc {
+    // Ctrl+C / Escapeキーは常にキャンセル
+    if is_cancel_key(&key) {
         app.quit();
         return;
     }
@@ -141,8 +152,8 @@ pub fn update_text_input_validation(app: &mut App) {
 
 /// 選択リストのキーハンドリング
 fn handle_select_list_key(app: &mut App, key: KeyEvent) {
-    // Escapeキーは常にキャンセル
-    if key.code == KeyCode::Esc {
+    // Ctrl+C / Escapeキーは常にキャンセル
+    if is_cancel_key(&key) {
         app.quit();
         return;
     }
@@ -152,90 +163,66 @@ fn handle_select_list_key(app: &mut App, key: KeyEvent) {
         return;
     }
 
-    if let AppState::SelectList {
-        input,
-        filtered_indices,
-        selected_index,
-        scroll_offset,
-        max_display,
-        ..
-    } = &mut app.state
-    {
+    let mut needs_preview_update = false;
+
+    if let AppState::SelectList { input, state, .. } = &mut app.state {
         match (key.modifiers, key.code) {
             // 上移動
             (_, KeyCode::Up) | (KeyModifiers::CONTROL, KeyCode::Char('p')) => {
-                if *selected_index > 0 {
-                    *selected_index -= 1;
-                    // スクロール調整
-                    if *selected_index < *scroll_offset {
-                        *scroll_offset = *selected_index;
-                    }
-                }
+                state.move_up();
+                needs_preview_update = true;
             }
 
             // 下移動
             (_, KeyCode::Down) | (KeyModifiers::CONTROL, KeyCode::Char('n')) => {
-                if *selected_index + 1 < filtered_indices.len() {
-                    *selected_index += 1;
-                    // スクロール調整
-                    if *selected_index >= *scroll_offset + *max_display {
-                        *scroll_offset = *selected_index - *max_display + 1;
-                    }
-                }
+                state.move_down();
+                needs_preview_update = true;
             }
 
             // 削除
             (_, KeyCode::Backspace) => {
                 input.delete_backward();
+                state.update_filter(&input.value);
+                needs_preview_update = true;
             }
 
             // 文字入力
             (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(c)) => {
                 input.insert(c);
+                state.update_filter(&input.value);
+                needs_preview_update = true;
             }
 
             _ => {}
         }
     }
 
-    // フィルタリング更新
-    update_filtered_items(app);
+    // プレビューを更新
+    if needs_preview_update {
+        update_select_list_preview(app);
+    }
 }
 
-/// 選択リストのフィルタリングを更新
-pub fn update_filtered_items(app: &mut App) {
-    if let AppState::SelectList {
-        input,
-        items,
-        filtered_indices,
-        selected_index,
-        scroll_offset,
-        ..
-    } = &mut app.state
-    {
-        let query = input.value.to_lowercase();
-
-        *filtered_indices = items
-            .iter()
-            .enumerate()
-            .filter(|(_, item)| item.label.to_lowercase().contains(&query))
-            .map(|(i, _)| i)
-            .collect();
-
-        // 選択インデックスを範囲内に調整
-        if *selected_index >= filtered_indices.len() {
-            *selected_index = filtered_indices.len().saturating_sub(1);
-        }
-
-        // スクロールオフセットを調整
-        if *scroll_offset > *selected_index {
-            *scroll_offset = *selected_index;
-        }
+/// 選択リストのプレビューを更新
+pub fn update_select_list_preview(app: &mut App) {
+    if let AppState::SelectList { state, preview, .. } = &mut app.state {
+        *preview = state
+            .selected_item()
+            .and_then(|item| generate_worktree_preview(&item.value, &app.config));
     }
 }
 
 /// 確認ダイアログのキーハンドリング
 fn handle_confirm_key(app: &mut App, key: KeyEvent) {
+    // Ctrl+Cは即座に終了
+    if matches!(
+        (key.modifiers, key.code),
+        (KeyModifiers::CONTROL, KeyCode::Char('c'))
+    ) {
+        app.quit();
+        return;
+    }
+
     if let AppState::Confirm { selected, .. } = &mut app.state {
         match key.code {
             KeyCode::Esc => {
@@ -267,17 +254,8 @@ fn handle_confirm_key(app: &mut App, key: KeyEvent) {
 
 /// 選択リストから現在選択されているアイテムを取得
 pub fn get_selected_item(app: &App) -> Option<&super::app::SelectItem> {
-    if let AppState::SelectList {
-        items,
-        filtered_indices,
-        selected_index,
-        ..
-    } = &app.state
-    {
-        if !filtered_indices.is_empty() {
-            let idx = filtered_indices[*selected_index];
-            return Some(&items[idx]);
-        }
+    if let AppState::SelectList { state, .. } = &app.state {
+        return state.selected_item();
     }
     None
 }
@@ -371,8 +349,8 @@ mod tests {
         let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
         handle_key_event(&mut app, key);
 
-        if let AppState::SelectList { selected_index, .. } = &app.state {
-            assert_eq!(*selected_index, 1);
+        if let AppState::SelectList { state, .. } = &app.state {
+            assert_eq!(state.cursor_index, 1);
         } else {
             panic!("Expected SelectList state");
         }

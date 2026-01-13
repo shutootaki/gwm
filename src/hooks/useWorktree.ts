@@ -88,6 +88,14 @@ export function useWorktree({
           command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
         }
 
+        // outputPath（--cd）が指定されている場合、出力を抑制してパスのみ出力
+        // シェル統合用（例: cd $(gwm add branch --cd)）
+        if (outputPath) {
+          execSync(command, { stdio: 'pipe' }); // gitの出力を抑制
+          console.log(worktreePath);
+          process.exit(0);
+        }
+
         execSync(command);
 
         const actions: string[] = [];
