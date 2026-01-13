@@ -274,8 +274,27 @@ fn handle_branch_cleanup(
             }
         }
         CleanBranchMode::Ask => {
-            // TODO: 確認UIを実装（Phase 5）
-            println!("  Skipped branch deletion (ask mode not yet implemented)");
+            let is_merged = is_branch_merged(branch, main_branches);
+            let status = if is_merged { "merged" } else { "unmerged" };
+            print!("  Delete local branch '{branch}' ({status})? [y/N]: ");
+
+            use std::io::{self, Write};
+            let _ = io::stdout().flush();
+
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_ok() {
+                let answer = input.trim().to_lowercase();
+                if answer == "y" || answer == "yes" {
+                    match delete_local_branch(branch, !is_merged) {
+                        Ok(()) => println!("  {GREEN}✓ Deleted local branch: {branch}{RESET}"),
+                        Err(e) => {
+                            println!("  {YELLOW}Warning: Failed to delete branch: {e}{RESET}")
+                        }
+                    }
+                } else {
+                    println!("  Skipped branch deletion");
+                }
+            }
         }
         CleanBranchMode::Never => {}
     }
