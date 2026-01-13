@@ -6,6 +6,7 @@
 
 A CLI tool for managing Git worktrees, allowing you to work on multiple branches simultaneously.
 
+
 <div align="center">
 
 [![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
@@ -14,6 +15,9 @@ A CLI tool for managing Git worktrees, allowing you to work on multiple branches
 [![Downloads](https://img.shields.io/npm/dm/@shutootaki/gwm?style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
 
 </div>
+
+<img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/2b14f573-9e71-436d-b2d6-656231199c83" />
+
 
 ## What problem does gwm solve?
 
@@ -77,68 +81,6 @@ Worktrees are created at:
 
 Example: `~/git-worktrees/my-app/feature-login/`
 
-## Configuration
-
-Customize behavior in `~/.config/gwm/config.toml`.
-
-### Configuration Options
-
-| Option                                | Description                                | Default              |
-| ------------------------------------- | ------------------------------------------ | -------------------- |
-| `worktree_base_path`                  | Directory to create worktrees              | `~/git-worktrees`    |
-| `main_branches`                       | Branch names treated as main branches      | `["main", "master"]` |
-| `clean_branch`                        | Delete local branch when removing worktree | `"ask"`              |
-| `copy_ignored_files.enabled`          | Copy gitignored files to new worktrees     | `false`              |
-| `copy_ignored_files.patterns`         | File patterns to copy                      | `[]`                 |
-| `copy_ignored_files.exclude_patterns` | File patterns to exclude from copying      | `[]`                 |
-| `hooks.post_create.enabled`           | Run hooks after worktree creation          | `true`               |
-| `hooks.post_create.commands`          | Commands to run after creation             | `[]`                 |
-
-**`clean_branch` values:**
-
-- `"auto"`: Auto-delete if safe
-- `"ask"`: Prompt for confirmation (default)
-- `"never"`: Never delete
-
-### Example Configuration
-
-```toml
-worktree_base_path = "/Users/me/worktrees"
-clean_branch = "ask"
-
-[copy_ignored_files]
-enabled = true
-patterns = [".env", ".env.*", ".env.local"]
-exclude_patterns = [".env.example", ".env.sample"]
-
-[hooks.post_create]
-commands = ["npm install"]
-```
-
-### Project-specific Configuration
-
-Create `gwm/config.toml` in your repository for project-specific settings. Project settings override global settings.
-
-**Example: Use pnpm for this project**
-
-`my-project/gwm/config.toml`:
-
-```toml
-[hooks.post_create]
-commands = ["pnpm install"]
-```
-
-### Hook Environment Variables
-
-The following environment variables are available during `post_create` hooks:
-
-| Variable            | Description                       |
-| ------------------- | --------------------------------- |
-| `GWM_WORKTREE_PATH` | Absolute path to the new worktree |
-| `GWM_BRANCH_NAME`   | Branch name                       |
-| `GWM_REPO_ROOT`     | Git repository root path          |
-| `GWM_REPO_NAME`     | Repository name                   |
-
 ## Command Reference
 
 ### `gwm list` (alias: `ls`)
@@ -163,6 +105,7 @@ M       main              ~/git-worktrees/project/main      123abc4
 ### `gwm add [branch_name]`
 
 Create a new worktree.
+
 
 **Without arguments (`gwm add`):**
 
@@ -275,6 +218,68 @@ gwm remove pr-branch         # Remove when done
 - `gwm help`: General help
 - `gwm help <command>`: Command-specific help
 - [GitHub Issues](https://github.com/shutootaki/gwm/issues): Bug reports and feature requests
+
+## Configuration
+
+Customize behavior in `~/.config/gwm/config.toml`.
+
+### Configuration Options
+
+| Option                                | Description                                | Default              |
+| ------------------------------------- | ------------------------------------------ | -------------------- |
+| `worktree_base_path`                  | Directory to create worktrees              | `~/git-worktrees`    |
+| `main_branches`                       | Branch names treated as main branches      | `["main", "master"]` |
+| `clean_branch`                        | Delete local branch when removing worktree | `"ask"`              |
+| `copy_ignored_files.enabled`          | Copy gitignored files to new worktrees     | `false`              |
+| `copy_ignored_files.patterns`         | File patterns to copy                      | `[]`                 |
+| `copy_ignored_files.exclude_patterns` | File patterns to exclude from copying      | `[]`                 |
+| `hooks.post_create.enabled`           | Run hooks after worktree creation          | `true`               |
+| `hooks.post_create.commands`          | Commands to run after creation             | `[]`                 |
+
+**`clean_branch` values:**
+
+- `"auto"`: Auto-delete if safe
+- `"ask"`: Prompt for confirmation (default)
+- `"never"`: Never delete
+
+### Example Configuration
+
+```toml
+worktree_base_path = "/Users/me/worktrees"
+clean_branch = "ask"
+
+[copy_ignored_files]
+enabled = true
+patterns = [".env", ".env.*", ".env.local"]
+exclude_patterns = [".env.example", ".env.sample"]
+
+[hooks.post_create]
+commands = ["npm install"]
+```
+
+### Project-specific Configuration
+
+Create `gwm/config.toml` in your repository for project-specific settings. Project settings override global settings.
+
+**Example: Use pnpm for this project**
+
+`my-project/gwm/config.toml`:
+
+```toml
+[hooks.post_create]
+commands = ["pnpm install"]
+```
+
+### Hook Environment Variables
+
+The following environment variables are available during `post_create` hooks:
+
+| Variable            | Description                       |
+| ------------------- | --------------------------------- |
+| `GWM_WORKTREE_PATH` | Absolute path to the new worktree |
+| `GWM_BRANCH_NAME`   | Branch name                       |
+| `GWM_REPO_ROOT`     | Git repository root path          |
+| `GWM_REPO_NAME`     | Repository name                   |
 
 ## License
 

@@ -15,6 +15,9 @@ Git worktree を使って、複数ブランチを同時に扱える CLI ツー�
 
 </div>
 
+<img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/13c87aed-83ec-421f-97af-7a1f5992066e" />
+
+
 ## gwm が解決する問題
 
 複数の PR をレビューしたり、hotfix を作りながら別の機能を開発していると、`git stash` と `git checkout` を繰り返すことになります。gwm は Git の worktree 機能を使って、**ブランチごとに独立したディレクトリを管理**します。
