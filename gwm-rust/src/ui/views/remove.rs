@@ -98,7 +98,7 @@ fn run_remove_tui(
     let stdout = stdout();
     let backend = CrosstermBackend::new(stdout);
     let options = TerminalOptions {
-        viewport: Viewport::Inline(15),
+        viewport: Viewport::Inline(23), // プレビュー表示のため高さを増加
     };
     let mut terminal = Terminal::with_options(backend, options)?;
 
