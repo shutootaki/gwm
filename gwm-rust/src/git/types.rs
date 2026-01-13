@@ -21,14 +21,14 @@ impl WorktreeStatus {
     /// ステータスアイコンを取得
     ///
     /// # Returns
-    /// * Active: `[*]`
-    /// * Main: `[M]`
-    /// * Other: `[-]`
+    /// * Active: `*`
+    /// * Main: `M`
+    /// * Other: `-`
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Active => "[*]",
-            Self::Main => "[M]",
-            Self::Other => "[-]",
+            Self::Active => "*",
+            Self::Main => "M",
+            Self::Other => "-",
         }
     }
 
@@ -236,9 +236,9 @@ mod tests {
 
     #[test]
     fn test_worktree_status_icon() {
-        assert_eq!(WorktreeStatus::Active.icon(), "[*]");
-        assert_eq!(WorktreeStatus::Main.icon(), "[M]");
-        assert_eq!(WorktreeStatus::Other.icon(), "[-]");
+        assert_eq!(WorktreeStatus::Active.icon(), "*");
+        assert_eq!(WorktreeStatus::Main.icon(), "M");
+        assert_eq!(WorktreeStatus::Other.icon(), "-");
     }
 
     #[test]

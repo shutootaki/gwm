@@ -231,7 +231,7 @@ impl Widget for WorktreeTable<'_> {
                 area.x + 14 + self.column_widths.branch as u16 + self.column_widths.path as u16 + 2,
                 y,
                 head,
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(Color::Cyan),
             );
 
             y += 1;
