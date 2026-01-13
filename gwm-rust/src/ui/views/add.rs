@@ -244,13 +244,20 @@ async fn run_main_loop(
                                     Ok((path, branch_name)) => {
                                         created_worktree =
                                             Some((path.clone(), branch_name.clone()));
-                                        handle_creation_success(
+                                        let should_execute_hooks = handle_creation_success(
                                             app,
                                             &path,
                                             &branch_name,
                                             args,
                                             config_source,
                                         );
+                                        if should_execute_hooks {
+                                            execute_hooks_and_finish(
+                                                app,
+                                                &created_worktree,
+                                                config_source,
+                                            );
+                                        }
                                     }
                                     Err(e) => {
                                         app.set_error(
@@ -277,13 +284,20 @@ async fn run_main_loop(
                             match result {
                                 Ok((path, branch_name)) => {
                                     created_worktree = Some((path.clone(), branch_name.clone()));
-                                    handle_creation_success(
+                                    let should_execute_hooks = handle_creation_success(
                                         app,
                                         &path,
                                         &branch_name,
                                         args,
                                         config_source,
                                     );
+                                    if should_execute_hooks {
+                                        execute_hooks_and_finish(
+                                            app,
+                                            &created_worktree,
+                                            config_source,
+                                        );
+                                    }
                                 }
                                 Err(e) => {
                                     app.set_error("Failed to create worktree", vec![e.to_string()]);
@@ -384,10 +398,7 @@ fn execute_hooks_and_finish(
             Ok(result) if result.success => {
                 println!("\n\x1b[32m✓ Worktree created!\x1b[0m");
                 println!("  Path: {}", path);
-                println!(
-                    "  Hooks completed ({} commands)",
-                    result.executed_count
-                );
+                println!("  Hooks completed ({} commands)", result.executed_count);
             }
             Ok(result) => {
                 let failed_msg = result
@@ -436,13 +447,15 @@ fn create_worktree_from_remote(app: &App, branch: &str) -> Result<(String, Strin
     Ok((result.path.display().to_string(), branch.to_string()))
 }
 
+/// worktree作成成功時の処理
+/// 戻り値: true = 直接フック実行すべき, false = 確認ダイアログ表示または成功表示済み
 fn handle_creation_success(
     app: &mut App,
     path: &str,
     branch_name: &str,
     args: &AddArgs,
     config_source: &ConfigWithSource,
-) {
+) -> bool {
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
             let _ = copy_ignored_files(repo_root, std::path::Path::new(path), copy_config);
@@ -451,7 +464,7 @@ fn handle_creation_success(
 
     if args.skip_hooks {
         app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
-        return;
+        return false;
     }
 
     let trust_status = verify_trust(
@@ -466,31 +479,21 @@ fn handle_creation_success(
 
     match trust_status {
         TrustStatus::Trusted | TrustStatus::GlobalConfig => {
-            if let Some(commands) = app.config.post_create_commands() {
-                if !commands.is_empty() {
-                    let metadata = ConfirmMetadata {
-                        repo_root: config_source.repo_root.clone(),
-                        config_path: config_source
-                            .project_config_path
-                            .clone()
-                            .unwrap_or_default(),
-                        config_hash: String::new(),
-                        worktree_path: path.to_string(),
-                        branch_name: branch_name.to_string(),
-                    };
-                    app.set_confirm_with_metadata(
-                        "Running post-create hooks",
-                        "Trusted project - executing hooks:",
-                        commands.to_vec(),
-                        metadata,
-                    );
-                    return;
-                }
+            // 既にトラスト済み: 確認ダイアログなしで直接フック実行
+            if app
+                .config
+                .post_create_commands()
+                .map(|c| !c.is_empty())
+                .unwrap_or(false)
+            {
+                return true; // 直接フック実行
             }
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
+            false
         }
         TrustStatus::NoHooks => {
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
+            false
         }
         TrustStatus::NeedsConfirmation {
             commands,
@@ -498,6 +501,7 @@ fn handle_creation_success(
             config_path,
             config_hash,
         } => {
+            // 初回またはconfig変更時: 確認ダイアログを表示
             let metadata = ConfirmMetadata {
                 repo_root: config_source.repo_root.clone(),
                 config_path,
@@ -511,6 +515,7 @@ fn handle_creation_success(
                 commands,
                 metadata,
             );
+            false
         }
     }
 }
@@ -583,4 +588,3 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
         }
     }
 }
-
