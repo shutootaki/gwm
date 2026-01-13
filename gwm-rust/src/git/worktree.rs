@@ -33,7 +33,8 @@ use crate::shell::exec;
 /// 4. `bare` - ベアリポジトリ
 /// 5. `detached` - デタッチドHEAD状態
 /// 6. 空行 - エントリの区切り
-pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
+/// `git worktree list --porcelain` の出力をパース（内部用）
+fn parse_worktrees_raw(output: &str) -> Vec<Worktree> {
     let mut worktrees = Vec::new();
     let mut current: Option<WorktreeBuilder> = None;
 
@@ -66,9 +67,14 @@ pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
         worktrees.push(builder.build());
     }
 
-    // ステータスを設定
-    set_worktree_statuses(&mut worktrees);
+    worktrees
+}
 
+pub fn parse_worktrees(output: &str) -> Vec<Worktree> {
+    use crate::config::load_config;
+    let config = load_config();
+    let mut worktrees = parse_worktrees_raw(output);
+    set_worktree_statuses(&mut worktrees, &config.main_branches);
     worktrees
 }
 
@@ -106,13 +112,14 @@ impl WorktreeBuilder {
 
 /// Worktreeのステータスを設定
 ///
-/// 1. 最初のworktreeをMAINに設定（まだMAINがない場合）
+/// 1. main_branchesに含まれるブランチのworktreeをMAINに設定
 /// 2. 現在のディレクトリと一致するworktreeをACTIVEに設定
-fn set_worktree_statuses(worktrees: &mut [Worktree]) {
-    // MAINを設定（最初のworktreeがデフォルト）
-    if !worktrees.iter().any(|w| w.status == WorktreeStatus::Main) {
-        if let Some(first) = worktrees.first_mut() {
-            first.status = WorktreeStatus::Main;
+fn set_worktree_statuses(worktrees: &mut [Worktree], main_branches: &[String]) {
+    // MAINを設定（main_branchesに含まれるブランチ）
+    for worktree in worktrees.iter_mut() {
+        let branch = worktree.display_branch();
+        if main_branches.iter().any(|main| main == branch) {
+            worktree.status = WorktreeStatus::Main;
         }
     }
 
