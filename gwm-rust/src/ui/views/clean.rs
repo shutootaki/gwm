@@ -8,7 +8,7 @@
 use std::io::stdout;
 use std::time::Duration;
 
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
@@ -100,10 +100,21 @@ fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktre
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
-            match key.code {
-                KeyCode::Esc => return Ok(vec![]),
-                KeyCode::Enter => return Ok(cleanable.to_vec()),
-                _ => {}
+            // Ctrl+C / Escでキャンセル
+            if matches!(
+                (key.modifiers, key.code),
+                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc)
+            ) {
+                // カーソルをインライン領域の外に移動
+                drop(_guard);
+                println!();
+                return Ok(vec![]);
+            }
+            if key.code == KeyCode::Enter {
+                // カーソルをインライン領域の外に移動
+                drop(_guard);
+                println!();
+                return Ok(cleanable.to_vec());
             }
         }
     }

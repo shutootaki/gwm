@@ -126,8 +126,8 @@ fn run_remove_tui(
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
             match (key.modifiers, key.code) {
-                // キャンセル
-                (_, KeyCode::Esc) => break vec![],
+                // Ctrl+C / Escでキャンセル
+                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => break vec![],
 
                 // 確定
                 (_, KeyCode::Enter) => {
@@ -181,6 +181,8 @@ fn run_remove_tui(
 
     // ターミナル復元
     disable_raw_mode()?;
+    // カーソルをインライン領域の外に移動
+    println!();
 
     Ok(result)
 }
