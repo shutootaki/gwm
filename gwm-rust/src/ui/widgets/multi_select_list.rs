@@ -246,13 +246,33 @@ impl Widget for MultiSelectListWidget<'_> {
         y += 2;
 
         // 統計情報
-        let stats = format!(
-            "{} / {} items • {} selected",
-            self.state.filtered_indices.len(),
-            self.state.items.len(),
-            self.state.selected_indices.len(),
-        );
-        buf.set_string(area.x, y, &stats, Style::default().fg(Color::DarkGray));
+        let cursor_pos = if self.state.filtered_indices.is_empty() {
+            0
+        } else {
+            self.state.cursor_index + 1
+        };
+        let stats_line = Line::from(vec![
+            Span::styled(
+                format!(
+                    "{} / {} items",
+                    self.state.filtered_indices.len(),
+                    self.state.items.len()
+                ),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!(" • cursor at {}", cursor_pos),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(" • ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{} selected", self.state.selected_indices.len()),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]);
+        buf.set_line(area.x, y, &stats_line, area.width);
         y += 2;
 
         // 検索入力
@@ -330,16 +350,32 @@ impl Widget for MultiSelectListWidget<'_> {
                 let is_cursor = display_idx == self.state.cursor_index;
                 let is_selected = self.state.selected_indices.contains(&item_idx);
 
+                // カーソルインジケーター（先頭に表示）
+                let cursor_prefix = if is_cursor { "▶ " } else { "  " };
+                let cursor_style = if is_cursor {
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                buf.set_string(area.x, y, cursor_prefix, cursor_style);
+
                 // チェックボックスとスタイルを決定
                 let (checkbox, checkbox_style) = if item.disabled {
                     ("[-]", Style::default().fg(Color::DarkGray))
                 } else if is_selected {
-                    ("[x]", Style::default().fg(Color::Green))
+                    (
+                        "[x]",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    )
                 } else {
-                    ("[ ]", Style::default().fg(Color::White))
+                    ("[ ]", Style::default().fg(Color::Gray))
                 };
 
-                buf.set_string(area.x, y, checkbox, checkbox_style);
+                buf.set_string(area.x + 2, y, checkbox, checkbox_style);
 
                 // ラベルスタイルを決定
                 let label_style = if item.disabled {
@@ -352,20 +388,12 @@ impl Widget for MultiSelectListWidget<'_> {
                     Style::default().fg(Color::White)
                 };
 
-                buf.set_string(area.x + 4, y, &item.label, label_style);
-
-                // カーソルインジケーター
-                if is_cursor {
-                    let indicator_x = area.x + 4 + item.label.chars().count() as u16 + 1;
-                    if indicator_x < area.x + area.width {
-                        buf.set_string(indicator_x, y, "◀", Style::default().fg(Color::Cyan));
-                    }
-                }
+                buf.set_string(area.x + 6, y, &item.label, label_style);
 
                 // disabledの理由
                 if item.disabled {
                     if let Some(ref reason) = item.disabled_reason {
-                        let reason_x = area.x + 4 + item.label.chars().count() as u16 + 2;
+                        let reason_x = area.x + 6 + item.label.chars().count() as u16 + 1;
                         if reason_x < area.x + area.width {
                             buf.set_string(
                                 reason_x,
@@ -396,31 +424,38 @@ impl Widget for MultiSelectListWidget<'_> {
 
             // 選択済みプレビュー
             if !self.state.selected_indices.is_empty() && y + 7 < area.y + area.height {
+                let selected_items: Vec<_> = self.state.selected_items();
+                let title = format!("Selected ({} items)", selected_items.len());
                 let block = Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Green))
-                    .title("Selected");
+                    .title(Span::styled(
+                        title,
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ));
 
-                let selected_items: Vec<_> = self.state.selected_items();
                 let preview_height = (selected_items.len().min(5) + 2) as u16;
                 let preview_width = area.width.min(50);
                 let preview_area = Rect::new(area.x, y, preview_width, preview_height);
+                let inner = block.inner(preview_area);
                 block.render(preview_area, buf);
 
                 for (i, item) in selected_items.iter().take(5).enumerate() {
                     buf.set_string(
-                        area.x + 2,
-                        y + 1 + i as u16,
+                        inner.x,
+                        inner.y + i as u16,
                         format!("• {}", item.label),
-                        Style::default().fg(Color::White),
+                        Style::default().fg(Color::Gray),
                     );
                 }
 
                 if selected_items.len() > 5 {
                     buf.set_string(
-                        area.x + 2,
-                        y + 6,
-                        format!("... and {} more", selected_items.len() - 5),
+                        inner.x,
+                        inner.y + 5,
+                        format!("... {} more", selected_items.len() - 5),
                         Style::default().fg(Color::DarkGray),
                     );
                 }
@@ -429,21 +464,27 @@ impl Widget for MultiSelectListWidget<'_> {
             }
         }
 
-        // ヘルプ
+        // ヘルプ (2行表示)
         if y < area.y + area.height {
-            let help_line = Line::from(vec![
+            let help_line1 = Line::from(vec![
                 Span::styled("↑/↓", Style::default().fg(Color::Cyan)),
                 Span::raw(" navigate • "),
-                Span::styled("Space", Style::default().fg(Color::Green)),
+                Span::styled("Space", Style::default().fg(Color::Yellow)),
                 Span::raw(" toggle • "),
-                Span::styled("Ctrl+A", Style::default().fg(Color::Yellow)),
-                Span::raw(" all • "),
                 Span::styled("Enter", Style::default().fg(Color::Green)),
                 Span::raw(" confirm • "),
                 Span::styled("Esc", Style::default().fg(Color::Red)),
                 Span::raw(" cancel"),
             ]);
-            buf.set_line(area.x, y, &help_line, area.width);
+            buf.set_line(area.x, y, &help_line1, area.width);
+            y += 1;
+        }
+        if y < area.y + area.height {
+            let help_line2 = Line::from(vec![
+                Span::styled("Ctrl+A", Style::default().fg(Color::Cyan)),
+                Span::raw(" select all / clear all"),
+            ]);
+            buf.set_line(area.x, y, &help_line2, area.width);
         }
     }
 }
