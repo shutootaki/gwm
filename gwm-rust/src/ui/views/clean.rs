@@ -148,9 +148,19 @@ fn render_clean_confirm_ui(
 
         let branch = cw.worktree.display_branch();
         let path = cw.worktree.path.display().to_string();
-        let line = format!("  {} {:30} {}", cw.reason.ansi_color(), branch, path);
 
-        buf.set_string(area.x, y, &line, Style::default().fg(Color::White));
+        // 先頭のビュレット
+        buf.set_string(area.x, y, "  ・", Style::default());
+        // ブランチ名（CleanReasonに応じた色）
+        let branch_display = format!("{:30}", branch);
+        buf.set_string(
+            area.x + 4,
+            y,
+            &branch_display,
+            Style::default().fg(cw.reason.color()),
+        );
+        // パス
+        buf.set_string(area.x + 34, y, &path, Style::default().fg(Color::White));
         y += 1;
     }
 

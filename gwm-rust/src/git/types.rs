@@ -162,6 +162,14 @@ impl CleanReason {
             Self::Merged => "\x1b[32m",        // Green
         }
     }
+
+    /// 表示色を取得（ratatui用）
+    pub fn color(&self) -> Color {
+        match self {
+            Self::RemoteDeleted => Color::Red,
+            Self::Merged => Color::Green,
+        }
+    }
 }
 
 /// クリーンアップ可能なworktree
