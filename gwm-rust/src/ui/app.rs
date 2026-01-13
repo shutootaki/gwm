@@ -3,6 +3,8 @@
 //! TUIアプリケーションの状態をElmアーキテクチャライクに管理します。
 
 use crate::config::Config;
+use crate::ui::widgets::SelectState;
+use crate::utils::generate_worktree_preview;
 
 /// アプリケーション全体の状態
 pub struct App {
@@ -48,11 +50,8 @@ pub enum AppState {
         title: String,
         placeholder: String,
         input: TextInputState,
-        items: Vec<SelectItem>,
-        filtered_indices: Vec<usize>,
-        selected_index: usize,
-        scroll_offset: usize,
-        max_display: usize,
+        state: SelectState,
+        preview: Option<String>,
     },
 
     /// 確認ダイアログ（フック実行確認）
@@ -335,16 +334,16 @@ impl App {
         placeholder: impl Into<String>,
         items: Vec<SelectItem>,
     ) {
-        let filtered_indices: Vec<usize> = (0..items.len()).collect();
+        let state = SelectState::new(items);
+        let preview = state
+            .selected_item()
+            .and_then(|item| generate_worktree_preview(&item.value, &self.config));
         self.state = AppState::SelectList {
             title: title.into(),
             placeholder: placeholder.into(),
             input: TextInputState::new(),
-            items,
-            filtered_indices,
-            selected_index: 0,
-            scroll_offset: 0,
-            max_display: 10,
+            state,
+            preview,
         };
     }
 
