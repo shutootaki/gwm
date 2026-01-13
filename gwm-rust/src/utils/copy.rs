@@ -45,6 +45,8 @@ pub struct CopyResult {
     pub skipped: Vec<String>,
     /// Files that already existed in target (not overwritten).
     pub existing: Vec<String>,
+    /// Files that failed to copy (with error messages).
+    pub failed: Vec<(String, String)>,
 }
 
 impl CopyResult {
@@ -53,16 +55,36 @@ impl CopyResult {
         !self.copied.is_empty()
     }
 
+    /// Returns true if any files failed to copy.
+    pub fn has_failed(&self) -> bool {
+        !self.failed.is_empty()
+    }
+
     /// Returns a summary message for display.
     pub fn summary(&self) -> String {
-        if self.copied.is_empty() {
-            "No files copied".to_string()
-        } else {
-            format!(
+        let mut parts = Vec::new();
+
+        if !self.copied.is_empty() {
+            parts.push(format!(
                 "Copied {} file(s): {}",
                 self.copied.len(),
                 self.copied.join(", ")
-            )
+            ));
+        }
+
+        if !self.failed.is_empty() {
+            let failed_names: Vec<_> = self.failed.iter().map(|(name, _)| name.as_str()).collect();
+            parts.push(format!(
+                "Failed {} file(s): {}",
+                self.failed.len(),
+                failed_names.join(", ")
+            ));
+        }
+
+        if parts.is_empty() {
+            "No files copied".to_string()
+        } else {
+            parts.join("; ")
         }
     }
 }
@@ -166,8 +188,11 @@ pub fn copy_ignored_files(
         }
 
         // Copy the file
-        if fs::copy(&source_path, &target_path).is_ok() {
-            result.copied.push(file_name_str.to_string());
+        match fs::copy(&source_path, &target_path) {
+            Ok(_) => result.copied.push(file_name_str.to_string()),
+            Err(e) => result
+                .failed
+                .push((file_name_str.to_string(), e.to_string())),
         }
     }
 

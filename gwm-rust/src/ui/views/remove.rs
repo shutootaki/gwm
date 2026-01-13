@@ -17,9 +17,23 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_worktrees, is_branch_merged, remove_worktree, WorktreeStatus,
 };
-use crate::ui::event::poll_event;
+use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 use crate::ui::TextInputState;
+
+/// TUI用インライン viewport の高さ
+const TUI_INLINE_HEIGHT: u16 = 23;
+
+/// ターミナル復元を保証するガード構造体
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
 
 // ANSI color codes
 const GREEN: &str = "\x1b[32m";
@@ -95,10 +109,12 @@ fn run_remove_tui(
 ) -> Result<Vec<MultiSelectItem>> {
     // ターミナル初期化
     enable_raw_mode()?;
+    let _guard = TerminalGuard;
+
     let stdout = stdout();
     let backend = CrosstermBackend::new(stdout);
     let options = TerminalOptions {
-        viewport: Viewport::Inline(23), // プレビュー表示のため高さを増加
+        viewport: Viewport::Inline(TUI_INLINE_HEIGHT),
     };
     let mut terminal = Terminal::with_options(backend, options)?;
 
@@ -125,10 +141,12 @@ fn run_remove_tui(
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
-            match (key.modifiers, key.code) {
-                // Ctrl+C / Escでキャンセル
-                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => break vec![],
+            // Ctrl+C / Escでキャンセル
+            if is_cancel_key(&key) {
+                break vec![];
+            }
 
+            match (key.modifiers, key.code) {
                 // 確定
                 (_, KeyCode::Enter) => {
                     if !state.selected_indices.is_empty() {
@@ -179,9 +197,8 @@ fn run_remove_tui(
         }
     };
 
-    // ターミナル復元
-    disable_raw_mode()?;
-    // カーソルをインライン領域の外に移動
+    // カーソルをインライン領域の外に移動（TerminalGuardがdropされる前に）
+    drop(_guard);
     println!();
 
     Ok(result)

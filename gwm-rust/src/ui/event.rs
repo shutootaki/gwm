@@ -203,13 +203,6 @@ fn handle_select_list_key(app: &mut App, key: KeyEvent) {
     }
 }
 
-/// 選択リストのフィルタリングを更新
-pub fn update_filtered_items(app: &mut App) {
-    if let AppState::SelectList { input, state, .. } = &mut app.state {
-        state.update_filter(&input.value);
-    }
-}
-
 /// 選択リストのプレビューを更新
 pub fn update_select_list_preview(app: &mut App) {
     if let AppState::SelectList { state, preview, .. } = &mut app.state {

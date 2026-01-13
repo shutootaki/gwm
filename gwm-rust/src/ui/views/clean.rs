@@ -8,7 +8,7 @@
 use std::io::stdout;
 use std::time::Duration;
 
-use crossterm::event::{Event, KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
@@ -20,14 +20,16 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_cleanable_worktrees, remove_worktree, CleanableWorktree,
 };
-use crate::ui::event::poll_event;
+use crate::ui::event::{is_cancel_key, poll_event};
 
 /// ターミナル復元を保証するガード構造体
 struct TerminalGuard;
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = disable_raw_mode();
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
     }
 }
 
@@ -101,10 +103,7 @@ fn run_clean_tui(cleanable: &[CleanableWorktree]) -> Result<Vec<CleanableWorktre
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
             // Ctrl+C / Escでキャンセル
-            if matches!(
-                (key.modifiers, key.code),
-                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc)
-            ) {
+            if is_cancel_key(&key) {
                 // カーソルをインライン領域の外に移動
                 drop(_guard);
                 println!();

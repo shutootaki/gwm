@@ -15,5 +15,5 @@ pub mod widgets;
 pub use app::{App, AppState, ConfirmChoice, SelectItem, SelectItemMetadata, TextInputState};
 pub use event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
-    poll_event, update_filtered_items, update_text_input_validation,
+    poll_event, update_text_input_validation,
 };

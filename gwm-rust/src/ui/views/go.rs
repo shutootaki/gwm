@@ -22,10 +22,24 @@ use ratatui::{
 use crate::cli::GoArgs;
 use crate::error::Result;
 use crate::git::get_worktrees;
-use crate::ui::event::poll_event;
+use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
 use crate::ui::{SelectItem, TextInputState};
 use crate::utils::{open_in_editor, EditorType};
+
+/// TUI用インライン viewport の高さ
+const TUI_GO_INLINE_HEIGHT: u16 = 15;
+
+/// ターミナル復元を保証するガード構造体
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
 
 /// goコマンドを実行
 ///
@@ -114,9 +128,11 @@ fn handle_selection(item: &SelectItem, args: &GoArgs) -> Result<()> {
 fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Option<SelectItem>> {
     // ターミナル初期化（インライン表示）
     enable_raw_mode()?;
+    let _guard = TerminalGuard;
+
     let backend = CrosstermBackend::new(stdout());
     let options = TerminalOptions {
-        viewport: Viewport::Inline(15),
+        viewport: Viewport::Inline(TUI_GO_INLINE_HEIGHT),
     };
     let mut terminal = Terminal::with_options(backend, options)?;
 
@@ -170,9 +186,12 @@ fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Optio
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
+            // Ctrl+C / Escでキャンセル
+            if is_cancel_key(&key) {
+                break None;
+            }
+
             match (key.modifiers, key.code) {
-                // Ctrl+C / Escでキャンセル
-                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => break None,
                 (_, KeyCode::Enter) => {
                     if let Some(item) = state.selected_item() {
                         break Some(item.clone());
@@ -201,9 +220,8 @@ fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Optio
         }
     };
 
-    // ターミナル復元（インライン表示なのでLeaveAlternateScreenは不要）
-    disable_raw_mode()?;
-    // カーソルをインライン領域の外に移動
+    // カーソルをインライン領域の外に移動（TerminalGuardがdropされる前に）
+    drop(_guard);
     println!();
 
     Ok(result)

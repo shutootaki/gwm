@@ -30,11 +30,45 @@ use crate::ui::widgets::{
 use crate::utils::editor::{open_in_editor, EditorType};
 use crate::utils::{copy_ignored_files, validate_branch_name};
 
+/// TUI用インライン viewport の高さ
+/// 内訳: title(2) + stats(2) + search(2) + items(10) + preview(7) = 23
+const TUI_INLINE_HEIGHT: u16 = 23;
+
 struct TerminalGuard;
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = disable_raw_mode();
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
+
+/// エディタ起動ヘルパー（エラーをユーザーに通知）
+fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
+    let editor_type = if args.open_code {
+        Some(EditorType::VsCode)
+    } else if args.open_cursor {
+        Some(EditorType::Cursor)
+    } else {
+        None
+    };
+
+    if let Some(editor) = editor_type {
+        let editor_name = match editor {
+            EditorType::VsCode => "VS Code",
+            EditorType::Cursor => "Cursor",
+        };
+        if let Err(e) = open_in_editor(editor, path) {
+            eprintln!(
+                "\x1b[33m Warning: Could not open {}: {}\x1b[0m",
+                editor_name, e
+            );
+            eprintln!(
+                "  Make sure '{}' command is in your PATH.",
+                editor_name.to_lowercase().replace(' ', "")
+            );
+        }
     }
 }
 
@@ -126,10 +160,16 @@ fn execute_hooks_direct(
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
 
+            // repo_rootが空の場合は警告を出してカレントディレクトリを使用
+            let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
+                eprintln!("\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m");
+                std::path::PathBuf::from(".")
+            });
+
             let context = HookContext {
                 worktree_path: worktree_path.to_path_buf(),
                 branch_name: branch.to_string(),
-                repo_root: config_source.repo_root.clone().unwrap_or_default(),
+                repo_root,
                 repo_name,
             };
 
@@ -168,7 +208,7 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
 
     let backend = CrosstermBackend::new(stdout());
     let options = TerminalOptions {
-        viewport: Viewport::Inline(23), // プレビュー表示のため高さを増加
+        viewport: Viewport::Inline(TUI_INLINE_HEIGHT),
     };
     let mut terminal = Terminal::with_options(backend, options)?;
     let mut app = App::new(config_source.config.clone());
@@ -386,7 +426,7 @@ async fn run_main_loop(
                                 ConfirmChoice::Trust => {
                                     if let Some(metadata) = app.get_confirm_metadata().cloned() {
                                         if let Some(ref repo_root) = metadata.repo_root {
-                                            let _ = trust_repository(
+                                            if let Err(e) = trust_repository(
                                                 &repo_root.display().to_string(),
                                                 metadata.config_path.clone(),
                                                 metadata.config_hash.clone(),
@@ -394,7 +434,9 @@ async fn run_main_loop(
                                                     .post_create_commands()
                                                     .map(|c| c.to_vec())
                                                     .unwrap_or_default(),
-                                            );
+                                            ) {
+                                                eprintln!("\x1b[33m Warning: Could not save trust setting: {}\x1b[0m", e);
+                                            }
                                         }
                                     }
                                     execute_hooks_and_finish(
@@ -456,7 +498,9 @@ fn execute_hooks_and_finish(
 ) {
     if let Some((path, branch_name)) = created_worktree {
         // フック実行前にrawモードを無効化してTUIを停止
-        let _ = disable_raw_mode();
+        if let Err(e) = disable_raw_mode() {
+            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
 
         // 改行を出力してTUI描画領域から抜ける
         println!();
@@ -468,10 +512,18 @@ fn execute_hooks_and_finish(
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "unknown".to_string());
 
+        // repo_rootが空の場合は警告を出してカレントディレクトリを使用
+        let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
+            eprintln!(
+                "\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m"
+            );
+            std::path::PathBuf::from(".")
+        });
+
         let context = HookContext {
             worktree_path: std::path::PathBuf::from(path),
             branch_name: branch_name.clone(),
-            repo_root: config_source.repo_root.clone().unwrap_or_default(),
+            repo_root,
             repo_name,
         };
 
@@ -497,11 +549,7 @@ fn execute_hooks_and_finish(
         }
 
         // エディタ起動
-        if args.open_code {
-            let _ = open_in_editor(EditorType::VsCode, &context.worktree_path);
-        } else if args.open_cursor {
-            let _ = open_in_editor(EditorType::Cursor, &context.worktree_path);
-        }
+        maybe_open_editor(args, &context.worktree_path);
 
         // プログラムを終了（TUIには戻らない）
         app.quit();
@@ -544,19 +592,30 @@ fn handle_creation_success(
     args: &AddArgs,
     config_source: &ConfigWithSource,
 ) -> bool {
+    // 無視ファイルのコピー（エラーは警告として表示）
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
-            let _ = copy_ignored_files(repo_root, std::path::Path::new(path), copy_config);
+            match copy_ignored_files(repo_root, std::path::Path::new(path), copy_config) {
+                Ok(result) if result.has_copied() => {
+                    // コピー成功は後で成功メッセージと一緒に表示される
+                }
+                Ok(_) => {
+                    // コピー対象なし
+                }
+                Err(e) => {
+                    eprintln!(
+                        "\x1b[33m Warning: Failed to copy ignored files: {}\x1b[0m",
+                        e
+                    );
+                }
+            }
         }
     }
 
+    let worktree_path = std::path::Path::new(path);
+
     if args.skip_hooks {
-        // エディタ起動
-        if args.open_code {
-            let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
-        } else if args.open_cursor {
-            let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
-        }
+        maybe_open_editor(args, worktree_path);
         app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
         return false;
     }
@@ -583,21 +642,12 @@ fn handle_creation_success(
                 return true; // 直接フック実行
             }
             // エディタ起動（フックがない場合）
-            if args.open_code {
-                let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
-            } else if args.open_cursor {
-                let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
-            }
+            maybe_open_editor(args, worktree_path);
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
             false
         }
         TrustStatus::NoHooks => {
-            // エディタ起動
-            if args.open_code {
-                let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
-            } else if args.open_cursor {
-                let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
-            }
+            maybe_open_editor(args, worktree_path);
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
             false
         }
