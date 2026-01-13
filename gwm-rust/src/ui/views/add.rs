@@ -27,6 +27,7 @@ use crate::ui::event::{
 use crate::ui::widgets::{
     ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, TextInputWidget,
 };
+use crate::utils::editor::{open_in_editor, EditorType};
 use crate::utils::{copy_ignored_files, validate_branch_name};
 
 struct TerminalGuard;
@@ -93,9 +94,9 @@ async fn execute_add_direct(
     }
 
     if args.open_code {
-        open_in_editor("code", &result.path.display().to_string())?;
+        open_in_editor(EditorType::VsCode, &result.path)?;
     } else if args.open_cursor {
-        open_in_editor("cursor", &result.path.display().to_string())?;
+        open_in_editor(EditorType::Cursor, &result.path)?;
     }
 
     Ok(())
@@ -158,12 +159,6 @@ fn execute_hooks_direct(
         }
     }
 
-    Ok(())
-}
-
-fn open_in_editor(editor: &str, path: &str) -> Result<()> {
-    use crate::shell::exec;
-    exec(editor, &[path], None)?;
     Ok(())
 }
 
@@ -329,6 +324,7 @@ async fn run_main_loop(
                                                 app,
                                                 &created_worktree,
                                                 config_source,
+                                                args,
                                             );
                                         }
                                     }
@@ -369,6 +365,7 @@ async fn run_main_loop(
                                             app,
                                             &created_worktree,
                                             config_source,
+                                            args,
                                         );
                                     }
                                 }
@@ -400,10 +397,10 @@ async fn run_main_loop(
                                             );
                                         }
                                     }
-                                    execute_hooks_and_finish(app, &created_worktree, config_source);
+                                    execute_hooks_and_finish(app, &created_worktree, config_source, args);
                                 }
                                 ConfirmChoice::Once => {
-                                    execute_hooks_and_finish(app, &created_worktree, config_source);
+                                    execute_hooks_and_finish(app, &created_worktree, config_source, args);
                                 }
                                 ConfirmChoice::Cancel => {
                                     if let Some((path, _)) = &created_worktree {
@@ -445,6 +442,7 @@ fn execute_hooks_and_finish(
     app: &mut App,
     created_worktree: &Option<(String, String)>,
     config_source: &ConfigWithSource,
+    args: &AddArgs,
 ) {
     if let Some((path, branch_name)) = created_worktree {
         // フック実行前にrawモードを無効化してTUIを停止
@@ -486,6 +484,13 @@ fn execute_hooks_and_finish(
                 println!("\n\x1b[31m✗ Hook execution error\x1b[0m");
                 println!("  {}", e);
             }
+        }
+
+        // エディタ起動
+        if args.open_code {
+            let _ = open_in_editor(EditorType::VsCode, &context.worktree_path);
+        } else if args.open_cursor {
+            let _ = open_in_editor(EditorType::Cursor, &context.worktree_path);
         }
 
         // プログラムを終了（TUIには戻らない）
@@ -536,6 +541,12 @@ fn handle_creation_success(
     }
 
     if args.skip_hooks {
+        // エディタ起動
+        if args.open_code {
+            let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
+        } else if args.open_cursor {
+            let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
+        }
         app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
         return false;
     }
@@ -561,10 +572,22 @@ fn handle_creation_success(
             {
                 return true; // 直接フック実行
             }
+            // エディタ起動（フックがない場合）
+            if args.open_code {
+                let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
+            } else if args.open_cursor {
+                let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
+            }
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
             false
         }
         TrustStatus::NoHooks => {
+            // エディタ起動
+            if args.open_code {
+                let _ = open_in_editor(EditorType::VsCode, std::path::Path::new(path));
+            } else if args.open_cursor {
+                let _ = open_in_editor(EditorType::Cursor, std::path::Path::new(path));
+            }
             app.set_success("Worktree created!", vec![format!("Path: {}", path)]);
             false
         }
