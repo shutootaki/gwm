@@ -80,8 +80,10 @@ pub struct Worktree {
     pub branch: String,
     /// HEADコミットハッシュ（完全形式）
     pub head: String,
-    /// ステータス
+    /// ステータス（表示用）
     pub status: WorktreeStatus,
+    /// メインworktreeかどうか（統計用、statusとは独立）
+    pub is_main: bool,
 }
 
 impl Worktree {
@@ -276,6 +278,7 @@ mod tests {
             branch: "refs/heads/feature/test".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -287,6 +290,7 @@ mod tests {
             branch: "(detached)".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "(detached)");
     }
@@ -298,6 +302,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
@@ -309,6 +314,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc");
     }
@@ -320,6 +326,7 @@ mod tests {
             branch: "main".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }

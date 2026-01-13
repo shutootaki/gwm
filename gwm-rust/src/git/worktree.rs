@@ -106,24 +106,35 @@ impl WorktreeBuilder {
             } else {
                 WorktreeStatus::Other
             },
+            is_main: self.is_main,
         }
     }
 }
 
 /// Worktreeのステータスを設定
 ///
-/// 1. main_branchesに含まれるブランチのworktreeをMAINに設定
-/// 2. 現在のディレクトリと一致するworktreeをACTIVEに設定
+/// 1. 最初のworktreeをMAINに設定（TypeScript版と同じ）
+/// 2. main_branchesに含まれるブランチのworktreeもMAINに設定
+/// 3. 現在のディレクトリがworktree配下にある場合ACTIVEに設定
 fn set_worktree_statuses(worktrees: &mut [Worktree], main_branches: &[String]) {
-    // MAINを設定（main_branchesに含まれるブランチ）
+    // 最初のworktreeをMAINに設定（bareでない場合）
+    if let Some(first) = worktrees.first_mut() {
+        first.is_main = true;
+        if first.status != WorktreeStatus::Main {
+            first.status = WorktreeStatus::Main;
+        }
+    }
+
+    // main_branchesに含まれるブランチもMAINに設定
     for worktree in worktrees.iter_mut() {
         let branch = worktree.display_branch();
         if main_branches.iter().any(|main| main == branch) {
+            worktree.is_main = true;
             worktree.status = WorktreeStatus::Main;
         }
     }
 
-    // ACTIVEを設定（現在のディレクトリと一致）
+    // ACTIVEを設定（現在のディレクトリがworktree配下にある場合）
     let Some(current_dir) = std::env::current_dir().ok() else {
         return;
     };
@@ -134,7 +145,7 @@ fn set_worktree_statuses(worktrees: &mut [Worktree], main_branches: &[String]) {
     for worktree in worktrees.iter_mut() {
         let is_match = match &current_canonical {
             Some(canonical_current) => {
-                // 現在のパスが canonicalize 成功した場合のみ worktree を canonicalize
+                // worktree を canonicalize して完全一致で比較（TypeScript版と同じ）
                 worktree
                     .path
                     .canonicalize()
@@ -148,6 +159,7 @@ fn set_worktree_statuses(worktrees: &mut [Worktree], main_branches: &[String]) {
         };
 
         if is_match {
+            // ACTIVEに設定（is_mainは維持）
             worktree.status = WorktreeStatus::Active;
             break;
         }
@@ -275,6 +287,7 @@ branch refs/heads/feature
             branch: "refs/heads/feature/test".to_string(),
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
+            is_main: false,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -286,6 +299,7 @@ branch refs/heads/feature
             branch: "main".to_string(),
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
+            is_main: true,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
