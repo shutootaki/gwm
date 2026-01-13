@@ -22,7 +22,7 @@ use crate::ui::app::{
 };
 use crate::ui::event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
-    poll_event,
+    is_cancel_key, poll_event,
 };
 use crate::ui::widgets::{
     ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, TextInputWidget,
@@ -173,7 +173,7 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
 
     let backend = CrosstermBackend::new(stdout());
     let options = TerminalOptions {
-        viewport: Viewport::Inline(15),
+        viewport: Viewport::Inline(23), // プレビュー表示のため高さを増加
     };
     let mut terminal = Terminal::with_options(backend, options)?;
     let mut app = App::new(config_source.config.clone());
@@ -184,7 +184,15 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
         app.set_text_input("Create new worktree", "Enter new branch name:");
     }
 
-    run_main_loop(&mut terminal, &mut app, &args, &config_source).await
+    let result = run_main_loop(&mut terminal, &mut app, &args, &config_source).await;
+
+    // カーソルをインライン領域の外に移動（キャンセル時や正常終了時に必要）
+    // execute_hooks_and_finish経由で終了した場合は既にprintln!()が呼ばれているが、
+    // それ以外のパス（キャンセル、エラー表示後のEsc等）では必要
+    drop(_guard);
+    println!();
+
+    result
 }
 
 async fn fetch_remote_branches_as_items() -> Result<Vec<SelectItem>> {
@@ -212,9 +220,37 @@ async fn run_main_loop(
     args: &AddArgs,
     config_source: &ConfigWithSource,
 ) -> Result<()> {
+    // リモートブランチフェッチ（中断可能）
     if args.remote {
-        let items = fetch_remote_branches_as_items().await?;
-        app.set_select_list("Select remote branch", "Search branches...", items);
+        let fetch_future = fetch_remote_branches_as_items();
+        tokio::pin!(fetch_future);
+
+        let mut frame_count: usize = 0;
+
+        loop {
+            terminal.draw(|f| {
+                let area = f.area();
+                render_app(f.buffer_mut(), area, app, frame_count);
+            })?;
+
+            tokio::select! {
+                result = &mut fetch_future => {
+                    let items = result?;
+                    app.set_select_list("Select remote branch", "Search branches...", items);
+                    break;
+                }
+                _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    // イベントポーリング（ノンブロッキング）
+                    if let Ok(Some(Event::Key(key))) = poll_event(Duration::from_millis(0)) {
+                        if is_cancel_key(&key) {
+                            app.quit();
+                            return Ok(());
+                        }
+                    }
+                    frame_count = frame_count.wrapping_add(1);
+                }
+            }
+        }
     }
 
     let mut frame_count: usize = 0;
@@ -226,10 +262,47 @@ async fn run_main_loop(
             render_app(f.buffer_mut(), area, app, frame_count);
         })?;
 
+        // pending_remote_fetch処理（中断可能）
         if app.pending_remote_fetch {
             app.pending_remote_fetch = false;
-            let items = fetch_remote_branches_as_items().await?;
-            app.set_select_list("Select remote branch", "Search branches...", items);
+
+            let fetch_future = fetch_remote_branches_as_items();
+            tokio::pin!(fetch_future);
+
+            loop {
+                terminal.draw(|f| {
+                    let area = f.area();
+                    render_app(f.buffer_mut(), area, app, frame_count);
+                })?;
+
+                tokio::select! {
+                    result = &mut fetch_future => {
+                        match result {
+                            Ok(items) => {
+                                app.set_select_list("Select remote branch", "Search branches...", items);
+                            }
+                            Err(e) => {
+                                app.set_error("Failed to fetch remote branches", vec![e.to_string()]);
+                            }
+                        }
+                        break;
+                    }
+                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                        // イベントポーリング（ノンブロッキング）
+                        if let Ok(Some(Event::Key(key))) = poll_event(Duration::from_millis(0)) {
+                            if is_cancel_key(&key) {
+                                app.quit();
+                                break;
+                            }
+                        }
+                        frame_count = frame_count.wrapping_add(1);
+                    }
+                }
+            }
+
+            if app.should_quit {
+                break;
+            }
             continue;
         }
 
@@ -557,22 +630,11 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
             title,
             placeholder,
             input,
-            items,
-            filtered_indices,
-            selected_index,
-            scroll_offset,
-            max_display,
+            state,
+            preview,
         } => {
-            let widget = SelectListWidget::new(
-                title,
-                placeholder,
-                input,
-                items,
-                filtered_indices,
-                *selected_index,
-                *scroll_offset,
-                *max_display,
-            );
+            let widget =
+                SelectListWidget::with_state(title, placeholder, input, state, preview.as_deref());
             widget.render(area, buf);
         }
 
