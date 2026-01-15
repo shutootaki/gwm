@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use crate::error::{GwmError, Suggestion};
+use crate::error::Suggestion;
 
 /// 通知の種類
 #[derive(Debug, Clone, Copy)]
@@ -67,39 +67,6 @@ impl<'a> NoticeWidget<'a> {
     pub fn with_suggestions(mut self, suggestions: Vec<Suggestion>) -> Self {
         self.suggestions = suggestions;
         self
-    }
-
-    /// GwmErrorから構造化エラー通知を作成
-    pub fn from_gwm_error(error: &GwmError) -> Self {
-        let title_str = error.title();
-        let messages = vec![error.to_string()];
-
-        let error_details = error.details();
-        let mut details = Vec::new();
-
-        if let Some(ref path) = error_details.path {
-            details.push(("Path".to_string(), path.display().to_string()));
-        }
-        if let Some(ref branch) = error_details.branch {
-            details.push(("Branch".to_string(), branch.clone()));
-        }
-        for (key, value) in error_details.extra {
-            details.push((key, value));
-        }
-
-        let suggestions = error.suggestions();
-
-        // 静的ライフタイムのためにleakを使用（TUI表示用の一時的なウィジェット）
-        let title: &'static str = Box::leak(title_str.to_string().into_boxed_str());
-        let messages: &'static [String] = Box::leak(messages.into_boxed_slice());
-
-        Self {
-            variant: NoticeVariant::Error,
-            title,
-            messages,
-            details,
-            suggestions,
-        }
     }
 }
 
@@ -331,29 +298,6 @@ mod tests {
             notice.suggestions[1].command,
             Some("git status".to_string())
         );
-    }
-
-    #[test]
-    fn test_notice_from_gwm_error() {
-        let error = GwmError::BranchExists("feature/test".to_string());
-        let notice = NoticeWidget::from_gwm_error(&error);
-
-        assert!(matches!(notice.variant, NoticeVariant::Error));
-        assert_eq!(notice.title, "Branch already exists");
-        assert!(!notice.suggestions.is_empty());
-    }
-
-    #[test]
-    fn test_notice_from_gwm_error_with_path() {
-        let error = GwmError::UncommittedChanges {
-            path: std::path::PathBuf::from("/path/to/worktree"),
-        };
-        let notice = NoticeWidget::from_gwm_error(&error);
-
-        assert!(matches!(notice.variant, NoticeVariant::Error));
-        assert_eq!(notice.title, "Uncommitted changes");
-        assert!(!notice.details.is_empty());
-        assert_eq!(notice.details[0].0, "Path");
     }
 
     #[test]
