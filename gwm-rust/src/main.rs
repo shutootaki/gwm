@@ -22,6 +22,7 @@ fn show_welcome() {
     println!("\x1b[1mAVAILABLE COMMANDS:\x1b[0m");
     println!("  add           Create a new worktree");
     println!("  go            Go to a worktree directory or open it in an editor");
+    println!("  init          Print shell integration script");
     println!("  list (ls)     List all worktrees for the current project");
     println!("  pull-main     Update the main branch worktree");
     println!("  remove (rm)   Remove one or more worktrees");
@@ -40,6 +41,7 @@ async fn main() {
         Some(Commands::Add(args)) => handle_error(gwm::ui::views::run_add(args).await),
         Some(Commands::Remove(args)) => handle_error(gwm::ui::views::run_remove(args)),
         Some(Commands::Go(args)) => handle_error(gwm::ui::views::run_go(args)),
+        Some(Commands::Init(args)) => handle_error(gwm::shell::init::run_init(args.shell)),
         Some(Commands::Clean(args)) => handle_error(gwm::ui::views::run_clean(args)),
         Some(Commands::PullMain) => handle_error(gwm::ui::views::run_pull_main()),
         Some(Commands::Help(args)) => handle_error(gwm::ui::views::run_help(args)),

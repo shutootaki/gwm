@@ -2,7 +2,7 @@
  * Trusted repository information
  */
 export interface TrustedRepo {
-  /** Absolute path to the project config file (gwm/config.toml) */
+  /** Absolute path to the project config file (.gwm/config.toml or gwm/config.toml) */
   configPath: string;
   /** SHA-256 hash of the config file (hex string) */
   configHash: string;

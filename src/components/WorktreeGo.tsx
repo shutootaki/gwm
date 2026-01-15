@@ -4,6 +4,7 @@ import { execSync, spawnSync } from 'child_process';
 import { WorktreeSelector } from './WorktreeSelector.js';
 import { formatErrorForDisplay } from '../utils/index.js';
 import { escapeShellArg } from '../utils/shell.js';
+import { tryWriteCwdFile } from '../utils/cwdFile.js';
 
 interface WorktreeGoProps {
   query?: string;
@@ -60,7 +61,17 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
         }
       }
     } else {
-      // サブシェルを起動して選択したディレクトリへ移動
+      // Shell integration: write cwd file for parent-shell cd (avoid subshell)
+      try {
+        if (tryWriteCwdFile(worktree.path)) {
+          process.exit(0);
+        }
+      } catch (err) {
+        console.error(formatErrorForDisplay(err));
+        process.exit(1);
+      }
+
+      // Fallback: launch a subshell in the selected directory
       try {
         const userShell =
           process.env.SHELL ||
@@ -73,10 +84,10 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
           stdio: 'inherit',
           env: process.env,
         });
-      } catch (err) {
-        setError(formatErrorForDisplay(err));
-      } finally {
         process.exit(0);
+      } catch (err) {
+        console.error(formatErrorForDisplay(err));
+        process.exit(1);
       }
     }
   };
@@ -86,11 +97,11 @@ export const WorktreeGo: React.FC<WorktreeGoProps> = ({
     process.exit(0);
   };
 
-  const placeholderText = openCode
-    ? 'Select a worktree to open in VS Code:'
-    : openCursor
-      ? 'Select a worktree to open in Cursor:'
-      : 'Select a worktree to go to:';
+  const placeholderText = (() => {
+    if (openCode) return 'Select a worktree to open in VS Code:';
+    if (openCursor) return 'Select a worktree to open in Cursor:';
+    return 'Select a worktree to go to:';
+  })();
 
   if (success) {
     return (

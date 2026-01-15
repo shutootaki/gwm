@@ -20,6 +20,7 @@ COMMANDS:
     add             Add a new worktree
     remove, rm      Remove worktree(s)
     go              Navigate to a worktree
+    init            Shell integration script
     clean           Clean up merged/deleted worktrees
     pull-main       Update main branch worktrees
     help            Show this help message
@@ -31,6 +32,7 @@ EXAMPLES:
     gwm add -r              Create from remote branch
     gwm remove              Remove worktrees (multi-select)
     gwm go feature          Navigate to worktree matching "feature"
+    eval "$(gwm init bash)" Install shell integration (bash/zsh)
     gwm clean -n            Show cleanable worktrees (dry-run)
 
 For more information about a command, run:
@@ -89,7 +91,8 @@ OPTIONS:
         --from <BRANCH>    Base branch for new worktree (default: main)
         --code             Open in VS Code after creation
         --cursor           Open in Cursor after creation
-        --cd               Output path only (for shell integration)
+        --cd               Output path only (default, for shell integration)
+        --no-cd            Show success message instead of path output
         --skip-hooks       Skip post_create hook execution
 
 DESCRIPTION:
@@ -168,6 +171,32 @@ EXAMPLES:
     gwm go main --code      Open main worktree in VS Code
 "#;
 
+    pub const INIT: &str = r#"
+gwm init - Shell integration
+
+USAGE:
+    gwm init <SHELL>
+
+ARGUMENTS:
+    <SHELL>    Shell type (bash, zsh, fish)
+
+DESCRIPTION:
+    Output a shell function that wraps the gwm binary to enable directory
+    navigation for 'gwm add' and 'gwm go'. The wrapper uses a temporary file
+    (GWM_CWD_FILE) to receive the target directory and cd into it without
+    breaking interactive TUI commands.
+
+INSTALLATION:
+    Bash:
+        eval "$(gwm init bash)"
+
+    Zsh:
+        eval "$(gwm init zsh)"
+
+    Fish:
+        gwm init fish | source
+"#;
+
     pub const CLEAN: &str = r#"
 gwm clean - Clean up merged/deleted worktrees
 
@@ -241,6 +270,7 @@ pub fn run_help(args: HelpArgs) -> Result<()> {
         Some("add") => help_text::ADD,
         Some("remove") | Some("rm") => help_text::REMOVE,
         Some("go") => help_text::GO,
+        Some("init") => help_text::INIT,
         Some("clean") => help_text::CLEAN,
         Some("pull-main") => help_text::PULL_MAIN,
         Some("help") => help_text::HELP,
@@ -271,6 +301,7 @@ mod tests {
             ("remove", Some("remove")),
             ("remove_alias", Some("rm")),
             ("go", Some("go")),
+            ("init", Some("init")),
             ("clean", Some("clean")),
             ("pull_main", Some("pull-main")),
             ("help", Some("help")),
@@ -300,6 +331,7 @@ mod tests {
             ("ADD", help_text::ADD),
             ("REMOVE", help_text::REMOVE),
             ("GO", help_text::GO),
+            ("INIT", help_text::INIT),
             ("CLEAN", help_text::CLEAN),
             ("PULL_MAIN", help_text::PULL_MAIN),
             ("HELP", help_text::HELP),

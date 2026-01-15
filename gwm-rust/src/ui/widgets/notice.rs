@@ -119,4 +119,59 @@ mod tests {
         let notice = NoticeWidget::error("Error!", &messages);
         assert_eq!(notice.title, "Error!");
     }
+
+    #[test]
+    fn test_notice_success_variant() {
+        // 成功バリアントの確認
+        let messages = vec!["Worktree created".to_string()];
+        let notice = NoticeWidget::success("Done", &messages);
+
+        assert!(matches!(notice.variant, NoticeVariant::Success));
+        assert_eq!(notice.messages.len(), 1);
+    }
+
+    #[test]
+    fn test_notice_error_variant() {
+        // エラーバリアントの確認
+        let messages = vec!["Failed to create worktree".to_string()];
+        let notice = NoticeWidget::error("Error", &messages);
+
+        assert!(matches!(notice.variant, NoticeVariant::Error));
+        assert_eq!(notice.messages.len(), 1);
+    }
+
+    #[test]
+    fn test_notice_multiple_messages() {
+        // 複数メッセージの確認
+        let messages = vec![
+            "Path: /path/to/worktree".to_string(),
+            "Branch: feature/test".to_string(),
+            "Hooks: completed".to_string(),
+        ];
+        let notice = NoticeWidget::success("Worktree created!", &messages);
+
+        assert_eq!(notice.messages.len(), 3);
+        assert_eq!(notice.messages[0], "Path: /path/to/worktree");
+        assert_eq!(notice.messages[1], "Branch: feature/test");
+        assert_eq!(notice.messages[2], "Hooks: completed");
+    }
+
+    #[test]
+    fn test_notice_empty_messages() {
+        // メッセージなしの確認
+        let messages: Vec<String> = vec![];
+        let notice = NoticeWidget::success("Success", &messages);
+
+        assert_eq!(notice.messages.len(), 0);
+    }
+
+    #[test]
+    fn test_notice_variant_debug() {
+        // Debug トレイト実装の確認
+        let success = NoticeVariant::Success;
+        let error = NoticeVariant::Error;
+
+        assert_eq!(format!("{:?}", success), "Success");
+        assert_eq!(format!("{:?}", error), "Error");
+    }
 }

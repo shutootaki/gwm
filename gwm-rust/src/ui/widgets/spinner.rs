@@ -70,4 +70,64 @@ mod tests {
         assert_eq!(spinner.label, "Loading...");
         assert_eq!(spinner.frame, 0);
     }
+
+    #[test]
+    fn test_spinner_frame_cycling() {
+        // フレームが正しくサイクルすることを確認
+        let frames_len = SpinnerWidget::FRAMES.len();
+
+        // 通常のフレーム
+        for i in 0..frames_len {
+            let spinner = SpinnerWidget::new("Test", i);
+            assert_eq!(spinner.frame, i);
+        }
+
+        // オーバーフロー時もエラーにならない（mod演算で処理）
+        let spinner = SpinnerWidget::new("Test", frames_len);
+        assert_eq!(spinner.frame, frames_len);
+
+        let spinner_large = SpinnerWidget::new("Test", 100);
+        assert_eq!(spinner_large.frame, 100);
+    }
+
+    #[test]
+    fn test_spinner_frame_wrapping() {
+        // mod演算による正しいフレームインデックスの確認
+        let frames_len = SpinnerWidget::FRAMES.len();
+
+        assert_eq!(0 % frames_len, 0);
+        assert_eq!(9 % frames_len, 9);
+        assert_eq!(10 % frames_len, 0); // ラップアラウンド
+        assert_eq!(15 % frames_len, 5);
+        assert_eq!(100 % frames_len, 0);
+    }
+
+    #[test]
+    fn test_spinner_with_different_labels() {
+        // 様々なラベルでの作成
+        let spinner1 = SpinnerWidget::new("Fetching remote branches...", 0);
+        assert_eq!(spinner1.label, "Fetching remote branches...");
+
+        let spinner2 = SpinnerWidget::new("Creating worktree...", 5);
+        assert_eq!(spinner2.label, "Creating worktree...");
+
+        let spinner3 = SpinnerWidget::new("", 0);
+        assert_eq!(spinner3.label, "");
+    }
+
+    #[test]
+    fn test_spinner_frames_are_braille() {
+        // 全てのフレームがBrailleパターンであることを確認
+        for frame in SpinnerWidget::FRAMES {
+            assert!(!frame.is_empty());
+            // Brailleパターンは U+2800-U+28FF の範囲
+            for c in frame.chars() {
+                assert!(
+                    ('\u{2800}'..='\u{28FF}').contains(&c),
+                    "Character {} is not a Braille pattern",
+                    c
+                );
+            }
+        }
+    }
 }

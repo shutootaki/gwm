@@ -114,7 +114,7 @@ mod tests {
         cache.repos.insert(
             "/path/to/repo".to_string(),
             TrustedRepo {
-                config_path: PathBuf::from("/path/to/repo/gwm/config.toml"),
+                config_path: PathBuf::from("/path/to/repo/.gwm/config.toml"),
                 config_hash: "abc123".to_string(),
                 trusted_at: "2024-01-01T00:00:00Z".to_string(),
                 trusted_commands: vec!["npm install".to_string()],

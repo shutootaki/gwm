@@ -169,4 +169,64 @@ mod tests {
         assert_eq!(widget.title, "Hook Confirmation");
         assert_eq!(widget.selected, ConfirmChoice::Once);
     }
+
+    #[test]
+    fn test_confirm_widget_empty_commands() {
+        // コマンドなしの場合
+        let commands: Vec<String> = vec![];
+        let widget = ConfirmWidget::new(
+            "Confirm",
+            "No commands to execute",
+            &commands,
+            ConfirmChoice::Cancel,
+        );
+
+        assert_eq!(widget.commands.len(), 0);
+        assert_eq!(widget.selected, ConfirmChoice::Cancel);
+    }
+
+    #[test]
+    fn test_confirm_widget_all_choices() {
+        // Trust/Once/Cancel の全選択肢
+        let commands = vec!["test".to_string()];
+
+        let widget_trust = ConfirmWidget::new("Title", "Message", &commands, ConfirmChoice::Trust);
+        assert_eq!(widget_trust.selected, ConfirmChoice::Trust);
+
+        let widget_once = ConfirmWidget::new("Title", "Message", &commands, ConfirmChoice::Once);
+        assert_eq!(widget_once.selected, ConfirmChoice::Once);
+
+        let widget_cancel =
+            ConfirmWidget::new("Title", "Message", &commands, ConfirmChoice::Cancel);
+        assert_eq!(widget_cancel.selected, ConfirmChoice::Cancel);
+    }
+
+    #[test]
+    fn test_confirm_widget_many_commands() {
+        // 多数コマンド（8個以上）の場合
+        let commands: Vec<String> = (0..10).map(|i| format!("command_{}", i)).collect();
+        let widget = ConfirmWidget::new(
+            "Multiple Commands",
+            "Many commands to execute",
+            &commands,
+            ConfirmChoice::Once,
+        );
+
+        assert_eq!(widget.commands.len(), 10);
+        assert_eq!(widget.title, "Multiple Commands");
+    }
+
+    #[test]
+    fn test_confirm_widget_message_content() {
+        let commands = vec!["npm install".to_string(), "npm test".to_string()];
+        let widget = ConfirmWidget::new(
+            "Run hooks?",
+            "First time running hooks for this project",
+            &commands,
+            ConfirmChoice::Once,
+        );
+
+        assert_eq!(widget.message, "First time running hooks for this project");
+        assert_eq!(widget.commands.len(), 2);
+    }
 }

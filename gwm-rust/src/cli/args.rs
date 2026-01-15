@@ -2,7 +2,7 @@
 //!
 //! This module defines all command-line arguments and subcommands for gwm.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::CleanBranchMode;
 
@@ -46,6 +46,11 @@ pub enum Commands {
     ///
     /// Output the path of a worktree for shell integration.
     Go(GoArgs),
+
+    /// Shell integration
+    ///
+    /// Print shell function to enable directory navigation for add/go.
+    Init(InitArgs),
 
     /// Clean up merged/deleted worktrees
     ///
@@ -97,15 +102,39 @@ pub struct AddArgs {
 
     /// Output path only (for shell integration)
     ///
-    /// Instead of opening an editor, just output the worktree path.
+    /// This is the default behavior. Use --no-cd to show success message instead.
     #[arg(long = "cd")]
     pub output_path: bool,
+
+    /// Show success message instead of path output
+    ///
+    /// Disable the default path-only output and show interactive success message.
+    #[arg(long = "no-cd")]
+    pub no_cd: bool,
 
     /// Skip post_create hooks
     ///
     /// Don't run the post_create hooks defined in config.
     #[arg(long = "skip-hooks")]
     pub skip_hooks: bool,
+
+    /// Execute deferred hooks from a file (internal use)
+    ///
+    /// This option is used by shell integration to execute hooks after cd completes.
+    /// Not intended for direct user use.
+    #[arg(long = "run-deferred-hooks", hide = true)]
+    pub run_deferred_hooks: Option<String>,
+}
+
+impl AddArgs {
+    /// Calculate the effective output_path flag.
+    ///
+    /// Returns true (path-only output) when:
+    /// - --no-cd is NOT specified
+    /// - No editor option (--code, --cursor) is specified
+    pub fn should_output_path_only(&self) -> bool {
+        !self.no_cd && !self.open_code && !self.open_cursor
+    }
 }
 
 /// Arguments for the `remove` command.
@@ -145,6 +174,39 @@ pub struct GoArgs {
     /// Open in Cursor
     #[arg(long = "cursor")]
     pub open_cursor: bool,
+
+    /// Show success message instead of path output
+    ///
+    /// Disable the default path-only output and show interactive success message.
+    #[arg(long = "no-cd")]
+    pub no_cd: bool,
+}
+
+impl GoArgs {
+    /// Calculate the effective output_path flag.
+    ///
+    /// Returns true (path-only output) when:
+    /// - --no-cd is NOT specified
+    /// - No editor option (--code, --cursor) is specified
+    pub fn should_output_path_only(&self) -> bool {
+        !self.no_cd && !self.open_code && !self.open_cursor
+    }
+}
+
+/// Arguments for the `init` command.
+#[derive(Parser, Debug)]
+pub struct InitArgs {
+    /// Shell type (bash, zsh, fish)
+    #[arg(value_enum)]
+    pub shell: ShellType,
+}
+
+/// Shell types supported by `gwm init`.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShellType {
+    Bash,
+    Zsh,
+    Fish,
 }
 
 /// Arguments for the `clean` command.
@@ -236,6 +298,15 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_init_args() {
+        let cli = Cli::parse_from(["gwm", "init", "bash"]);
+        match cli.command {
+            Some(Commands::Init(args)) => assert_eq!(args.shell, ShellType::Bash),
+            _ => panic!("Expected Init command"),
+        }
+    }
+
+    #[test]
     fn test_list_alias() {
         let cli = Cli::parse_from(["gwm", "ls"]);
         assert!(matches!(cli.command, Some(Commands::List)));
@@ -254,5 +325,71 @@ mod tests {
         assert_eq!(parse_clean_branch_mode("ask"), Ok(CleanBranchMode::Ask));
         assert_eq!(parse_clean_branch_mode("never"), Ok(CleanBranchMode::Never));
         assert!(parse_clean_branch_mode("invalid").is_err());
+    }
+
+    #[test]
+    fn test_add_should_output_path_only() {
+        // Default: should output path only
+        let cli = Cli::parse_from(["gwm", "add", "feature/test"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert!(args.should_output_path_only());
+        }
+
+        // --no-cd: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "add", "feature/test", "--no-cd"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert!(!args.should_output_path_only());
+        }
+
+        // --code: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "add", "feature/test", "--code"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert!(!args.should_output_path_only());
+        }
+
+        // --cursor: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "add", "feature/test", "--cursor"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert!(!args.should_output_path_only());
+        }
+    }
+
+    #[test]
+    fn test_go_should_output_path_only() {
+        // Default: should output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                args.should_output_path_only(),
+                "Default go should output path only"
+            );
+        }
+
+        // --no-cd: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--no-cd"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--no-cd should disable path-only output"
+            );
+        }
+
+        // --code: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--code"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--code should disable path-only output"
+            );
+        }
+
+        // --cursor: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--cursor"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--cursor should disable path-only output"
+            );
+        }
     }
 }

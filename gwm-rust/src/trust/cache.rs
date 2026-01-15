@@ -118,4 +118,40 @@ mod tests {
         let cache = load_cache();
         assert_eq!(cache.version, 1);
     }
+
+    #[test]
+    fn test_trust_cache_filename() {
+        // キャッシュファイル名の確認
+        assert_eq!(CACHE_FILENAME, "trusted_repos.json");
+    }
+
+    #[test]
+    fn test_cache_path_contains_config() {
+        // キャッシュパスに.configが含まれることを確認
+        let path = get_cache_path().unwrap();
+        assert!(path.to_string_lossy().contains(".config"));
+    }
+
+    #[test]
+    fn test_trusted_repo_construction() {
+        // TrustedRepoの構造確認
+        let repo = TrustedRepo {
+            config_path: PathBuf::from("/path/to/config.toml"),
+            config_hash: "abc123".to_string(),
+            trusted_at: "2025-01-15T00:00:00Z".to_string(),
+            trusted_commands: vec!["npm install".to_string()],
+        };
+
+        assert_eq!(repo.config_path, PathBuf::from("/path/to/config.toml"));
+        assert_eq!(repo.config_hash, "abc123");
+        assert_eq!(repo.trusted_at, "2025-01-15T00:00:00Z");
+        assert_eq!(repo.trusted_commands.len(), 1);
+    }
+
+    #[test]
+    fn test_load_cache_returns_empty_repos() {
+        // デフォルトキャッシュはreposが空
+        let cache = TrustCache::default();
+        assert!(cache.repos.is_empty());
+    }
 }

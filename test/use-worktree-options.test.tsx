@@ -2,13 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React, { useEffect } from 'react';
 import { render } from 'ink-testing-library';
 import { useWorktree } from '../src/hooks/useWorktree.js';
-import { spawnSync as _spawnSync } from 'child_process';
 import { openWithEditor } from '../src/utils/editor.js';
 
 // モジュールモック
 vi.mock('child_process', () => ({
   execSync: vi.fn(() => ''), // git worktree add のために空文字列を返す
-  spawnSync: vi.fn(),
   exec: vi.fn(),
 }));
 
@@ -48,20 +46,19 @@ const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit called');
 });
 
-const mockSpawnSync = vi.mocked(_spawnSync);
-
-// spawnSyncのモックを設定
-mockSpawnSync.mockReturnValue({
-  pid: 123,
-  output: [],
-  stdout: Buffer.from(''),
-  stderr: Buffer.from(''),
-  status: 0,
-  signal: null,
-});
+// console.log をスパイ
+const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
 // テスト用ダミーコンポーネント
-function HookTester(props: any) {
+function HookTester(props: {
+  options: {
+    openCode?: boolean;
+    openCursor?: boolean;
+    outputPath?: boolean;
+    onSuccess: (result: { path: string; actions: string[] }) => void;
+    onError: (error: Error) => void;
+  };
+}) {
   const { createWorktree } = useWorktree(props.options);
   useEffect(() => {
     void (async () => {
@@ -80,15 +77,15 @@ describe('useWorktree option flags', () => {
     const onSuccess = vi.fn();
 
     render(
-      React.createElement(HookTester, {
-        options: {
+      <HookTester
+        options={{
           openCode: true,
           openCursor: false,
           outputPath: false,
           onSuccess,
           onError: vi.fn(),
-        },
-      })
+        }}
+      />
     );
 
     // 非同期処理が完了するまで waitFor で待機
@@ -107,15 +104,15 @@ describe('useWorktree option flags', () => {
     const onSuccess = vi.fn();
 
     render(
-      React.createElement(HookTester, {
-        options: {
+      <HookTester
+        options={{
           openCode: false,
           openCursor: true,
           outputPath: false,
           onSuccess,
           onError: vi.fn(),
-        },
-      })
+        }}
+      />
     );
 
     // 非同期処理が完了するまで waitFor で待機
@@ -130,7 +127,7 @@ describe('useWorktree option flags', () => {
     expect(call.actions).toContain('Cursor opened');
   });
 
-  it('should spawn subshell and exit when outputPath=true', async () => {
+  it('should output path and exit when outputPath=true', async () => {
     const onSuccess = vi.fn();
     const onError = vi.fn();
 
@@ -141,30 +138,25 @@ describe('useWorktree option flags', () => {
     });
 
     render(
-      React.createElement(HookTester, {
-        options: {
+      <HookTester
+        options={{
           openCode: false,
           openCursor: false,
           outputPath: true,
           onSuccess,
           onError,
-        },
-      })
+        }}
+      />
     );
 
     // 非同期処理が完了するまで waitFor で待機
-    await vi.waitFor(() => expect(mockSpawnSync).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mockConsoleLog).toHaveBeenCalled());
 
-    expect(mockSpawnSync).toHaveBeenCalledWith(
-      expect.any(String), // シェルのパス
-      expect.objectContaining({
-        cwd: '/Users/test/git-worktrees/project/feature-test',
-        stdio: 'inherit',
-        env: process.env,
-      })
+    // パスが標準出力に出力されることを確認
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      '/Users/test/git-worktrees/project/feature-test'
     );
+    // process.exitが呼ばれることを確認
     expect(mockExit).toHaveBeenCalledWith(0);
-    // spawnSyncが呼ばれたことを確認（これがoutputPath=trueの主要な動作）
-    expect(mockSpawnSync).toHaveBeenCalledTimes(1);
   });
 });

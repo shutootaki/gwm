@@ -21,7 +21,7 @@ vi.mock('../src/utils/index.js', () => ({
 
 // Spinner をダミーに（余計なANSIシーケンスを避ける）
 vi.mock('ink-spinner', () => ({
-  default: () => React.createElement('span', { 'data-testid': 'spinner' }),
+  default: () => <span data-testid="spinner" />,
 }));
 
 const mockFetchAndPrune = vi.mocked(fetchAndPrune);
@@ -63,7 +63,7 @@ describe('WorktreeClean', () => {
   it('should fetch/prune and load cleanable worktrees', async () => {
     mockGetCleanableWorktrees.mockResolvedValue([]);
 
-    render(React.createElement(WorktreeClean));
+    render(<WorktreeClean />);
 
     // Wait for useEffect to complete
     await vi.waitFor(() => {
@@ -77,7 +77,7 @@ describe('WorktreeClean', () => {
   it('should show message when no cleanable worktrees found', async () => {
     mockGetCleanableWorktrees.mockResolvedValue([]);
 
-    const { lastFrame } = render(React.createElement(WorktreeClean));
+    const { lastFrame } = render(<WorktreeClean />);
 
     await vi.waitFor(() => {
       expect(lastFrame()).toContain('No cleanable worktrees found.');
@@ -88,9 +88,7 @@ describe('WorktreeClean', () => {
     mockGetCleanableWorktrees.mockResolvedValue(sampleCleanables);
     mockRemoveWorktree.mockResolvedValue(undefined);
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeClean, { force: true })
-    );
+    const { lastFrame } = render(<WorktreeClean force={true} />);
 
     await vi.waitFor(() => {
       // removeWorktree が2件呼ばれる
@@ -103,7 +101,7 @@ describe('WorktreeClean', () => {
   it('confirm mode should cancel on Esc without removing', async () => {
     mockGetCleanableWorktrees.mockResolvedValue(sampleCleanables);
 
-    const { stdin, lastFrame } = render(React.createElement(WorktreeClean));
+    const { stdin, lastFrame } = render(<WorktreeClean />);
 
     // "Press Enter" の表示を待って Esc
     await vi.waitFor(() => {

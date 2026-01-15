@@ -38,6 +38,7 @@ export const Welcome: React.FC = () => {
       label: 'go [query] [--code] [--cursor]',
       desc: 'Navigate or open worktree',
     },
+    { label: 'init <shell>', desc: 'Shell integration (cd after add/go)' },
     { label: 'help [command]', desc: 'Show help for gwm or specific command' },
   ];
 

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { execSync, spawnSync } from 'child_process';
+import { execSync } from 'child_process';
 import { join } from 'path';
 import { loadConfig } from '../config.js';
 import {
@@ -18,6 +18,7 @@ import { escapeShellArg } from '../utils/shell.js';
 import { openWithEditor } from '../utils/editor.js';
 import { formatErrorForDisplay } from '../utils/index.js';
 import { runPostCreateHooks } from './runner/index.js';
+import { tryWriteCwdFile } from '../utils/cwdFile.js';
 
 interface UseWorktreeOptions {
   fromBranch?: string;
@@ -55,14 +56,10 @@ export function useWorktree({
 
         let command: string;
 
-        // 仮想環境隔離機能が有効かどうか判定（後方互換）
-        const isIsolationEnabled = (() => {
-          const veh = config.virtual_env_handling;
-          if (!veh) return false;
-          if (typeof veh.isolate_virtual_envs === 'boolean')
-            return veh.isolate_virtual_envs;
-          return veh.mode === 'skip';
-        })();
+        // 仮想環境隔離機能が有効かどうか判定
+        // パーサーが mode → isolate_virtual_envs に正規化済み
+        const isIsolationEnabled =
+          config.virtual_env_handling?.isolate_virtual_envs ?? false;
 
         // まずローカルブランチの存在を確認（isRemote= true の場合も含む）
         const localExists = (() => {
@@ -88,15 +85,11 @@ export function useWorktree({
           command = `git worktree add ${escapeShellArg(worktreePath)} -b ${escapeShellArg(branch)} ${escapeShellArg(baseBranch)}`;
         }
 
-        // outputPath（--cd）が指定されている場合、出力を抑制してパスのみ出力
-        // シェル統合用（例: cd $(gwm add branch --cd)）
-        if (outputPath) {
-          execSync(command, { stdio: 'pipe' }); // gitの出力を抑制
-          console.log(worktreePath);
-          process.exit(0);
-        }
-
-        execSync(command);
+        // パス出力モード（デフォルト）かつエディタ起動なしの場合、gitの出力を抑制
+        const shouldSuppressGitOutput = outputPath && !openCode && !openCursor;
+        execSync(command, {
+          stdio: shouldSuppressGitOutput ? 'pipe' : 'inherit',
+        });
 
         const actions: string[] = [];
 
@@ -160,14 +153,15 @@ export function useWorktree({
           }
         }
 
-        // エディタを先に開く（hooks 実行中にコードを確認できるように）
+        const hasEditorOption = openCode || openCursor;
+
+        // エディタ起動
         if (openCode) {
           const ok = openWithEditor(worktreePath, 'code');
           actions.push(
             ok ? 'VS Code opened' : 'VS Code failed to open (not installed?)'
           );
         }
-
         if (openCursor) {
           const ok = openWithEditor(worktreePath, 'cursor');
           actions.push(
@@ -175,7 +169,7 @@ export function useWorktree({
           );
         }
 
-        // post_create hook の実行
+        // post_create hook の実行（--skip-hooks が指定されていない場合）
         if (!skipHooks) {
           onHooksStart?.();
           const hookContext = {
@@ -188,7 +182,6 @@ export function useWorktree({
           const hookResult = await runPostCreateHooks(config, hookContext);
 
           if (!hookResult.success) {
-            // hook 失敗時は actions に情報を追加するが、worktree は残す
             actions.push(`Hook failed: ${hookResult.failedCommand}`);
           } else if (hookResult.executedCount > 0) {
             actions.push(
@@ -197,25 +190,27 @@ export function useWorktree({
           }
         }
 
-        // すべての処理完了後に通知
-        onSuccess?.({ path: worktreePath, actions });
-
-        if (outputPath) {
-          const userShell =
-            process.env.SHELL ||
-            (process.platform === 'win32'
-              ? process.env.COMSPEC || 'cmd.exe'
-              : '/bin/bash');
-
-          spawnSync(userShell, {
-            cwd: worktreePath,
-            stdio: 'inherit',
-            env: process.env,
-          });
-
-          // サブシェル終了後に CLI も終了
+        // デフォルト動作（outputPath=true、エディタ起動なし）: パス出力のみで終了
+        const shouldOutputPathOnly = outputPath && !hasEditorOption;
+        if (shouldOutputPathOnly) {
+          if (actions.length > 0) {
+            console.error(actions.join('\n'));
+          }
+          try {
+            const wrote = tryWriteCwdFile(worktreePath);
+            if (!wrote) {
+              console.log(worktreePath);
+            }
+          } catch (e) {
+            console.error(
+              `Warning: Failed to write cwd file: ${formatErrorForDisplay(e)}`
+            );
+            console.log(worktreePath);
+          }
           process.exit(0);
         }
+
+        onSuccess?.({ path: worktreePath, actions });
       } catch (err) {
         onError?.(formatErrorForDisplay(err));
       }

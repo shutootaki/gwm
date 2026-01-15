@@ -4,6 +4,7 @@ import {
   parseRemoveArgs,
   parseGoArgs,
   parseHelpArgs,
+  parseInitArgs,
   isHelpRequested,
 } from '../src/utils/cli.js';
 
@@ -20,7 +21,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -36,7 +38,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -52,7 +55,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -68,7 +72,8 @@ describe('parseAddArgs', () => {
       fromBranch: 'develop',
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -84,7 +89,8 @@ describe('parseAddArgs', () => {
       fromBranch: 'develop',
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -100,7 +106,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -116,7 +123,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -131,7 +139,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: true,
       openCursor: false,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -146,7 +155,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: false,
       openCursor: true,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -162,6 +172,23 @@ describe('parseAddArgs', () => {
       openCode: false,
       openCursor: false,
       outputPath: true,
+      noCd: false,
+      skipHooks: false,
+    });
+  });
+
+  it('should parse --no-cd flag', () => {
+    const args = ['add', 'feature-branch', '--no-cd'];
+    const result = parseAddArgs(args);
+
+    expect(result).toEqual({
+      branchName: 'feature-branch',
+      isRemote: false,
+      fromBranch: undefined,
+      openCode: false,
+      openCursor: false,
+      outputPath: false,
+      noCd: true,
       skipHooks: false,
     });
   });
@@ -176,7 +203,8 @@ describe('parseAddArgs', () => {
       fromBranch: undefined,
       openCode: true,
       openCursor: true,
-      outputPath: false,
+      outputPath: true,
+      noCd: false,
       skipHooks: false,
     });
   });
@@ -422,6 +450,29 @@ describe('parseHelpArgs', () => {
     expect(result).toEqual({
       command: 'unknown-command',
     });
+  });
+});
+
+// initコマンドの引数解析をテスト
+describe('parseInitArgs', () => {
+  it('should parse shell type from positional arguments', () => {
+    const args = ['init', 'zsh'];
+    const result = parseInitArgs(args);
+    expect(result).toEqual({ shell: 'zsh' });
+  });
+
+  it('should throw error for missing shell argument', () => {
+    const args = ['init'];
+    expect(() => parseInitArgs(args)).toThrow(
+      /invalid shell|Valid shells: bash, zsh, fish/
+    );
+  });
+
+  it('should throw error for invalid shell argument', () => {
+    const args = ['init', 'powershell'];
+    expect(() => parseInitArgs(args)).toThrow(
+      /invalid shell|Valid shells: bash, zsh, fish/
+    );
   });
 });
 

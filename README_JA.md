@@ -17,7 +17,6 @@ Git worktree を使って、複数ブランチを同時に扱える CLI ツー�
 
 <img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/13c87aed-83ec-421f-97af-7a1f5992066e" />
 
-
 ## gwm が解決する問題
 
 複数の PR をレビューしたり、hotfix を作りながら別の機能を開発していると、`git stash` と `git checkout` を繰り返すことになります。gwm は Git の worktree 機能を使って、**ブランチごとに独立したディレクトリを管理**します。
@@ -46,6 +45,23 @@ npm install -g @shutootaki/gwm
 
 # インストールせずに試す
 npx @shutootaki/gwm
+```
+
+## シェル統合（cdで移動）
+
+`gwm add` / `gwm go` 実行後に、**現在のシェルのディレクトリを自動で移動**したい場合は以下を設定します。
+
+```bash
+# Bash (~/.bashrc などに追加)
+eval "$(gwm init bash)"
+
+# Zsh (~/.zshrc などに追加)
+eval "$(gwm init zsh)"
+```
+
+```fish
+# Fish (~/.config/fish/config.fish などに追加)
+gwm init fish | source
 ```
 
 ## 使用例
@@ -79,68 +95,6 @@ worktree は以下の場所に作成されます:
 ```
 
 例: `~/git-worktrees/my-app/feature-login/`
-
-## 設定ファイル
-
-`~/.config/gwm/config.toml` で動作をカスタマイズできます。
-
-### 設定項目一覧
-
-| 項目                                  | 説明                                          | デフォルト値         |
-| ------------------------------------- | --------------------------------------------- | -------------------- |
-| `worktree_base_path`                  | worktree を作成するディレクトリ               | `~/git-worktrees`    |
-| `main_branches`                       | メインブランチとして扱うブランチ名            | `["main", "master"]` |
-| `clean_branch`                        | worktree 削除時にローカルブランチも削除するか | `"ask"`              |
-| `copy_ignored_files.enabled`          | gitignore されたファイルをコピーするか        | `false`              |
-| `copy_ignored_files.patterns`         | コピー対象のファイルパターン                  | `[]`                 |
-| `copy_ignored_files.exclude_patterns` | コピーから除外するファイルパターン            | `[]`                 |
-| `hooks.post_create.enabled`           | worktree 作成後に hooks を実行するか          | `true`               |
-| `hooks.post_create.commands`          | 作成後に実行するコマンドの配列                | `[]`                 |
-
-**`clean_branch` の値:**
-
-- `"auto"`: 安全なら自動削除
-- `"ask"`: 確認する（デフォルト）
-- `"never"`: 削除しない
-
-### 設定例
-
-```toml
-worktree_base_path = "/Users/me/worktrees"
-clean_branch = "ask"
-
-[copy_ignored_files]
-enabled = true
-patterns = [".env", ".env.*", ".env.local"]
-exclude_patterns = [".env.example", ".env.sample"]
-
-[hooks.post_create]
-commands = ["npm install"]
-```
-
-### プロジェクト固有の設定
-
-リポジトリ内に `gwm/config.toml` を作成すると、そのプロジェクト専用の設定を定義できます。グローバル設定をベースに、プロジェクト設定で上書きされます。
-
-**例: このプロジェクトでは pnpm を使いたい場合**
-
-`my-project/gwm/config.toml`:
-
-```toml
-[hooks.post_create]
-commands = ["pnpm install"]
-```
-
-### Hook で使える環境変数
-
-`post_create` hooks 実行時に、以下の環境変数が利用可能です:
-
-| 変数                | 内容                       |
-| ------------------- | -------------------------- |
-| `GWM_WORKTREE_PATH` | 新しい worktree の絶対パス |
-| `GWM_BRANCH_NAME`   | ブランチ名                 |
-| `GWM_REPO_ROOT`     | Git リポジトリのルートパス |
-| `GWM_REPO_NAME`     | リポジトリ名               |
 
 ## コマンド詳細
 
@@ -186,7 +140,8 @@ M       main              ~/git-worktrees/project/main      123abc4
 | `--from <branch>` | 分岐元を指定（デフォルト: main または master） |
 | `--code`          | 作成後に VS Code で開く                        |
 | `--cursor`        | 作成後に Cursor で開く                         |
-| `--cd`            | 作成後にそのディレクトリに移動（シェル連携用） |
+| `--cd`            | パスのみを出力（デフォルト、シェル連携用）     |
+| `--no-cd`         | パス出力の代わりに成功メッセージを表示         |
 | `--skip-hooks`    | post_create hooks の実行をスキップ             |
 
 **gitignore されたファイルの自動コピー:**
@@ -197,7 +152,9 @@ M       main              ~/git-worktrees/project/main      123abc4
 
 ### `gwm go [query]`
 
-worktree を選択してそのディレクトリに移動します（サブシェルを起動）。
+worktree を選択してそのディレクトリに移動します。
+
+シェル統合を有効にしている場合は、現在のシェルのディレクトリを変更します。無効の場合はサブシェルを起動します。
 
 - `gwm go`: 対話的に選択
 - `gwm go feat`: "feat" で絞り込んで選択
@@ -278,6 +235,70 @@ gwm remove pr-branch         # 完了後に削除
 - `gwm help`: 一般的なヘルプを表示
 - `gwm help <command>`: 特定のコマンドのヘルプを表示
 - [GitHub Issues](https://github.com/shutootaki/gwm/issues): バグ報告・機能要望
+
+## 設定ファイル
+
+`~/.config/gwm/config.toml` で動作をカスタマイズできます。
+
+### 設定項目一覧
+
+| 項目                                  | 説明                                          | デフォルト値         |
+| ------------------------------------- | --------------------------------------------- | -------------------- |
+| `worktree_base_path`                  | worktree を作成するディレクトリ               | `~/git-worktrees`    |
+| `main_branches`                       | メインブランチとして扱うブランチ名            | `["main", "master"]` |
+| `clean_branch`                        | worktree 削除時にローカルブランチも削除するか | `"ask"`              |
+| `copy_ignored_files.enabled`          | gitignore されたファイルをコピーするか        | `false`              |
+| `copy_ignored_files.patterns`         | コピー対象のファイルパターン                  | `[]`                 |
+| `copy_ignored_files.exclude_patterns` | コピーから除外するファイルパターン            | `[]`                 |
+| `hooks.post_create.enabled`           | worktree 作成後に hooks を実行するか          | `true`               |
+| `hooks.post_create.commands`          | 作成後に実行するコマンドの配列                | `[]`                 |
+
+**`clean_branch` の値:**
+
+- `"auto"`: 安全なら自動削除
+- `"ask"`: 確認する（デフォルト）
+- `"never"`: 削除しない
+
+### 設定例
+
+```toml
+worktree_base_path = "/Users/me/worktrees"
+clean_branch = "ask"
+
+[copy_ignored_files]
+enabled = true
+patterns = [".env", ".env.*", ".env.local"]
+exclude_patterns = [".env.example", ".env.sample"]
+
+[hooks.post_create]
+commands = ["npm install"]
+```
+
+### プロジェクト固有の設定
+
+リポジトリ内に `.gwm/config.toml` を作成すると、そのプロジェクト専用の設定を定義できます。グローバル設定をベースに、プロジェクト設定で上書きされます。
+
+> **Note**: 後方互換性のため `gwm/config.toml` も引き続きサポートされますが、新規プロジェクトでは `.gwm/config.toml` を推奨します。
+
+**例: このプロジェクトでは pnpm を使いたい場合**
+
+`my-project/.gwm/config.toml`:
+
+```toml
+[hooks.post_create]
+commands = ["pnpm install"]
+```
+
+### Hook で使える環境変数
+
+`post_create` hooks 実行時に、以下の環境変数が利用可能です:
+
+| 変数                | 内容                       |
+| ------------------- | -------------------------- |
+| `GWM_WORKTREE_PATH` | 新しい worktree の絶対パス |
+| `GWM_BRANCH_NAME`   | ブランチ名                 |
+| `GWM_REPO_ROOT`     | Git リポジトリのルートパス |
+| `GWM_REPO_NAME`     | リポジトリ名               |
 
 ## ライセンス
 

@@ -5,6 +5,7 @@ export interface AddArgs {
   openCode: boolean;
   openCursor: boolean;
   outputPath: boolean;
+  noCd: boolean;
   skipHooks: boolean;
 }
 
@@ -28,6 +29,10 @@ export interface HelpArgs {
   command?: string;
 }
 
+export interface InitArgs {
+  shell: 'bash' | 'zsh' | 'fish';
+}
+
 function hasFlag(args: string[], flags: string[]): boolean {
   return flags.some((f) => args.includes(f));
 }
@@ -42,23 +47,25 @@ function getFirstPositional(args: string[], skip = 1): string | undefined {
 }
 
 export function parseAddArgs(args: string[]): AddArgs {
-  let branchName: string | undefined;
   const isRemote = hasFlag(args, ['-r', '--remote']);
   const fromBranch = getOptionValue(args, '--from');
   const openCode = hasFlag(args, ['--code']);
   const openCursor = hasFlag(args, ['--cursor']);
-  const outputPath = hasFlag(args, ['--cd']);
+  const noCd = hasFlag(args, ['--no-cd']);
   const skipHooks = hasFlag(args, ['--skip-hooks']);
 
+  // outputPath: デフォルトでパス出力（--no-cd で無効化）
+  // --cd は互換性のため残すが、デフォルトが true なので実質的に不要
+  const outputPath = !noCd;
+
   // 位置引数（ブランチ名）は --from の値を除外した最初の非フラグ
+  let branchName: string | undefined;
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
-
     if (arg === '--from') {
       i++; // 次は値なのでスキップ
       continue;
     }
-
     if (!arg.startsWith('-')) {
       branchName = arg;
       break;
@@ -72,6 +79,7 @@ export function parseAddArgs(args: string[]): AddArgs {
     openCode,
     openCursor,
     outputPath,
+    noCd,
     skipHooks,
   };
 }
@@ -89,8 +97,9 @@ export function parseRemoveArgs(args: string[]): RemoveArgs {
         }
       }
 
-      if (raw === 'auto' || raw === 'never') return raw;
-      if (raw === 'ask') return 'ask';
+      if (raw === 'auto' || raw === 'ask' || raw === 'never') {
+        return raw;
+      }
       return undefined;
     })(),
   };
@@ -145,6 +154,17 @@ export function parseHelpArgs(args: string[]): HelpArgs {
   // help コマンドの後の最初の位置引数を取得
   const command = getFirstPositional(args, 1);
   return { command };
+}
+
+export function parseInitArgs(args: string[]): InitArgs {
+  const shell = getFirstPositional(args, 1);
+  if (shell === 'bash' || shell === 'zsh' || shell === 'fish') {
+    return { shell };
+  }
+
+  throw new Error(
+    `Error: invalid shell '${shell ?? ''}'. Valid shells: bash, zsh, fish`
+  );
 }
 
 export function isHelpRequested(args: string[], command?: string): boolean {
