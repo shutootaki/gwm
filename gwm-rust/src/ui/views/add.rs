@@ -347,14 +347,15 @@ async fn execute_add_direct(
         }
     }
 
-    if !args.skip_hooks {
-        execute_hooks_direct(config_source, &branch, &result.path)?;
-    }
-
+    // エディタを先に起動してからhooksを実行
     if args.open_code {
         open_in_editor(EditorType::VsCode, &result.path)?;
     } else if args.open_cursor {
         open_in_editor(EditorType::Cursor, &result.path)?;
+    }
+
+    if !args.skip_hooks {
+        execute_hooks_direct(config_source, &branch, &result.path)?;
     }
 
     Ok(())
@@ -1002,6 +1003,9 @@ fn execute_hooks_and_finish(
         let worktree_path = std::path::Path::new(path);
         let context = config_source.build_hook_context(worktree_path, branch_name);
 
+        // エディタを先に起動してからhooksを実行
+        maybe_open_editor(args, &context.worktree_path);
+
         match run_post_create_hooks(&config_source.config, &context) {
             Ok(result) if result.success => {
                 println!("\n\x1b[32m✓ Worktree created!\x1b[0m");
@@ -1022,9 +1026,6 @@ fn execute_hooks_and_finish(
                 println!("  {}", e);
             }
         }
-
-        // エディタ起動
-        maybe_open_editor(args, &context.worktree_path);
 
         // プログラムを終了（TUIには戻らない）
         app.quit();
