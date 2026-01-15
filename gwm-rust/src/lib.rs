@@ -15,7 +15,7 @@
 //!
 //! gwm supports configuration at two levels:
 //! - Global: `~/.config/gwm/config.toml` or `~/.gwmrc`
-//! - Project: `<repo-root>/gwm/config.toml`
+//! - Project: `<repo-root>/.gwm/config.toml` (fallback: `gwm/config.toml`)
 //!
 //! Project configuration overrides global configuration.
 

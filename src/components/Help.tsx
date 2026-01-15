@@ -15,6 +15,7 @@ const GlobalHelp: React.FC = () => (
     <Text bold>AVAILABLE COMMANDS:</Text>
     <Text> add Create a new worktree</Text>
     <Text> go Go to a worktree directory or open it in an editor</Text>
+    <Text> init Print shell integration script</Text>
     <Text> list (ls) List all worktrees for the current project</Text>
     <Text> pull-main Update the main branch worktree</Text>
     <Text> remove (rm) Remove one or more worktrees</Text>
@@ -60,10 +61,8 @@ const AddHelp: React.FC = () => (
     </Text>
     <Text> --code Open the new worktree in VS Code after creation</Text>
     <Text> --cursor Open the new worktree in Cursor after creation</Text>
-    <Text>
-      {' '}
-      --cd Output the path to the new worktree (for shell integration)
-    </Text>
+    <Text> --cd Output the path only (default, for shell integration)</Text>
+    <Text> --no-cd Show success message instead of path output</Text>
     <Text> --skip-hooks Skip post_create hooks execution</Text>
     <Text />
     <Text bold>EXAMPLES:</Text>
@@ -176,6 +175,32 @@ const GoHelp: React.FC = () => (
   </Box>
 );
 
+const InitHelp: React.FC = () => (
+  <Box flexDirection="column">
+    <Text>Print shell integration script for directory navigation.</Text>
+    <Text />
+    <Text bold>USAGE:</Text>
+    <Text> gwm init &lt;shell&gt;</Text>
+    <Text />
+    <Text bold>ARGUMENTS:</Text>
+    <Text> shell Shell type (bash|zsh|fish)</Text>
+    <Text />
+    <Text bold>DESCRIPTION:</Text>
+    <Text>
+      Outputs a shell function that wraps gwm to enable changing the current
+      directory for &quot;gwm add&quot; and &quot;gwm go&quot; without breaking
+      interactive UI.
+    </Text>
+    <Text />
+    <Text bold>EXAMPLES:</Text>
+    <Text> # Zsh</Text>
+    <Text> $ eval &quot;$(gwm init zsh)&quot;</Text>
+    <Text />
+    <Text> # Fish</Text>
+    <Text> $ gwm init fish | source</Text>
+  </Box>
+);
+
 const PullMainHelp: React.FC = () => (
   <Box flexDirection="column">
     <Text>Update the main branch worktree to the latest state.</Text>
@@ -242,7 +267,7 @@ const UnknownCommandHelp: React.FC<{ command: string }> = ({ command }) => (
     <Text />
     <Text>
       Available commands: add, list (ls), remove (rm), clean, go, pull-main,
-      help
+      init, help
     </Text>
     <Text />
     <Text>Use &quot;gwm help&quot; to see all available commands.</Text>
@@ -257,6 +282,7 @@ const commandHelpComponents: { [key: string]: React.FC } = {
   rm: RemoveHelp,
   clean: CleanHelp,
   go: GoHelp,
+  init: InitHelp,
   'pull-main': PullMainHelp,
   help: HelpHelp,
 };

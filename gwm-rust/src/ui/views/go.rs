@@ -3,7 +3,7 @@
 //! worktreeへのナビゲーション機能を提供します。
 //! パスを標準出力に出力することで、シェル関数と連携します。
 
-use std::io::stdout;
+use std::io::stderr;
 use std::time::Duration;
 
 use crossterm::{
@@ -22,6 +22,7 @@ use ratatui::{
 use crate::cli::GoArgs;
 use crate::error::Result;
 use crate::git::get_worktrees;
+use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
 use crate::ui::{SelectItem, TextInputState};
@@ -87,7 +88,8 @@ pub fn run_go(args: GoArgs) -> Result<()> {
     }
 
     // TUIモードで選択
-    let selected = run_go_tui(&items, args.query.as_deref())?;
+    let output_path_only = args.should_output_path_only();
+    let selected = run_go_tui(&items, args.query.as_deref(), output_path_only)?;
 
     if let Some(item) = selected {
         handle_selection(&item, &args)?;
@@ -118,19 +120,31 @@ fn handle_selection(item: &SelectItem, args: &GoArgs) -> Result<()> {
         std::thread::sleep(std::time::Duration::from_millis(500));
     } else {
         // パスを標準出力（シェル統合用）
-        println!("{}", item.value);
+        match try_write_cwd_file(path) {
+            Ok(CwdWriteResult::Written) => {}
+            Ok(CwdWriteResult::EnvNotSet) => println!("{}", item.value),
+            Err(e) => {
+                eprintln!("\x1b[33m Warning: Failed to write cwd file: {}\x1b[0m", e);
+                println!("{}", item.value);
+            }
+        }
     }
 
     Ok(())
 }
 
 /// TUIモードで選択
-fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Option<SelectItem>> {
+fn run_go_tui(
+    items: &[SelectItem],
+    initial_query: Option<&str>,
+    output_path_only: bool,
+) -> Result<Option<SelectItem>> {
     // ターミナル初期化（インライン表示）
     enable_raw_mode()?;
     let _guard = TerminalGuard;
 
-    let backend = CrosstermBackend::new(stdout());
+    // TUIはstderrへ描画する（stdoutはシェル統合用のパス出力に利用する）
+    let backend = CrosstermBackend::new(stderr());
     let options = TerminalOptions {
         viewport: Viewport::Inline(TUI_GO_INLINE_HEIGHT),
     };
@@ -222,7 +236,12 @@ fn run_go_tui(items: &[SelectItem], initial_query: Option<&str>) -> Result<Optio
 
     // カーソルをインライン領域の外に移動（TerminalGuardがdropされる前に）
     drop(_guard);
-    println!();
+    if output_path_only {
+        // stdoutを汚さない（シェル統合で1行パス判定を壊さないため）
+        eprintln!();
+    } else {
+        println!();
+    }
 
     Ok(result)
 }

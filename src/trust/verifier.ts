@@ -1,7 +1,6 @@
-import { existsSync } from 'fs';
-import { join } from 'path';
 import { computeFileHash } from './hash.js';
 import { getTrustedInfo } from './cache.js';
+import { findExistingProjectConfigPath } from '../config/index.js';
 import type { Config } from '../config/types.js';
 import type { TrustStatus } from './types.js';
 
@@ -29,8 +28,9 @@ export function verifyTrust(
   }
 
   // Verify project config hooks
-  const projectConfigPath = join(repoRoot, 'gwm', 'config.toml');
-  if (!existsSync(projectConfigPath)) {
+  const projectConfigPath = findExistingProjectConfigPath(repoRoot);
+
+  if (!projectConfigPath) {
     // Project config file does not exist (global only)
     return { status: 'global-config' };
   }

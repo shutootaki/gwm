@@ -1,9 +1,9 @@
 //! `gwm add` コマンドのエントリーポイント
 
-use std::io::{self, stdout};
+use std::io::{self, stderr};
 use std::time::Duration;
 
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
@@ -15,8 +15,12 @@ use crate::error::{GwmError, Result};
 use crate::git::{
     add_worktree, fetch_and_prune, get_remote_branches_with_info, AddWorktreeOptions,
 };
-use crate::hooks::{run_post_create_hooks, HookContext};
-use crate::trust::{trust_repository, verify_trust, TrustStatus};
+use crate::hooks::{
+    run_post_create_hooks, run_post_create_hooks_with_commands, try_write_deferred_hooks,
+    DeferredHooks,
+};
+use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
+use crate::trust::{trust_repository, verify_trust, ConfirmationReason, TrustStatus};
 use crate::ui::app::{
     App, AppState, ConfirmChoice, ConfirmMetadata, SelectItem, SelectItemMetadata,
 };
@@ -40,6 +44,122 @@ impl Drop for TerminalGuard {
     fn drop(&mut self) {
         if let Err(e) = disable_raw_mode() {
             eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+        }
+    }
+}
+
+/// TUIメインループの結果
+struct MainLoopResult {
+    /// worktreeのパス
+    path: String,
+    /// ブランチ名
+    branch_name: String,
+    /// hooksファイル書き込み済みフラグ
+    hooks_written: bool,
+}
+
+/// 確認ダイアログ用のインライン viewport の高さを計算
+const fn calc_confirm_viewport_height(command_count: usize) -> u16 {
+    // title(2) + message(2) + commands_box(min 4, max 8) + choices(4) + help(2) = 14-18
+    const MIN_CMD_HEIGHT: u16 = 4;
+    const MAX_CMD_HEIGHT: u16 = 8;
+
+    let raw_height = (command_count + 2) as u16;
+    let cmd_height = if raw_height > MAX_CMD_HEIGHT {
+        MAX_CMD_HEIGHT
+    } else if raw_height < MIN_CMD_HEIGHT {
+        MIN_CMD_HEIGHT
+    } else {
+        raw_height
+    };
+
+    cmd_height + 12
+}
+
+/// NeedsConfirmation 時に表示する確認ダイアログTUI（ジェネリック版）
+fn run_trust_confirmation_tui<W: io::Write>(
+    output: W,
+    commands: &[String],
+    reason: ConfirmationReason,
+) -> Result<Option<ConfirmChoice>> {
+    enable_raw_mode()?;
+    let _guard = TerminalGuard;
+
+    let viewport_height = calc_confirm_viewport_height(commands.len());
+    let backend = CrosstermBackend::new(output);
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(viewport_height),
+    };
+    let mut terminal = Terminal::with_options(backend, options)?;
+
+    run_confirm_loop(&mut terminal, commands, reason)
+}
+
+/// stdout版ラッパー（後方互換）
+fn run_trust_confirmation_tui_stdout(
+    commands: &[String],
+    reason: ConfirmationReason,
+) -> Result<Option<ConfirmChoice>> {
+    run_trust_confirmation_tui(io::stdout(), commands, reason)
+}
+
+/// stderr版ラッパー（後方互換）
+fn run_trust_confirmation_tui_stderr(
+    commands: &[String],
+    reason: ConfirmationReason,
+) -> Result<Option<ConfirmChoice>> {
+    run_trust_confirmation_tui(stderr(), commands, reason)
+}
+
+/// 確認ダイアログのメインループ
+fn run_confirm_loop<W: io::Write>(
+    terminal: &mut Terminal<CrosstermBackend<W>>,
+    commands: &[String],
+    reason: ConfirmationReason,
+) -> Result<Option<ConfirmChoice>> {
+    let mut selected = ConfirmChoice::Once;
+    let title = "Run post-create hooks?";
+    let message = reason.description();
+    let commands_vec: Vec<String> = commands.to_vec();
+
+    loop {
+        terminal.draw(|frame| {
+            let widget = ConfirmWidget::new(title, message, &commands_vec, selected);
+            frame.render_widget(widget, frame.area());
+        })?;
+
+        if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {
+            // Ctrl+C は即座にキャンセル
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && matches!(key.code, KeyCode::Char('c'))
+            {
+                return Ok(None);
+            }
+
+            match key.code {
+                KeyCode::Esc => {
+                    return Ok(Some(ConfirmChoice::Cancel));
+                }
+                KeyCode::Enter => {
+                    return Ok(Some(selected));
+                }
+                KeyCode::Left | KeyCode::Up => {
+                    selected = selected.prev();
+                }
+                KeyCode::Right | KeyCode::Down | KeyCode::Tab => {
+                    selected = selected.next();
+                }
+                KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Char('1') => {
+                    selected = ConfirmChoice::Trust;
+                }
+                KeyCode::Char('o') | KeyCode::Char('O') | KeyCode::Char('2') => {
+                    selected = ConfirmChoice::Once;
+                }
+                KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Char('3') => {
+                    selected = ConfirmChoice::Cancel;
+                }
+                _ => {}
+            }
         }
     }
 }
@@ -72,8 +192,29 @@ fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
     }
 }
 
+/// シェル統合（パスのみ出力）向けに、ignored files をコピーして stderr にログを出す。
+fn maybe_copy_ignored_files_for_shell(
+    config_source: &ConfigWithSource,
+    worktree_path: &std::path::Path,
+) {
+    if let Some(ref copy_config) = config_source.config.copy_ignored_files {
+        if let Some(ref repo_root) = config_source.repo_root {
+            if let Ok(copy_result) = copy_ignored_files(repo_root, worktree_path, copy_config) {
+                for file in &copy_result.copied {
+                    eprintln!("Copied: {}", file);
+                }
+            }
+        }
+    }
+}
+
 /// addコマンドを実行
 pub async fn run_add(args: AddArgs) -> Result<()> {
+    // --run-deferred-hooks オプションが指定された場合、hooksのみを実行
+    if let Some(ref hooks_file_path) = args.run_deferred_hooks {
+        return run_deferred_hooks(hooks_file_path);
+    }
+
     let config_source = load_config_with_source();
 
     if let Some(ref branch_name) = args.branch_name {
@@ -81,6 +222,54 @@ pub async fn run_add(args: AddArgs) -> Result<()> {
     }
 
     run_add_tui(config_source, args).await
+}
+
+/// deferred hooksを実行（cd完了後にシェル関数から呼び出される）
+fn run_deferred_hooks(hooks_file_path: &str) -> Result<()> {
+    use std::path::Path;
+
+    let path = Path::new(hooks_file_path);
+
+    // ファイルが存在しない場合は何もしない
+    if !path.exists() {
+        return Ok(());
+    }
+
+    // hooksファイルを読み込み
+    let deferred = DeferredHooks::read_from_file(path)?;
+
+    // trust_verifiedがfalseなら実行しない
+    if !deferred.trust_verified {
+        DeferredHooks::delete_file(path)?;
+        return Ok(());
+    }
+
+    // コマンドがなければ何もしない
+    if deferred.commands.is_empty() {
+        DeferredHooks::delete_file(path)?;
+        return Ok(());
+    }
+
+    // HookContextを作成
+    let context = deferred.to_hook_context();
+
+    // hooks実行（deferred.commandsを直接使用）
+    let hook_result = run_post_create_hooks_with_commands(&deferred.commands, &context)?;
+
+    // hooksファイルを削除
+    DeferredHooks::delete_file(path)?;
+
+    if !hook_result.success {
+        if let Some(failed_cmd) = &hook_result.failed_command {
+            return Err(GwmError::hook(format!(
+                "Command failed: {} (exit code: {})",
+                failed_cmd,
+                hook_result.exit_code.unwrap_or(1)
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 async fn execute_add_direct(
@@ -99,12 +288,31 @@ async fn execute_add_direct(
     };
 
     let result = add_worktree(&config_source.config, &options)?;
+    let output_path_only = args.should_output_path_only();
 
-    if args.output_path {
-        println!("{}", result.path.display());
+    if output_path_only {
+        // パス出力モード: ignored files コピー（ログは stderr へ）
+        maybe_copy_ignored_files_for_shell(config_source, &result.path);
+
+        // hooksをdeferred実行用にファイルに書き出す
+        // （実際のhooks実行はcd完了後にシェル関数から呼び出される）
+        if !args.skip_hooks {
+            write_deferred_hooks_for_shell(config_source, &branch, &result.path)?;
+        }
+
+        // パス出力
+        match try_write_cwd_file(&result.path) {
+            Ok(CwdWriteResult::Written) => {}
+            Ok(CwdWriteResult::EnvNotSet) => println!("{}", result.path.display()),
+            Err(e) => {
+                eprintln!("\x1b[33m Warning: Failed to write cwd file: {}\x1b[0m", e);
+                println!("{}", result.path.display());
+            }
+        }
         return Ok(());
     }
 
+    // --no-cd またはエディタ起動指定時: 従来の動作（成功メッセージ + フック実行）
     for action in &result.actions {
         println!("\x1b[90m{}\x1b[0m", action);
     }
@@ -141,6 +349,95 @@ fn execute_hooks_direct(
     branch: &str,
     worktree_path: &std::path::Path,
 ) -> Result<()> {
+    execute_hooks_direct_impl(config_source, branch, worktree_path, false)
+}
+
+/// パス出力モード用: hooksをdeferred実行用にファイルに書き出す
+///
+/// trust検証と確認ダイアログは通常通り表示するが、hooksの実行は行わない。
+/// 代わりに、cd完了後にシェル関数が`gwm add --run-deferred-hooks`を呼び出して
+/// hooksを実行する。
+fn write_deferred_hooks_for_shell(
+    config_source: &ConfigWithSource,
+    branch: &str,
+    worktree_path: &std::path::Path,
+) -> Result<()> {
+    let trust_status = verify_trust(
+        config_source
+            .repo_root
+            .as_deref()
+            .unwrap_or(std::path::Path::new(".")),
+        &config_source.config,
+        config_source.has_project_hooks,
+        config_source.project_config_path.as_deref(),
+    );
+
+    let context = config_source.build_hook_context(worktree_path, branch);
+
+    match trust_status {
+        TrustStatus::Trusted | TrustStatus::GlobalConfig => {
+            // 既に信頼済み: hooksをファイルに書き出す
+            let commands = config_source
+                .config
+                .post_create_commands()
+                .map(|c| c.to_vec())
+                .unwrap_or_default();
+            try_write_deferred_hooks(&context, commands, true)?;
+        }
+        TrustStatus::NoHooks => {
+            // hooksなし: 何もしない
+        }
+        TrustStatus::NeedsConfirmation {
+            commands,
+            reason,
+            config_path,
+            config_hash,
+        } => {
+            // 確認ダイアログを表示してユーザーに選択させる
+            let choice = run_trust_confirmation_tui_stderr(&commands, reason)?;
+
+            // TUI表示後の改行
+            eprintln!();
+
+            match choice {
+                Some(ConfirmChoice::Trust) => {
+                    // キャッシュに保存してhooksをファイルに書き出す
+                    if let Some(ref repo_root) = config_source.repo_root {
+                        if let Err(e) = trust_repository(
+                            &repo_root.display().to_string(),
+                            config_path,
+                            config_hash,
+                            commands.clone(),
+                        ) {
+                            eprintln!(
+                                "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
+                                e
+                            );
+                        }
+                    }
+                    try_write_deferred_hooks(&context, commands, true)?;
+                }
+                Some(ConfirmChoice::Once) => {
+                    // 一度だけhooksをファイルに書き出す（キャッシュに保存しない）
+                    try_write_deferred_hooks(&context, commands, true)?;
+                }
+                Some(ConfirmChoice::Cancel) | None => {
+                    // スキップ: hooksファイルは書き出さない
+                    eprintln!("\x1b[33mHooks skipped.\x1b[0m");
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn execute_hooks_direct_impl(
+    config_source: &ConfigWithSource,
+    branch: &str,
+    worktree_path: &std::path::Path,
+    use_stderr: bool,
+) -> Result<()> {
     let trust_status = verify_trust(
         config_source
             .repo_root
@@ -153,49 +450,83 @@ fn execute_hooks_direct(
 
     match trust_status {
         TrustStatus::Trusted | TrustStatus::GlobalConfig => {
-            let repo_name = config_source
-                .repo_root
-                .as_ref()
-                .and_then(|p| p.file_name())
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "unknown".to_string());
-
-            // repo_rootが空の場合は警告を出してカレントディレクトリを使用
-            let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
-                eprintln!("\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m");
-                std::path::PathBuf::from(".")
-            });
-
-            let context = HookContext {
-                worktree_path: worktree_path.to_path_buf(),
-                branch_name: branch.to_string(),
-                repo_root,
-                repo_name,
-            };
-
-            let hook_result = run_post_create_hooks(&config_source.config, &context)?;
-            if !hook_result.success {
-                if let Some(failed_cmd) = &hook_result.failed_command {
-                    return Err(GwmError::hook(format!(
-                        "Command failed: {} (exit code: {})",
-                        failed_cmd,
-                        hook_result.exit_code.unwrap_or(1)
-                    )));
-                }
-            }
+            run_hooks_impl(config_source, branch, worktree_path)?;
         }
         TrustStatus::NoHooks => {}
         TrustStatus::NeedsConfirmation {
-            commands, reason, ..
+            commands,
+            reason,
+            config_path,
+            config_hash,
         } => {
-            println!(
-                "\x1b[33m⚠ Skipping hooks: {} (use TUI mode to confirm)\x1b[0m",
-                reason.description()
-            );
-            println!("  Commands that would run:");
-            for cmd in &commands {
-                println!("    - {}", cmd);
+            // 確認ダイアログを表示してユーザーに選択させる
+            let choice = if use_stderr {
+                run_trust_confirmation_tui_stderr(&commands, reason)?
+            } else {
+                run_trust_confirmation_tui_stdout(&commands, reason)?
+            };
+
+            // TUI表示後の改行
+            if use_stderr {
+                eprintln!();
+            } else {
+                println!();
             }
+
+            match choice {
+                Some(ConfirmChoice::Trust) => {
+                    // キャッシュに保存して hooks 実行
+                    if let Some(ref repo_root) = config_source.repo_root {
+                        if let Err(e) = trust_repository(
+                            &repo_root.display().to_string(),
+                            config_path,
+                            config_hash,
+                            commands.clone(),
+                        ) {
+                            eprintln!(
+                                "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
+                                e
+                            );
+                        }
+                    }
+                    run_hooks_impl(config_source, branch, worktree_path)?;
+                }
+                Some(ConfirmChoice::Once) => {
+                    // 一度だけ hooks 実行（キャッシュに保存しない）
+                    run_hooks_impl(config_source, branch, worktree_path)?;
+                }
+                Some(ConfirmChoice::Cancel) | None => {
+                    // スキップ
+                    let msg = "\x1b[33mHooks skipped.\x1b[0m";
+                    if use_stderr {
+                        eprintln!("{}", msg);
+                    } else {
+                        println!("{}", msg);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// hooksを実行する共通関数
+fn run_hooks_impl(
+    config_source: &ConfigWithSource,
+    branch: &str,
+    worktree_path: &std::path::Path,
+) -> Result<()> {
+    let context = config_source.build_hook_context(worktree_path, branch);
+
+    let hook_result = run_post_create_hooks(&config_source.config, &context)?;
+    if !hook_result.success {
+        if let Some(failed_cmd) = &hook_result.failed_command {
+            return Err(GwmError::hook(format!(
+                "Command failed: {} (exit code: {})",
+                failed_cmd,
+                hook_result.exit_code.unwrap_or(1)
+            )));
         }
     }
 
@@ -206,7 +537,8 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
     enable_raw_mode()?;
     let _guard = TerminalGuard;
 
-    let backend = CrosstermBackend::new(stdout());
+    // TUIはstderrへ描画する（stdoutはシェル統合用のパス出力に利用する）
+    let backend = CrosstermBackend::new(stderr());
     let options = TerminalOptions {
         viewport: Viewport::Inline(TUI_INLINE_HEIGHT),
     };
@@ -219,15 +551,62 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
         app.set_text_input("Create new worktree", "Enter new branch name:");
     }
 
+    let output_path_only = args.should_output_path_only();
     let result = run_main_loop(&mut terminal, &mut app, &args, &config_source).await;
 
     // カーソルをインライン領域の外に移動（キャンセル時や正常終了時に必要）
     // execute_hooks_and_finish経由で終了した場合は既にprintln!()が呼ばれているが、
     // それ以外のパス（キャンセル、エラー表示後のEsc等）では必要
     drop(_guard);
-    println!();
+    match result {
+        Ok(Some(main_loop_result)) => {
+            // stdoutを汚さずにTUI領域を抜ける
+            eprintln!();
+            maybe_copy_ignored_files_for_shell(
+                &config_source,
+                std::path::Path::new(&main_loop_result.path),
+            );
 
-    result
+            // hooksをdeferred実行用にファイルに書き出す
+            // （実際のhooks実行はcd完了後にシェル関数から呼び出される）
+            // ただし、TUI内で既に書き込み済みの場合はスキップ
+            if !args.skip_hooks && !main_loop_result.hooks_written {
+                if let Err(e) = write_deferred_hooks_for_shell(
+                    &config_source,
+                    &main_loop_result.branch_name,
+                    std::path::Path::new(&main_loop_result.path),
+                ) {
+                    eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
+                }
+            }
+
+            match try_write_cwd_file(std::path::Path::new(&main_loop_result.path)) {
+                Ok(CwdWriteResult::Written) => {}
+                Ok(CwdWriteResult::EnvNotSet) => println!("{}", main_loop_result.path),
+                Err(e) => {
+                    eprintln!("\x1b[33m Warning: Failed to write cwd file: {}\x1b[0m", e);
+                    println!("{}", main_loop_result.path);
+                }
+            }
+            Ok(())
+        }
+        Ok(None) => {
+            if output_path_only {
+                eprintln!();
+            } else {
+                println!();
+            }
+            Ok(())
+        }
+        Err(e) => {
+            if output_path_only {
+                eprintln!();
+            } else {
+                println!();
+            }
+            Err(e)
+        }
+    }
 }
 
 async fn fetch_remote_branches_as_items() -> Result<Vec<SelectItem>> {
@@ -249,12 +628,13 @@ async fn fetch_remote_branches_as_items() -> Result<Vec<SelectItem>> {
         .collect())
 }
 
+/// 戻り値: Ok(Some(result)) = 成功, Ok(None) = キャンセル
 async fn run_main_loop(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    terminal: &mut Terminal<CrosstermBackend<io::Stderr>>,
     app: &mut App,
     args: &AddArgs,
     config_source: &ConfigWithSource,
-) -> Result<()> {
+) -> Result<Option<MainLoopResult>> {
     // リモートブランチフェッチ（中断可能）
     if args.remote {
         let fetch_future = fetch_remote_branches_as_items();
@@ -279,7 +659,7 @@ async fn run_main_loop(
                     if let Ok(Some(Event::Key(key))) = poll_event(Duration::from_millis(0)) {
                         if is_cancel_key(&key) {
                             app.quit();
-                            return Ok(());
+                            return Ok(None);
                         }
                     }
                     frame_count = frame_count.wrapping_add(1);
@@ -360,6 +740,22 @@ async fn run_main_loop(
                                             config_source,
                                         );
                                         if should_execute_hooks {
+                                            // 信頼済み: hooksを実行
+                                            if args.should_output_path_only() {
+                                                // パス出力モード: hooks実行後にパスを返す
+                                                write_deferred_hooks_and_return_path(
+                                                    &created_worktree,
+                                                    config_source,
+                                                )?;
+                                                if let Some((path, branch_name)) = &created_worktree
+                                                {
+                                                    return Ok(Some(MainLoopResult {
+                                                        path: path.clone(),
+                                                        branch_name: branch_name.clone(),
+                                                        hooks_written: true,
+                                                    }));
+                                                }
+                                            }
                                             execute_hooks_and_finish(
                                                 app,
                                                 &created_worktree,
@@ -367,6 +763,10 @@ async fn run_main_loop(
                                                 args,
                                             );
                                         }
+                                        // should_execute_hooks == false の場合:
+                                        // - 確認ダイアログが表示されている (NeedsConfirmation)
+                                        // - または成功表示されている (NoHooks, skip_hooks)
+                                        // ループを続けてユーザー入力を待つ
                                     }
                                     Err(e) => {
                                         app.set_error(
@@ -401,6 +801,21 @@ async fn run_main_loop(
                                         config_source,
                                     );
                                     if should_execute_hooks {
+                                        // 信頼済み: hooksを実行
+                                        if args.should_output_path_only() {
+                                            // パス出力モード: hooks実行後にパスを返す
+                                            write_deferred_hooks_and_return_path(
+                                                &created_worktree,
+                                                config_source,
+                                            )?;
+                                            if let Some((path, branch_name)) = &created_worktree {
+                                                return Ok(Some(MainLoopResult {
+                                                    path: path.clone(),
+                                                    branch_name: branch_name.clone(),
+                                                    hooks_written: true,
+                                                }));
+                                            }
+                                        }
                                         execute_hooks_and_finish(
                                             app,
                                             &created_worktree,
@@ -408,6 +823,8 @@ async fn run_main_loop(
                                             args,
                                         );
                                     }
+                                    // should_execute_hooks == false の場合:
+                                    // 確認ダイアログまたは成功表示、ループを続ける
                                 }
                                 Err(e) => {
                                     app.set_error("Failed to create worktree", vec![e.to_string()]);
@@ -439,6 +856,19 @@ async fn run_main_loop(
                                             }
                                         }
                                     }
+                                    if args.should_output_path_only() {
+                                        write_deferred_hooks_and_return_path(
+                                            &created_worktree,
+                                            config_source,
+                                        )?;
+                                        if let Some((path, branch_name)) = &created_worktree {
+                                            return Ok(Some(MainLoopResult {
+                                                path: path.clone(),
+                                                branch_name: branch_name.clone(),
+                                                hooks_written: true,
+                                            }));
+                                        }
+                                    }
                                     execute_hooks_and_finish(
                                         app,
                                         &created_worktree,
@@ -447,6 +877,19 @@ async fn run_main_loop(
                                     );
                                 }
                                 ConfirmChoice::Once => {
+                                    if args.should_output_path_only() {
+                                        write_deferred_hooks_and_return_path(
+                                            &created_worktree,
+                                            config_source,
+                                        )?;
+                                        if let Some((path, branch_name)) = &created_worktree {
+                                            return Ok(Some(MainLoopResult {
+                                                path: path.clone(),
+                                                branch_name: branch_name.clone(),
+                                                hooks_written: true,
+                                            }));
+                                        }
+                                    }
                                     execute_hooks_and_finish(
                                         app,
                                         &created_worktree,
@@ -455,6 +898,16 @@ async fn run_main_loop(
                                     );
                                 }
                                 ConfirmChoice::Cancel => {
+                                    if args.should_output_path_only() {
+                                        // パス出力モード: hooksスキップしてパスを返す
+                                        if let Some((path, branch_name)) = &created_worktree {
+                                            return Ok(Some(MainLoopResult {
+                                                path: path.clone(),
+                                                branch_name: branch_name.clone(),
+                                                hooks_written: false, // hooksはスキップ
+                                            }));
+                                        }
+                                    }
                                     if let Some((path, _)) = &created_worktree {
                                         app.set_success(
                                             "Worktree created!",
@@ -487,7 +940,32 @@ async fn run_main_loop(
         frame_count = frame_count.wrapping_add(1);
     }
 
-    Ok(())
+    Ok(None)
+}
+
+/// パス出力モード用: deferred hooksをファイルに書き出してパスを返す
+///
+/// TUI確認ダイアログからの選択後に呼ばれる。
+/// hooksは実行せず、deferred hooksファイルに書き出してパスを返す。
+/// 実際のhooks実行はcd完了後にシェル関数から呼び出される。
+fn write_deferred_hooks_and_return_path(
+    created_worktree: &Option<(String, String)>,
+    config_source: &ConfigWithSource,
+) -> Result<Option<(String, String)>> {
+    if let Some((path, branch_name)) = created_worktree {
+        // hooksをdeferred実行用にファイルに書き出す
+        let worktree_path = std::path::Path::new(path);
+        let context = config_source.build_hook_context(worktree_path, branch_name);
+        let commands = config_source.get_post_create_commands();
+
+        if let Err(e) = try_write_deferred_hooks(&context, commands, true) {
+            eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
+        }
+
+        Ok(Some((path.clone(), branch_name.clone())))
+    } else {
+        Ok(None)
+    }
 }
 
 fn execute_hooks_and_finish(
@@ -505,27 +983,8 @@ fn execute_hooks_and_finish(
         // 改行を出力してTUI描画領域から抜ける
         println!();
 
-        let repo_name = config_source
-            .repo_root
-            .as_ref()
-            .and_then(|p| p.file_name())
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-
-        // repo_rootが空の場合は警告を出してカレントディレクトリを使用
-        let repo_root = config_source.repo_root.clone().unwrap_or_else(|| {
-            eprintln!(
-                "\x1b[33m Warning: repo_root not found, using current directory for hooks\x1b[0m"
-            );
-            std::path::PathBuf::from(".")
-        });
-
-        let context = HookContext {
-            worktree_path: std::path::PathBuf::from(path),
-            branch_name: branch_name.clone(),
-            repo_root,
-            repo_name,
-        };
+        let worktree_path = std::path::Path::new(path);
+        let context = config_source.build_hook_context(worktree_path, branch_name);
 
         match run_post_create_hooks(&config_source.config, &context) {
             Ok(result) if result.success => {
