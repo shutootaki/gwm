@@ -2,12 +2,14 @@
 //!
 //! Git worktreeの一覧取得・パース処理を提供します。
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::core::is_git_repository;
-use super::types::{Worktree, WorktreeStatus};
+use super::types::{ChangeStatus, SyncStatus, Worktree, WorktreeStatus};
 use crate::error::{GwmError, Result};
 use crate::shell::exec;
+
+use chrono::{DateTime, Utc};
 
 /// `git worktree list --porcelain` の出力をパース
 ///
@@ -107,6 +109,9 @@ impl WorktreeBuilder {
                 WorktreeStatus::Other
             },
             is_main: self.is_main,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         }
     }
 }
@@ -191,6 +196,172 @@ pub fn get_main_worktree_path() -> Option<PathBuf> {
         .into_iter()
         .find(|w| w.status == WorktreeStatus::Main)
         .map(|w| w.path)
+}
+
+/// Worktree一覧を詳細情報付きで取得
+///
+/// # Returns
+/// * `Ok(Vec<Worktree>)`: 詳細情報付きのworktree一覧
+/// * `Err(GwmError)`: エラー時
+pub fn get_worktrees_with_details() -> Result<Vec<Worktree>> {
+    let mut worktrees = get_worktrees()?;
+
+    for worktree in &mut worktrees {
+        // 同期状態を取得
+        worktree.sync_status = get_sync_status(&worktree.path, worktree.display_branch());
+
+        // 変更状態を取得
+        worktree.change_status = get_change_status(&worktree.path);
+
+        // 最終更新時間を取得
+        worktree.last_activity = get_last_activity(&worktree.path);
+    }
+
+    Ok(worktrees)
+}
+
+/// リモートとの同期状態を取得
+fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
+    // リモートブランチの存在確認と ahead/behind の取得
+    let output = exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("HEAD...origin/{}", branch),
+        ],
+        None,
+    )
+    .ok()?;
+
+    let parts: Vec<&str> = output.trim().split('\t').collect();
+    if parts.len() == 2 {
+        let ahead = parts[0].parse().unwrap_or(0);
+        let behind = parts[1].parse().unwrap_or(0);
+        Some(SyncStatus { ahead, behind })
+    } else {
+        None
+    }
+}
+
+/// ワーキングディレクトリの変更状態を取得
+fn get_change_status(path: &Path) -> Option<ChangeStatus> {
+    let output = exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "status",
+            "--porcelain",
+            "-uno", // untrackedは別途カウント
+        ],
+        None,
+    )
+    .ok()?;
+
+    let mut status = ChangeStatus::default();
+
+    for line in output.lines() {
+        if line.len() < 2 {
+            continue;
+        }
+
+        let index_status = line.chars().next().unwrap_or(' ');
+        let worktree_status = line.chars().nth(1).unwrap_or(' ');
+
+        // ステージされていない変更をカウント
+        match worktree_status {
+            'M' => status.modified += 1,
+            'D' => status.deleted += 1,
+            'A' => status.added += 1,
+            _ => {}
+        }
+
+        // ステージされた変更も含める（インデックスステータス）
+        match index_status {
+            'M' if worktree_status == ' ' => status.modified += 1,
+            'D' if worktree_status == ' ' => status.deleted += 1,
+            'A' if worktree_status == ' ' => status.added += 1,
+            _ => {}
+        }
+    }
+
+    // untracked ファイルを別途取得
+    if let Ok(untracked_output) = exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ],
+        None,
+    ) {
+        status.untracked = untracked_output.lines().count();
+    }
+
+    Some(status)
+}
+
+/// 最終更新時間を取得
+fn get_last_activity(path: &Path) -> Option<String> {
+    let output = exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "log",
+            "-1",
+            "--format=%cI", // ISO 8601 形式
+        ],
+        None,
+    )
+    .ok()?;
+
+    let timestamp_str = output.trim();
+    if timestamp_str.is_empty() {
+        return None;
+    }
+
+    // ISO 8601 形式をパース
+    let commit_time = DateTime::parse_from_rfc3339(timestamp_str)
+        .ok()?
+        .with_timezone(&Utc);
+    let now = Utc::now();
+    let duration = now.signed_duration_since(commit_time);
+
+    Some(format_relative_time(duration))
+}
+
+/// 相対時間を表示用にフォーマット
+fn format_relative_time(duration: chrono::Duration) -> String {
+    let seconds = duration.num_seconds();
+
+    if seconds < 60 {
+        "just now".to_string()
+    } else if seconds < 3600 {
+        let minutes = seconds / 60;
+        format!("{}m ago", minutes)
+    } else if seconds < 86400 {
+        let hours = seconds / 3600;
+        format!("{}h ago", hours)
+    } else if seconds < 604800 {
+        let days = seconds / 86400;
+        format!("{}d ago", days)
+    } else if seconds < 2592000 {
+        let weeks = seconds / 604800;
+        format!("{}w ago", weeks)
+    } else if seconds < 31536000 {
+        let months = seconds / 2592000;
+        format!("{}mo ago", months)
+    } else {
+        let years = seconds / 31536000;
+        format!("{}y ago", years)
+    }
 }
 
 #[cfg(test)]
@@ -288,6 +459,9 @@ branch refs/heads/feature
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
             is_main: false,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -300,6 +474,9 @@ branch refs/heads/feature
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
             is_main: true,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
