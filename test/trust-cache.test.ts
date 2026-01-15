@@ -48,7 +48,7 @@ describe('TrustCache', () => {
         version: 1,
         repos: {
           '/test/repo': {
-            configPath: '/test/repo/gwm/config.toml',
+            configPath: '/test/repo/.gwm/config.toml',
             configHash: 'abc123',
             trustedAt: '2025-01-01T00:00:00.000Z',
             trustedCommands: ['npm install'],
@@ -89,7 +89,7 @@ describe('TrustCache', () => {
         version: 1 as const,
         repos: {
           '/my/repo': {
-            configPath: '/my/repo/gwm/config.toml',
+            configPath: '/my/repo/.gwm/config.toml',
             configHash: 'xyz789',
             trustedAt: '2025-01-15T10:00:00.000Z',
             trustedCommands: ['pnpm install'],
@@ -106,21 +106,21 @@ describe('TrustCache', () => {
 
   describe('trustRepository', () => {
     it('should add new repository to cache', () => {
-      trustRepository('/new/repo', '/new/repo/gwm/config.toml', 'hash123', [
+      trustRepository('/new/repo', '/new/repo/.gwm/config.toml', 'hash123', [
         'npm test',
       ]);
 
       const info = getTrustedInfo('/new/repo');
       expect(info).not.toBeNull();
-      expect(info?.configPath).toBe('/new/repo/gwm/config.toml');
+      expect(info?.configPath).toBe('/new/repo/.gwm/config.toml');
       expect(info?.configHash).toBe('hash123');
       expect(info?.trustedCommands).toEqual(['npm test']);
       expect(info?.trustedAt).toBeDefined();
     });
 
     it('should update existing repository', () => {
-      trustRepository('/repo', '/repo/gwm/config.toml', 'hash1', ['cmd1']);
-      trustRepository('/repo', '/repo/gwm/config.toml', 'hash2', ['cmd2']);
+      trustRepository('/repo', '/repo/.gwm/config.toml', 'hash1', ['cmd1']);
+      trustRepository('/repo', '/repo/.gwm/config.toml', 'hash2', ['cmd2']);
 
       const info = getTrustedInfo('/repo');
       expect(info?.configHash).toBe('hash2');
@@ -135,7 +135,7 @@ describe('TrustCache', () => {
     });
 
     it('should return trusted info for known repository', () => {
-      trustRepository('/known/repo', '/known/repo/gwm/config.toml', 'hash', [
+      trustRepository('/known/repo', '/known/repo/.gwm/config.toml', 'hash', [
         'build',
       ]);
 

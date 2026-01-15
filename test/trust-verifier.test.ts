@@ -107,11 +107,11 @@ describe('verifyTrust', () => {
     };
 
     it('should return needs-confirmation for first-time when no trust cache', () => {
-      // Create project config file
-      const gwmDir = join(mockRepoRoot, 'gwm');
-      mkdirSync(gwmDir, { recursive: true });
+      // Create project config file in .gwm directory
+      const dotGwmDir = join(mockRepoRoot, '.gwm');
+      mkdirSync(dotGwmDir, { recursive: true });
       writeFileSync(
-        join(gwmDir, 'config.toml'),
+        join(dotGwmDir, 'config.toml'),
         '[hooks.post_create]\ncommands = ["pnpm install"]'
       );
 
@@ -121,16 +121,16 @@ describe('verifyTrust', () => {
       if (result.status === 'needs-confirmation') {
         expect(result.reason).toBe('first-time');
         expect(result.commands).toEqual(['pnpm install', 'pnpm build']);
-        expect(result.configPath).toBe(join(gwmDir, 'config.toml'));
+        expect(result.configPath).toBe(join(dotGwmDir, 'config.toml'));
         expect(result.configHash).toBeDefined();
       }
     });
 
     it('should return trusted when hash matches', () => {
-      // Create project config file
-      const gwmDir = join(mockRepoRoot, 'gwm');
-      mkdirSync(gwmDir, { recursive: true });
-      const configPath = join(gwmDir, 'config.toml');
+      // Create project config file in .gwm directory
+      const dotGwmDir = join(mockRepoRoot, '.gwm');
+      mkdirSync(dotGwmDir, { recursive: true });
+      const configPath = join(dotGwmDir, 'config.toml');
       writeFileSync(configPath, '[hooks.post_create]\ncommands = ["pnpm install"]');
 
       // Trust the repository with current hash
@@ -142,10 +142,10 @@ describe('verifyTrust', () => {
     });
 
     it('should return needs-confirmation when hash differs (config changed)', () => {
-      // Create project config file
-      const gwmDir = join(mockRepoRoot, 'gwm');
-      mkdirSync(gwmDir, { recursive: true });
-      const configPath = join(gwmDir, 'config.toml');
+      // Create project config file in .gwm directory
+      const dotGwmDir = join(mockRepoRoot, '.gwm');
+      mkdirSync(dotGwmDir, { recursive: true });
+      const configPath = join(dotGwmDir, 'config.toml');
       writeFileSync(configPath, 'original content');
 
       // Trust with original hash
@@ -164,9 +164,51 @@ describe('verifyTrust', () => {
     });
 
     it('should return global-config when project config file does not exist', () => {
-      // Don't create gwm/config.toml
+      // Don't create .gwm/config.toml or gwm/config.toml
       const result = verifyTrust(mockRepoRoot, configWithHooks, true);
       expect(result.status).toBe('global-config');
+    });
+
+    it('should fallback to gwm/config.toml when .gwm does not exist', () => {
+      // Create legacy gwm directory only (not .gwm)
+      const legacyGwmDir = join(mockRepoRoot, 'gwm');
+      mkdirSync(legacyGwmDir, { recursive: true });
+      writeFileSync(
+        join(legacyGwmDir, 'config.toml'),
+        '[hooks.post_create]\ncommands = ["legacy command"]'
+      );
+
+      const result = verifyTrust(mockRepoRoot, configWithHooks, true);
+
+      expect(result.status).toBe('needs-confirmation');
+      if (result.status === 'needs-confirmation') {
+        expect(result.configPath).toBe(join(legacyGwmDir, 'config.toml'));
+      }
+    });
+
+    it('should prefer .gwm/config.toml over gwm/config.toml when both exist', () => {
+      // Create both directories
+      const dotGwmDir = join(mockRepoRoot, '.gwm');
+      const legacyGwmDir = join(mockRepoRoot, 'gwm');
+      mkdirSync(dotGwmDir, { recursive: true });
+      mkdirSync(legacyGwmDir, { recursive: true });
+
+      writeFileSync(
+        join(dotGwmDir, 'config.toml'),
+        '[hooks.post_create]\ncommands = ["new"]'
+      );
+      writeFileSync(
+        join(legacyGwmDir, 'config.toml'),
+        '[hooks.post_create]\ncommands = ["legacy"]'
+      );
+
+      const result = verifyTrust(mockRepoRoot, configWithHooks, true);
+
+      expect(result.status).toBe('needs-confirmation');
+      if (result.status === 'needs-confirmation') {
+        // Should use .gwm, not gwm
+        expect(result.configPath).toBe(join(dotGwmDir, 'config.toml'));
+      }
     });
   });
 });

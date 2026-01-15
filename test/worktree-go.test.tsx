@@ -18,14 +18,23 @@ vi.mock('../src/components/WorktreeSelector.js', () => ({
     onCancel,
     initialQuery,
     placeholder,
-  }: any) => {
-    return React.createElement('div', {
-      'data-testid': 'worktree-selector',
-      'data-initial-query': initialQuery,
-      'data-placeholder': placeholder,
-      onClick: () => onSelect({ path: '/test/path', branch: 'test-branch' }),
-      onKeyDown: (e: any) => e.key === 'Escape' && onCancel(),
-    });
+  }: {
+    onSelect: (worktree: { path: string; branch: string }) => void;
+    onCancel: () => void;
+    initialQuery?: string;
+    placeholder?: string;
+  }) => {
+    return (
+      <div
+        data-testid="worktree-selector"
+        data-initial-query={initialQuery}
+        data-placeholder={placeholder}
+        onClick={() => onSelect({ path: '/test/path', branch: 'test-branch' })}
+        onKeyDown={(e: React.KeyboardEvent) =>
+          e.key === 'Escape' && onCancel()
+        }
+      />
+    );
   },
 }));
 
@@ -45,22 +54,20 @@ describe('WorktreeGo', () => {
   });
 
   it('should render WorktreeSelector with correct props', () => {
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { query: 'test-query' })
-    );
+    const { lastFrame } = render(<WorktreeGo query="test-query" />);
 
     // WorktreeGoコンポーネントが正しくレンダリングされていることを確認
     expect(lastFrame()).toBeDefined();
   });
 
   it('should render WorktreeSelector without query', () => {
-    const { lastFrame } = render(React.createElement(WorktreeGo));
+    const { lastFrame } = render(<WorktreeGo />);
 
     expect(lastFrame()).toBeDefined();
   });
 
   it('should output path and exit on worktree selection', () => {
-    const { lastFrame } = render(React.createElement(WorktreeGo));
+    const { lastFrame } = render(<WorktreeGo />);
 
     expect(lastFrame()).toBeDefined();
     // WorktreeSelectorのモックがgonSelectを呼び出すことをテスト
@@ -68,7 +75,7 @@ describe('WorktreeGo', () => {
   });
 
   it('should exit without output on cancel', () => {
-    const { lastFrame } = render(React.createElement(WorktreeGo));
+    const { lastFrame } = render(<WorktreeGo />);
 
     expect(lastFrame()).toBeDefined();
     // WorktreeSelectorのモックがgonCancelを呼び出すことをテスト
@@ -76,18 +83,14 @@ describe('WorktreeGo', () => {
   });
 
   it('should render with openCode=true and show appropriate placeholder', () => {
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCode: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCode={true} />);
 
     expect(lastFrame()).toBeDefined();
     // openCode=trueの場合、placeholderが「VS Codeで開く」用のメッセージになることを確認
   });
 
   it('should render with openCode=false and show go placeholder', () => {
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCode: false })
-    );
+    const { lastFrame } = render(<WorktreeGo openCode={false} />);
 
     expect(lastFrame()).toBeDefined();
     // openCode=falseの場合、placeholderが「移動する」用のメッセージになることを確認
@@ -96,9 +99,7 @@ describe('WorktreeGo', () => {
   it('should handle VS Code opening when openCode=true', () => {
     mockExecSync.mockReturnValue('');
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCode: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCode={true} />);
 
     expect(lastFrame()).toBeDefined();
     // VS Code開く機能のテスト（モック使用）
@@ -112,18 +113,14 @@ describe('WorktreeGo', () => {
       return '';
     });
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCode: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCode={true} />);
 
     expect(lastFrame()).toBeDefined();
     // VS Codeエラー処理のテスト
   });
 
   it('should render with openCursor=true and show appropriate placeholder', () => {
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCursor: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCursor={true} />);
 
     expect(lastFrame()).toBeDefined();
     // openCursor=trueの場合、placeholderが「Cursorで開く」用のメッセージになることを確認（snapshot等でも可）
@@ -132,9 +129,7 @@ describe('WorktreeGo', () => {
   it('should handle Cursor opening when openCursor=true', () => {
     mockExecSync.mockReturnValue('');
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCursor: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCursor={true} />);
 
     expect(lastFrame()).toBeDefined();
     // Cursor開く機能のテスト（モック使用）
@@ -148,9 +143,7 @@ describe('WorktreeGo', () => {
       return '';
     });
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeGo, { openCursor: true })
-    );
+    const { lastFrame } = render(<WorktreeGo openCursor={true} />);
 
     expect(lastFrame()).toBeDefined();
     // Cursorエラー処理のテスト

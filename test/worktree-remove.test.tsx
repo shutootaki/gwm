@@ -17,16 +17,27 @@ vi.mock('../src/components/MultiSelectList.js', () => ({
     onCancel,
     placeholder,
     initialQuery,
-  }: any) => {
-    return React.createElement('div', {
-      'data-testid': 'multi-select-list',
-      'data-items-count': items.length,
-      'data-placeholder': placeholder,
-      'data-initial-query': initialQuery,
-      onClick: () =>
-        onConfirm([{ label: 'test-branch test-path', value: '/test/path' }]),
-      onKeyDown: (e: any) => e.key === 'Escape' && onCancel(),
-    });
+  }: {
+    items: { label: string; value: string }[];
+    onConfirm: (selected: { label: string; value: string }[]) => void;
+    onCancel: () => void;
+    placeholder?: string;
+    initialQuery?: string;
+  }) => {
+    return (
+      <div
+        data-testid="multi-select-list"
+        data-items-count={items.length}
+        data-placeholder={placeholder}
+        data-initial-query={initialQuery}
+        onClick={() =>
+          onConfirm([{ label: 'test-branch test-path', value: '/test/path' }])
+        }
+        onKeyDown={(e: React.KeyboardEvent) =>
+          e.key === 'Escape' && onCancel()
+        }
+      />
+    );
   },
 }));
 
@@ -73,7 +84,7 @@ describe('WorktreeRemove', () => {
   it('should load and display non-main worktrees', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -85,7 +96,7 @@ describe('WorktreeRemove', () => {
   it('should show no removable worktrees message when only main worktree exists', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue([sampleWorktrees[0]]); // main only
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -98,7 +109,7 @@ describe('WorktreeRemove', () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
     mockRemoveWorktree.mockResolvedValue(undefined);
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -111,9 +122,7 @@ describe('WorktreeRemove', () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
     mockRemoveWorktree.mockResolvedValue(undefined);
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeRemove, { force: true })
-    );
+    const { lastFrame } = render(<WorktreeRemove force={true} />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -128,7 +137,7 @@ describe('WorktreeRemove', () => {
       throw new Error('Cannot remove worktree');
     });
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -140,7 +149,7 @@ describe('WorktreeRemove', () => {
   it('should show error when no worktrees are selected', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -152,7 +161,7 @@ describe('WorktreeRemove', () => {
   it('should handle loading errors', async () => {
     mockGetWorktreesWithStatus.mockRejectedValue(new Error('Git error'));
 
-    const { lastFrame } = render(React.createElement(WorktreeRemove));
+    const { lastFrame } = render(<WorktreeRemove />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -164,9 +173,7 @@ describe('WorktreeRemove', () => {
   it('should pass query to MultiSelectList', async () => {
     mockGetWorktreesWithStatus.mockResolvedValue(sampleWorktrees);
 
-    const { lastFrame } = render(
-      React.createElement(WorktreeRemove, { query: 'feature' })
-    );
+    const { lastFrame } = render(<WorktreeRemove query="feature" />);
 
     // Wait for useEffect to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
