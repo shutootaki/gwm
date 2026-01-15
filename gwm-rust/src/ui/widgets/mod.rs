@@ -9,10 +9,12 @@
 //! - `select_list`: 選択リスト
 //! - `multi_select_list`: 複数選択リスト
 //! - `confirm`: 確認ダイアログ
+//! - `progress`: 進捗表示
 
 pub mod confirm;
 pub mod multi_select_list;
 pub mod notice;
+pub mod progress;
 pub mod select_list;
 pub mod spinner;
 pub mod table;
@@ -21,6 +23,7 @@ pub mod text_input;
 pub use confirm::ConfirmWidget;
 pub use multi_select_list::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 pub use notice::{NoticeVariant, NoticeWidget};
+pub use progress::{ProgressBarWidget, StepProgressWidget, StepState};
 pub use select_list::{SelectListWidget, SelectState};
 pub use spinner::SpinnerWidget;
 pub use table::{

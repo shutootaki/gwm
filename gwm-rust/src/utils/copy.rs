@@ -146,6 +146,7 @@ fn get_gitignored_files(worktree: &Path) -> Result<HashSet<PathBuf>> {
                         "Warning: Failed to write null byte to git check-ignore: {}",
                         e
                     );
+                    continue; // プロトコル破損を防ぐためスキップ
                 }
             }
         }
