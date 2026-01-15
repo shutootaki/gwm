@@ -58,6 +58,13 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         AppState::Confirm { .. } => {
             handle_confirm_key(app, key);
         }
+
+        AppState::Progress { .. } => {
+            // 進捗表示中でもCtrl+C/Escでキャンセル可能
+            if is_cancel_key(&key) {
+                app.quit();
+            }
+        }
     }
 }
 

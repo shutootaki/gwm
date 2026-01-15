@@ -4,7 +4,7 @@
 
 use crate::config::Config;
 use crate::git::types::{ChangeStatus, SyncStatus};
-use crate::ui::widgets::SelectState;
+use crate::ui::widgets::{SelectState, StepState};
 use crate::utils::generate_worktree_preview;
 
 /// アプリケーション全体の状態
@@ -62,6 +62,12 @@ pub enum AppState {
         commands: Vec<String>,
         selected: ConfirmChoice,
         metadata: Option<ConfirmMetadata>,
+    },
+
+    /// 進捗表示（ステップまたはプログレスバー）
+    Progress {
+        title: String,
+        steps: Vec<StepState>,
     },
 }
 
@@ -391,6 +397,23 @@ impl App {
             metadata.as_ref()
         } else {
             None
+        }
+    }
+
+    /// 進捗表示状態に遷移
+    pub fn set_progress(&mut self, title: impl Into<String>, steps: Vec<StepState>) {
+        self.state = AppState::Progress {
+            title: title.into(),
+            steps,
+        };
+    }
+
+    /// 進捗のステップを更新
+    pub fn update_progress_step(&mut self, step_index: usize, new_state: StepState) {
+        if let AppState::Progress { steps, .. } = &mut self.state {
+            if step_index < steps.len() {
+                steps[step_index] = new_state;
+            }
         }
     }
 }
