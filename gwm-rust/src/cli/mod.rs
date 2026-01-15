@@ -5,5 +5,6 @@
 pub mod args;
 
 pub use args::{
-    AddArgs, CleanArgs, Cli, Commands, GoArgs, HelpArgs, InitArgs, RemoveArgs, ShellType,
+    AddArgs, CleanArgs, Cli, Commands, GoArgs, HelpArgs, InitArgs, ListArgs, OutputFormat,
+    RemoveArgs, ShellType,
 };
