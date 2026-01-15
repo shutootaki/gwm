@@ -13,6 +13,20 @@ use crate::ui::widgets::{calculate_column_widths, truncate_and_pad, truncate_sta
 /// デフォルトターミナルサイズ（幅, 高さ）
 const DEFAULT_TERMINAL_SIZE: (u16, u16) = (120, 24);
 
+/// worktreeが空の場合のメッセージを表示
+fn print_empty_worktrees_message() {
+    println!("\x1b[33mNo worktrees found\x1b[0m");
+    println!("\x1b[90mUse \x1b[36mgwm add\x1b[90m to create one\x1b[0m");
+}
+
+/// リスト表示用の共通ヘッダーを出力
+fn print_list_header(worktree_count: usize, base_path: &str) {
+    println!("\x1b[1;36mWorktrees\x1b[0m");
+    println!("\x1b[90mTotal: \x1b[1;37m{}\x1b[0m", worktree_count);
+    println!("\x1b[90m${{B}} = {}\x1b[0m", base_path);
+    println!();
+}
+
 /// SYNC列の幅
 const SYNC_WIDTH: usize = 8;
 
@@ -75,8 +89,7 @@ fn run_list_detailed() -> Result<()> {
     let worktrees = get_worktrees_with_details()?;
 
     if worktrees.is_empty() {
-        println!("\x1b[33mNo worktrees found\x1b[0m");
-        println!("\x1b[90mUse \x1b[36mgwm add\x1b[90m to create one\x1b[0m");
+        print_empty_worktrees_message();
         return Ok(());
     }
 
@@ -93,13 +106,7 @@ fn run_list_detailed() -> Result<()> {
         .collect();
     let column_widths = calculate_column_widths(&items, adjusted_width);
 
-    // ヘッダー出力
-    println!("\x1b[1;36mWorktrees\x1b[0m");
-    println!("\x1b[90mTotal: \x1b[1;37m{}\x1b[0m", worktrees.len());
-
-    // ベースパス凡例
-    println!("\x1b[90m${{B}} = {}\x1b[0m", config.worktree_base_path);
-    println!();
+    print_list_header(worktrees.len(), &config.worktree_base_path);
 
     // チルダ展開されたベースパス（パス比較用）
     let expanded_base_path = config
@@ -135,9 +142,7 @@ fn run_list_detailed() -> Result<()> {
     println!();
 
     // 凡例
-    println!(
-        "\x1b[90mLegend: M=Modified, D=Deleted, A=Added, U=Untracked\x1b[0m"
-    );
+    println!("\x1b[90mLegend: M=Modified, D=Deleted, A=Added, U=Untracked\x1b[0m");
 
     Ok(())
 }
@@ -169,7 +174,11 @@ fn print_worktree_row_detailed(worktree: &Worktree, base_path: &str, widths: &Co
         .map(|c| c.display())
         .unwrap_or_else(|| "-".to_string());
     let changes_display = format!("{:<CHANGES_WIDTH$}", changes_str);
-    let changes_color = if worktree.change_status.as_ref().is_some_and(|c| c.is_clean()) {
+    let changes_color = if worktree
+        .change_status
+        .as_ref()
+        .is_some_and(|c| c.is_clean())
+    {
         "\x1b[32m" // Green
     } else {
         "\x1b[33m" // Yellow
@@ -186,10 +195,7 @@ fn print_worktree_row_detailed(worktree: &Worktree, base_path: &str, widths: &Co
     let path = truncate_start(&short_path, widths.path);
 
     // ACTIVITY表示
-    let activity = worktree
-        .last_activity
-        .as_deref()
-        .unwrap_or("-");
+    let activity = worktree.last_activity.as_deref().unwrap_or("-");
     let activity_display = format!("{:<ACTIVITY_WIDTH$}", activity);
 
     // ブランチの色分け
@@ -215,8 +221,7 @@ fn run_list_compact() -> Result<()> {
     let worktrees = get_worktrees()?;
 
     if worktrees.is_empty() {
-        println!("\x1b[33mNo worktrees found\x1b[0m");
-        println!("\x1b[90mUse \x1b[36mgwm add\x1b[90m to create one\x1b[0m");
+        print_empty_worktrees_message();
         return Ok(());
     }
 
@@ -233,13 +238,7 @@ fn run_list_compact() -> Result<()> {
     // HEAD列のヘッダー幅
     const HEAD_HEADER_WIDTH: usize = 10;
 
-    // ヘッダー出力
-    println!("\x1b[1;36mWorktrees\x1b[0m");
-    println!("\x1b[90mTotal: \x1b[1;37m{}\x1b[0m", worktrees.len());
-
-    // ベースパス凡例
-    println!("\x1b[90m${{B}} = {}\x1b[0m", config.worktree_base_path);
-    println!();
+    print_list_header(worktrees.len(), &config.worktree_base_path);
 
     // チルダ展開されたベースパス（パス比較用）
     let expanded_base_path = config

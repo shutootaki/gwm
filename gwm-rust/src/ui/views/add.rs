@@ -969,20 +969,20 @@ fn write_deferred_hooks_and_return_path(
     created_worktree: &Option<(String, String)>,
     config_source: &ConfigWithSource,
 ) -> Result<Option<(String, String)>> {
-    if let Some((path, branch_name)) = created_worktree {
-        // hooksをdeferred実行用にファイルに書き出す
-        let worktree_path = std::path::Path::new(path);
-        let context = config_source.build_hook_context(worktree_path, branch_name);
-        let commands = config_source.get_post_create_commands();
+    let Some((path, branch_name)) = created_worktree else {
+        return Ok(None);
+    };
 
-        if let Err(e) = try_write_deferred_hooks(&context, commands, true) {
-            eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
-        }
+    // hooksをdeferred実行用にファイルに書き出す
+    let worktree_path = std::path::Path::new(path);
+    let context = config_source.build_hook_context(worktree_path, branch_name);
+    let commands = config_source.get_post_create_commands();
 
-        Ok(Some((path.clone(), branch_name.clone())))
-    } else {
-        Ok(None)
+    if let Err(e) = try_write_deferred_hooks(&context, commands, true) {
+        eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
     }
+
+    Ok(Some((path.clone(), branch_name.clone())))
 }
 
 fn execute_hooks_and_finish(
