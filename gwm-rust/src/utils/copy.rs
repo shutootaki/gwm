@@ -144,8 +144,8 @@ pub fn copy_ignored_files(
         .filter_map(|p| Pattern::new(p).ok())
         .collect();
 
-    // If no valid include patterns, return empty result
-    if include_patterns.is_empty() {
+    // If both patterns and exclude_patterns are empty, return empty result
+    if include_patterns.is_empty() && exclude_patterns.is_empty() {
         return Ok(result);
     }
 
@@ -160,7 +160,12 @@ pub fn copy_ignored_files(
         let file_name_str = file_name.to_string_lossy();
 
         // Check if file matches any include pattern
-        let matches_include = include_patterns.iter().any(|p| p.matches(&file_name_str));
+        // If patterns is empty, include all files (exclude_patterns only mode)
+        let matches_include = if include_patterns.is_empty() {
+            true
+        } else {
+            include_patterns.iter().any(|p| p.matches(&file_name_str))
+        };
 
         if !matches_include {
             continue;
@@ -314,5 +319,60 @@ mod tests {
 
         result.copied = vec![".env".to_string(), ".env.local".to_string()];
         assert_eq!(result.summary(), "Copied 2 file(s): .env, .env.local");
+    }
+
+    /// exclude_patternsのみ設定時（patternsが空）のテスト
+    /// patternsが空の場合は全ファイルを対象とし、exclude_patternsで除外する
+    #[test]
+    fn test_exclude_patterns_only() {
+        let source = TempDir::new().unwrap();
+        let target = TempDir::new().unwrap();
+
+        // Create multiple files in source
+        File::create(source.path().join(".env")).unwrap();
+        File::create(source.path().join(".env.local")).unwrap();
+        File::create(source.path().join(".env.example")).unwrap();
+        File::create(source.path().join("config.json")).unwrap();
+
+        // patterns is empty, only exclude_patterns is set
+        let config = CopyIgnoredFilesConfig {
+            enabled: true,
+            patterns: vec![], // empty
+            exclude_patterns: vec![".env.example".to_string()],
+        };
+
+        let result = copy_ignored_files(source.path(), target.path(), &config).unwrap();
+
+        // All files except excluded should be copied
+        assert!(result.copied.contains(&".env".to_string()));
+        assert!(result.copied.contains(&".env.local".to_string()));
+        assert!(result.copied.contains(&"config.json".to_string()));
+        // .env.example should be skipped
+        assert_eq!(result.skipped, vec![".env.example"]);
+        assert!(!result.copied.contains(&".env.example".to_string()));
+    }
+
+    /// patternsとexclude_patternsの両方が空の場合は何もコピーしない
+    #[test]
+    fn test_empty_patterns_and_exclude_patterns() {
+        let source = TempDir::new().unwrap();
+        let target = TempDir::new().unwrap();
+
+        // Create files in source
+        File::create(source.path().join(".env")).unwrap();
+        File::create(source.path().join("config.json")).unwrap();
+
+        // Both patterns and exclude_patterns are empty
+        let config = CopyIgnoredFilesConfig {
+            enabled: true,
+            patterns: vec![],
+            exclude_patterns: vec![],
+        };
+
+        let result = copy_ignored_files(source.path(), target.path(), &config).unwrap();
+
+        // Nothing should be copied
+        assert!(result.copied.is_empty());
+        assert!(result.skipped.is_empty());
     }
 }
