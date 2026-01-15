@@ -20,12 +20,35 @@ pub fn get_cache_path() -> Option<PathBuf> {
 
 /// Load the trust cache from disk.
 ///
-/// Returns the default cache if the file doesn't exist or is invalid.
+/// Returns the default cache if the file doesn't exist.
+/// Logs a warning if the file exists but cannot be read or parsed.
 pub fn load_cache() -> TrustCache {
-    get_cache_path()
-        .and_then(|path| fs::read_to_string(path).ok())
-        .and_then(|content| serde_json::from_str(&content).ok())
-        .unwrap_or_default()
+    let Some(path) = get_cache_path() else {
+        return TrustCache::default();
+    };
+
+    match fs::read_to_string(&path) {
+        Ok(content) => match serde_json::from_str(&content) {
+            Ok(cache) => cache,
+            Err(e) => {
+                eprintln!(
+                    "\x1b[33mWarning: Failed to parse trust cache {:?}: {}\x1b[0m",
+                    path, e
+                );
+                eprintln!("\x1b[33mUsing default trust settings.\x1b[0m");
+                TrustCache::default()
+            }
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => TrustCache::default(),
+        Err(e) => {
+            eprintln!(
+                "\x1b[33mWarning: Failed to read trust cache {:?}: {}\x1b[0m",
+                path, e
+            );
+            eprintln!("\x1b[33mUsing default trust settings.\x1b[0m");
+            TrustCache::default()
+        }
+    }
 }
 
 /// Save the trust cache to disk.

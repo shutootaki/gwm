@@ -3,12 +3,16 @@
 //! ターミナルUIコンポーネントとビューを提供します。
 //!
 //! - `app`: アプリケーション状態管理
+//! - `error`: 構造化エラー表示
 //! - `event`: イベントハンドリング
+//! - `fuzzy`: ファジーマッチング
 //! - `views`: 各コマンドのビュー
 //! - `widgets`: 再利用可能なUIウィジェット
 
 pub mod app;
+pub mod error;
 pub mod event;
+pub mod fuzzy;
 pub mod views;
 pub mod widgets;
 

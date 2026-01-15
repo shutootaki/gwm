@@ -24,6 +24,9 @@ pub use remote::{
 };
 pub use remove::{delete_local_branch, is_branch_merged, remove_worktree, RemoveResult};
 pub use types::{
-    CleanReason, CleanableWorktree, LocalChanges, PullResult, Worktree, WorktreeStatus,
+    ChangeStatus, CleanReason, CleanableWorktree, LocalChanges, PullResult, SyncStatus, Worktree,
+    WorktreeStatus,
 };
-pub use worktree::{get_main_worktree_path, get_worktrees, parse_worktrees};
+pub use worktree::{
+    get_main_worktree_path, get_worktrees, get_worktrees_with_details, parse_worktrees,
+};
