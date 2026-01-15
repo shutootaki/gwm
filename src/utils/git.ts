@@ -585,6 +585,12 @@ export function getIgnoredFiles(
    */
   skipVirtualEnvs: boolean = true
 ): string[] {
+  // patterns も excludePatterns も両方空の場合は何もコピーしない
+  const hasExcludePatterns = excludePatterns && excludePatterns.length > 0;
+  if (patterns.length === 0 && !hasExcludePatterns) {
+    return [];
+  }
+
   const matchedFiles: string[] = [];
 
   // パターンに基づいてファイルを直接検索
@@ -623,7 +629,6 @@ export function getIgnoredFiles(
             scanDirectory(fullPath, baseDir);
           } else if (stat.isFile()) {
             // ファイルの場合はパターンマッチング
-            let shouldInclude = false;
 
             // 除外パターンのチェック
             if (excludePatterns) {
@@ -640,14 +645,19 @@ export function getIgnoredFiles(
               if (isExcluded) continue;
             }
 
-            // 含めるパターンのチェック
-            for (const pattern of patterns) {
-              if (
-                matchesPattern(entry, pattern) ||
-                matchesPattern(relativePath, pattern)
-              ) {
-                shouldInclude = true;
-                break;
+            // patterns が空の場合は全ファイルを対象とする
+            // patterns が指定されている場合はマッチするファイルのみ対象
+            let shouldInclude = patterns.length === 0;
+
+            if (patterns.length > 0) {
+              for (const pattern of patterns) {
+                if (
+                  matchesPattern(entry, pattern) ||
+                  matchesPattern(relativePath, pattern)
+                ) {
+                  shouldInclude = true;
+                  break;
+                }
               }
             }
 

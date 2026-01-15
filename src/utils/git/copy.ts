@@ -82,11 +82,14 @@ function scanDirectory(
           );
         } else if (stat.isFile()) {
           // ファイルの場合はパターンマッチング
-          const shouldInclude = patterns.some(
-            (pattern) =>
-              matchesPattern(entry, pattern) ||
-              matchesPattern(relativePath, pattern)
-          );
+          // patterns が空の場合は全ファイルを対象とする
+          const shouldInclude =
+            patterns.length === 0 ||
+            patterns.some(
+              (pattern) =>
+                matchesPattern(entry, pattern) ||
+                matchesPattern(relativePath, pattern)
+            );
 
           if (shouldInclude) {
             // gitで追跡されていないファイルのみを対象とする
@@ -127,6 +130,12 @@ export function getIgnoredFiles(
   excludePatterns?: string[],
   skipVirtualEnvs: boolean = true
 ): string[] {
+  // patterns も excludePatterns も両方空の場合は何もコピーしない
+  const hasExcludePatterns = excludePatterns && excludePatterns.length > 0;
+  if (patterns.length === 0 && !hasExcludePatterns) {
+    return [];
+  }
+
   const matchedFiles: string[] = [];
   scanDirectory(
     workdir,
