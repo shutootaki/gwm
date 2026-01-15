@@ -11,7 +11,7 @@ use crate::shell::exec;
 
 use chrono::{DateTime, Utc};
 
-/// `git worktree list --porcelain` の出力をパース
+/// `git worktree list --porcelain` の出力をパース（内部用）
 ///
 /// # Porcelain形式の例
 /// ```text
@@ -35,7 +35,6 @@ use chrono::{DateTime, Utc};
 /// 4. `bare` - ベアリポジトリ
 /// 5. `detached` - デタッチドHEAD状態
 /// 6. 空行 - エントリの区切り
-/// `git worktree list --porcelain` の出力をパース（内部用）
 fn parse_worktrees_raw(output: &str) -> Vec<Worktree> {
     let mut worktrees = Vec::new();
     let mut current: Option<WorktreeBuilder> = None;
@@ -221,9 +220,11 @@ pub fn get_worktrees_with_details() -> Result<Vec<Worktree>> {
 }
 
 /// リモートとの同期状態を取得
+///
+/// リモートブランチが存在しない場合や detached HEAD 状態では `None` を返す。
 fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
     // リモートブランチの存在確認と ahead/behind の取得
-    let output = exec(
+    let output = match exec(
         "git",
         &[
             "-C",
@@ -234,8 +235,21 @@ fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
             &format!("HEAD...origin/{}", branch),
         ],
         None,
-    )
-    .ok()?;
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            // リモートブランチが存在しない場合は正常なケース
+            let err_str = e.to_string();
+            if !err_str.contains("unknown revision") && !err_str.contains("ambiguous argument") {
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "Debug: get_sync_status failed for {} at {:?}: {}",
+                    branch, path, e
+                );
+            }
+            return None;
+        }
+    };
 
     let parts: Vec<&str> = output.trim().split('\t').collect();
     if parts.len() == 2 {
@@ -243,13 +257,21 @@ fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
         let behind = parts[1].parse().unwrap_or(0);
         Some(SyncStatus { ahead, behind })
     } else {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "Debug: Unexpected rev-list output format for {} at {:?}: {:?}",
+            branch, path, output
+        );
         None
     }
 }
 
 /// ワーキングディレクトリの変更状態を取得
+///
+/// 変更状態（staged/unstaged/untracked）を集計して返す。
+/// gitコマンドが失敗した場合は `None` を返す。
 fn get_change_status(path: &Path) -> Option<ChangeStatus> {
-    let output = exec(
+    let output = match exec(
         "git",
         &[
             "-C",
@@ -259,8 +281,14 @@ fn get_change_status(path: &Path) -> Option<ChangeStatus> {
             "-uno", // untrackedは別途カウント
         ],
         None,
-    )
-    .ok()?;
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: get_change_status failed at {:?}: {}", path, e);
+            return None;
+        }
+    };
 
     let mut status = ChangeStatus::default();
 
@@ -290,7 +318,7 @@ fn get_change_status(path: &Path) -> Option<ChangeStatus> {
     }
 
     // untracked ファイルを別途取得
-    if let Ok(untracked_output) = exec(
+    match exec(
         "git",
         &[
             "-C",
@@ -301,15 +329,29 @@ fn get_change_status(path: &Path) -> Option<ChangeStatus> {
         ],
         None,
     ) {
-        status.untracked = untracked_output.lines().count();
+        Ok(untracked_output) => {
+            status.untracked = untracked_output.lines().count();
+        }
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "Debug: Failed to get untracked files at {:?}: {}",
+                path, e
+            );
+            // untrackedは0のまま（デフォルト）
+        }
     }
 
     Some(status)
 }
 
-/// 最終更新時間を取得
+/// 最終更新時間を相対時間形式で取得
+///
+/// worktreeの最新コミット時刻を基準に、現在時刻との差分を
+/// "just now", "5m ago", "2h ago" などの形式で返す。
+/// コミット履歴がない場合や取得に失敗した場合は `None` を返す。
 fn get_last_activity(path: &Path) -> Option<String> {
-    let output = exec(
+    let output = match exec(
         "git",
         &[
             "-C",
@@ -319,8 +361,14 @@ fn get_last_activity(path: &Path) -> Option<String> {
             "--format=%cI", // ISO 8601 形式
         ],
         None,
-    )
-    .ok()?;
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: get_last_activity failed at {:?}: {}", path, e);
+            return None;
+        }
+    };
 
     let timestamp_str = output.trim();
     if timestamp_str.is_empty() {
@@ -328,39 +376,52 @@ fn get_last_activity(path: &Path) -> Option<String> {
     }
 
     // ISO 8601 形式をパース
-    let commit_time = DateTime::parse_from_rfc3339(timestamp_str)
-        .ok()?
-        .with_timezone(&Utc);
+    let commit_time = match DateTime::parse_from_rfc3339(timestamp_str) {
+        Ok(dt) => dt.with_timezone(&Utc),
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "Debug: Failed to parse timestamp '{}' at {:?}: {}",
+                timestamp_str, path, e
+            );
+            return None;
+        }
+    };
     let now = Utc::now();
     let duration = now.signed_duration_since(commit_time);
 
     Some(format_relative_time(duration))
 }
 
+/// 時間単位の定数（秒）
+const MINUTE: i64 = 60;
+const HOUR: i64 = 3600;
+const DAY: i64 = 86400;
+const WEEK: i64 = 604800;
+const MONTH: i64 = 2592000;
+const YEAR: i64 = 31536000;
+
 /// 相対時間を表示用にフォーマット
+///
+/// # Format examples
+/// - < 1分: "just now"
+/// - < 1時間: "{n}m ago"
+/// - < 1日: "{n}h ago"
+/// - < 1週間: "{n}d ago"
+/// - < 1ヶ月: "{n}w ago"
+/// - < 1年: "{n}mo ago"
+/// - それ以上: "{n}y ago"
 fn format_relative_time(duration: chrono::Duration) -> String {
     let seconds = duration.num_seconds();
 
-    if seconds < 60 {
-        "just now".to_string()
-    } else if seconds < 3600 {
-        let minutes = seconds / 60;
-        format!("{}m ago", minutes)
-    } else if seconds < 86400 {
-        let hours = seconds / 3600;
-        format!("{}h ago", hours)
-    } else if seconds < 604800 {
-        let days = seconds / 86400;
-        format!("{}d ago", days)
-    } else if seconds < 2592000 {
-        let weeks = seconds / 604800;
-        format!("{}w ago", weeks)
-    } else if seconds < 31536000 {
-        let months = seconds / 2592000;
-        format!("{}mo ago", months)
-    } else {
-        let years = seconds / 31536000;
-        format!("{}y ago", years)
+    match seconds {
+        s if s < MINUTE => "just now".to_string(),
+        s if s < HOUR => format!("{}m ago", s / MINUTE),
+        s if s < DAY => format!("{}h ago", s / HOUR),
+        s if s < WEEK => format!("{}d ago", s / DAY),
+        s if s < MONTH => format!("{}w ago", s / WEEK),
+        s if s < YEAR => format!("{}mo ago", s / MONTH),
+        s => format!("{}y ago", s / YEAR),
     }
 }
 

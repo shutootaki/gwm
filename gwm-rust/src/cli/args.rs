@@ -60,7 +60,8 @@ pub enum Commands {
 
     /// Sync main branch worktrees
     ///
-    /// Pull the latest changes for all main branch worktrees (main, master, develop).
+    /// Pull the latest changes for all main branch worktrees.
+    /// The main branches are configured in config.toml (defaults: main, master, develop).
     #[command(alias = "pull-main")]
     Sync,
 
@@ -236,7 +237,10 @@ pub struct ListArgs {
     #[arg(long)]
     pub compact: bool,
 
-    /// Output format
+    /// Output format (table or json)
+    ///
+    /// Use `table` for human-readable colored output (default),
+    /// or `json` for scripting and automation.
     #[arg(long, value_enum, default_value = "table")]
     pub format: OutputFormat,
 }
