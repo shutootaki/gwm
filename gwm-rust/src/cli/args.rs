@@ -26,25 +26,27 @@ pub enum Commands {
     /// List all worktrees
     ///
     /// Display a table of all worktrees with their status, branch, and path.
-    #[command(alias = "ls")]
-    List,
+    #[command(alias = "ls", alias = "l")]
+    List(ListArgs),
 
     /// Add a new worktree
     ///
     /// Create a new worktree from an existing branch or create a new branch.
     /// If no branch name is provided, an interactive selector will be shown.
+    #[command(alias = "a")]
     Add(AddArgs),
 
     /// Remove worktree(s)
     ///
     /// Remove one or more worktrees. If no query is provided, an interactive
     /// multi-select interface will be shown.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", alias = "r")]
     Remove(RemoveArgs),
 
     /// Navigate to a worktree
     ///
     /// Output the path of a worktree for shell integration.
+    #[command(alias = "g")]
     Go(GoArgs),
 
     /// Shell integration
@@ -56,13 +58,14 @@ pub enum Commands {
     ///
     /// Safely remove worktrees whose branches have been merged or deleted
     /// from the remote.
+    #[command(alias = "c")]
     Clean(CleanArgs),
 
-    /// Update main branch worktrees
+    /// Sync main branch worktrees
     ///
     /// Pull the latest changes for all main branch worktrees (main, master, develop).
-    #[command(name = "pull-main")]
-    PullMain,
+    #[command(alias = "pull-main", alias = "s")]
+    Sync,
 
     /// Show help for a command
     ///
@@ -229,6 +232,28 @@ pub struct HelpArgs {
     pub command: Option<String>,
 }
 
+/// Arguments for the `list` command.
+#[derive(Parser, Debug, Default)]
+pub struct ListArgs {
+    /// Use compact format (legacy layout without SYNC/CHANGES/ACTIVITY)
+    #[arg(long)]
+    pub compact: bool,
+
+    /// Output format
+    #[arg(long, value_enum, default_value = "table")]
+    pub format: OutputFormat,
+}
+
+/// Output format for the list command
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OutputFormat {
+    /// Table format with colors (default)
+    #[default]
+    Table,
+    /// JSON format for scripting
+    Json,
+}
+
 /// Parse clean branch mode from string.
 fn parse_clean_branch_mode(s: &str) -> Result<CleanBranchMode, String> {
     match s.to_lowercase().as_str() {
@@ -307,15 +332,48 @@ mod tests {
     }
 
     #[test]
-    fn test_list_alias() {
+    fn test_list_alias_ls() {
         let cli = Cli::parse_from(["gwm", "ls"]);
-        assert!(matches!(cli.command, Some(Commands::List)));
+        assert!(matches!(cli.command, Some(Commands::List(_))));
     }
 
     #[test]
-    fn test_remove_alias() {
+    fn test_list_compact_flag() {
+        let cli = Cli::parse_from(["gwm", "list", "--compact"]);
+        if let Some(Commands::List(args)) = cli.command {
+            assert!(args.compact);
+        } else {
+            panic!("Expected List command");
+        }
+    }
+
+    #[test]
+    fn test_list_json_format() {
+        let cli = Cli::parse_from(["gwm", "list", "--format", "json"]);
+        if let Some(Commands::List(args)) = cli.command {
+            assert_eq!(args.format, OutputFormat::Json);
+        } else {
+            panic!("Expected List command");
+        }
+    }
+
+    #[test]
+    fn test_remove_alias_rm() {
         let cli = Cli::parse_from(["gwm", "rm"]);
         assert!(matches!(cli.command, Some(Commands::Remove(_))));
+    }
+
+    #[test]
+    fn test_sync_command() {
+        let cli = Cli::parse_from(["gwm", "sync"]);
+        assert!(matches!(cli.command, Some(Commands::Sync)));
+    }
+
+    #[test]
+    fn test_sync_alias_pull_main() {
+        // Backward compatibility: pull-main should still work
+        let cli = Cli::parse_from(["gwm", "pull-main"]);
+        assert!(matches!(cli.command, Some(Commands::Sync)));
     }
 
     #[test]
