@@ -1,6 +1,9 @@
 //! 選択リストウィジェット
 //!
 //! インクリメンタル検索付きの選択リストを提供します。
+//! fuzzy matchingによる柔軟な検索とハイライト表示をサポートします。
+
+use std::collections::HashMap;
 
 use ratatui::{
     buffer::Buffer,
@@ -9,7 +12,9 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Widget},
 };
+use unicode_width::UnicodeWidthChar;
 
+use crate::ui::fuzzy::fuzzy_match;
 use crate::ui::{SelectItem, TextInputState};
 use crate::utils::format_relative_time;
 
@@ -28,6 +33,8 @@ pub struct SelectState {
     pub filtered_indices: Vec<usize>,
     /// 最大表示数
     pub max_display: usize,
+    /// アイテムインデックス -> マッチ位置のマップ（ハイライト用）
+    pub match_indices: HashMap<usize, Vec<usize>>,
 }
 
 impl SelectState {
@@ -40,6 +47,7 @@ impl SelectState {
             scroll_offset: 0,
             filtered_indices,
             max_display: 10,
+            match_indices: HashMap::new(),
         }
     }
 
@@ -69,16 +77,36 @@ impl SelectState {
         }
     }
 
-    /// フィルタリングを更新
+    /// フィルタリングを更新（fuzzy matching）
+    ///
+    /// 空のクエリの場合は全アイテムを表示（元の順序）。
+    /// クエリがある場合はfuzzy matchingでフィルタリングし、スコア順にソート。
     pub fn update_filter(&mut self, query: &str) {
-        let query_lower = query.to_lowercase();
+        self.match_indices.clear();
 
-        self.filtered_indices = self
+        if query.is_empty() {
+            self.filtered_indices = (0..self.items.len()).collect();
+            self.adjust_cursor_and_scroll();
+            return;
+        }
+
+        // fuzzy matchingでマッチとスコアを取得
+        let mut matches: Vec<(usize, i64, Vec<usize>)> = self
             .items
             .iter()
             .enumerate()
-            .filter(|(_, item)| item.label.to_lowercase().contains(&query_lower))
-            .map(|(i, _)| i)
+            .filter_map(|(i, item)| {
+                fuzzy_match(query, &item.label).map(|m| (i, m.score, m.indices))
+            })
+            .collect();
+
+        // スコア降順でソート
+        matches.sort_by(|a, b| b.1.cmp(&a.1));
+
+        self.filtered_indices = matches.iter().map(|(i, _, _)| *i).collect();
+        self.match_indices = matches
+            .into_iter()
+            .map(|(i, _, indices)| (i, indices))
             .collect();
 
         self.adjust_cursor_and_scroll();
@@ -123,6 +151,8 @@ pub struct SelectListWidget<'a> {
     /// worktreeパスプレビュー（将来の拡張用）
     #[allow(dead_code)]
     preview: Option<&'a str>,
+    /// アイテムインデックス -> マッチ位置のマップ（ハイライト用）
+    match_indices: Option<&'a HashMap<usize, Vec<usize>>>,
 }
 
 impl<'a> SelectListWidget<'a> {
@@ -149,6 +179,7 @@ impl<'a> SelectListWidget<'a> {
             scroll_offset,
             max_display,
             preview,
+            match_indices: None,
         }
     }
 
@@ -170,7 +201,37 @@ impl<'a> SelectListWidget<'a> {
             scroll_offset: state.scroll_offset,
             max_display: state.max_display,
             preview,
+            match_indices: Some(&state.match_indices),
         }
+    }
+}
+
+/// ラベルをマッチ位置ハイライト付きで描画
+#[allow(clippy::too_many_arguments)]
+fn render_label_with_highlight(
+    buf: &mut Buffer,
+    x: u16,
+    y: u16,
+    label: &str,
+    match_indices: &[usize],
+    base_style: Style,
+    highlight_style: Style,
+    max_width: u16,
+) {
+    let mut current_x = x;
+    for (i, c) in label.chars().enumerate() {
+        if current_x >= x + max_width {
+            break;
+        }
+        let style = if match_indices.contains(&i) {
+            highlight_style
+        } else {
+            base_style
+        };
+        buf.set_string(current_x, y, c.to_string(), style);
+        // マルチバイト文字の幅を考慮
+        let char_width = UnicodeWidthChar::width(c).unwrap_or(1) as u16;
+        current_x += char_width;
     }
 }
 
@@ -277,7 +338,7 @@ impl Widget for SelectListWidget<'_> {
                 let item = &self.items[item_idx];
                 let is_selected = display_idx == self.selected_index;
 
-                let (prefix, style) = if is_selected {
+                let (prefix, base_style) = if is_selected {
                     (
                         "▶ ",
                         Style::default()
@@ -288,8 +349,29 @@ impl Widget for SelectListWidget<'_> {
                     ("  ", Style::default().fg(Color::White))
                 };
 
-                buf.set_string(area.x, y, prefix, style);
-                buf.set_string(area.x + 2, y, &item.label, style);
+                buf.set_string(area.x, y, prefix, base_style);
+
+                // マッチ位置がある場合はハイライト描画、なければ通常描画
+                if let Some(indices) = self
+                    .match_indices
+                    .and_then(|m| m.get(&item_idx))
+                {
+                    let highlight_style = Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
+                    render_label_with_highlight(
+                        buf,
+                        area.x + 2,
+                        y,
+                        &item.label,
+                        indices,
+                        base_style,
+                        highlight_style,
+                        area.width.saturating_sub(2),
+                    );
+                } else {
+                    buf.set_string(area.x + 2, y, &item.label, base_style);
+                }
                 y += 1;
             }
 
@@ -496,17 +578,64 @@ mod tests {
         let items = create_test_items();
         let mut state = SelectState::new(items);
 
-        // "feature"でフィルタ
+        // "feature"でフィルタ（fuzzy matchingではスコア順にソートされる）
         state.update_filter("feature");
-        assert_eq!(state.filtered_indices, vec![0, 2, 3]);
+        // 全てfeatureを含むアイテムがマッチ
+        assert_eq!(state.filtered_indices.len(), 3);
+        assert!(state.filtered_indices.contains(&0));
+        assert!(state.filtered_indices.contains(&2));
+        assert!(state.filtered_indices.contains(&3));
 
         // "auth"でフィルタ
         state.update_filter("auth");
-        assert_eq!(state.filtered_indices, vec![0]);
+        assert_eq!(state.filtered_indices.len(), 1);
+        assert!(state.filtered_indices.contains(&0));
 
         // フィルタ解除
         state.update_filter("");
         assert_eq!(state.filtered_indices, vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_select_state_fuzzy_match() {
+        let items = create_test_items();
+        let mut state = SelectState::new(items);
+
+        // "fauth"でfuzzy match - "feature/auth"にマッチするはず
+        state.update_filter("fauth");
+        assert!(!state.filtered_indices.is_empty());
+        // feature/authが結果に含まれる
+        assert!(state.filtered_indices.contains(&0));
+    }
+
+    #[test]
+    fn test_select_state_match_indices() {
+        let items = create_test_items();
+        let mut state = SelectState::new(items);
+
+        // フィルタリング
+        state.update_filter("auth");
+
+        // match_indicesが設定されている
+        assert!(!state.match_indices.is_empty());
+        // feature/authのマッチ位置が取得できる
+        assert!(state.match_indices.contains_key(&0));
+        let indices = state.match_indices.get(&0).unwrap();
+        assert!(!indices.is_empty());
+    }
+
+    #[test]
+    fn test_select_state_empty_query_clears_match_indices() {
+        let items = create_test_items();
+        let mut state = SelectState::new(items);
+
+        // フィルタリング
+        state.update_filter("auth");
+        assert!(!state.match_indices.is_empty());
+
+        // 空クエリでmatch_indicesがクリアされる
+        state.update_filter("");
+        assert!(state.match_indices.is_empty());
     }
 
     #[test]
