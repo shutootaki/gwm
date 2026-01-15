@@ -177,7 +177,10 @@ fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
                 editor.display_name(),
                 e
             );
-            eprintln!("  Make sure '{}' command is in your PATH.", editor.command());
+            eprintln!(
+                "  Make sure '{}' command is in your PATH.",
+                editor.command()
+            );
         }
     }
 }
@@ -791,7 +794,8 @@ async fn run_main_loop(
                                     && !args.skip_hooks;
 
                                 let mut steps = create_worktree_steps(has_copy_config, has_hooks);
-                                steps[0] = StepState::InProgress("Creating worktree".to_string(), None);
+                                steps[0] =
+                                    StepState::InProgress("Creating worktree".to_string(), None);
                                 app.set_progress("Creating worktree...", steps);
 
                                 // 進捗表示を描画
@@ -805,8 +809,12 @@ async fn run_main_loop(
                                     Ok((path, branch_name)) => {
                                         // ステップ1,2完了
                                         if let AppState::Progress { steps, .. } = &mut app.state {
-                                            steps[0] = StepState::Completed("Creating worktree".to_string());
-                                            steps[1] = StepState::Completed("Checking out branch".to_string());
+                                            steps[0] = StepState::Completed(
+                                                "Creating worktree".to_string(),
+                                            );
+                                            steps[1] = StepState::Completed(
+                                                "Checking out branch".to_string(),
+                                            );
                                         }
 
                                         terminal.draw(|f| {
@@ -882,8 +890,7 @@ async fn run_main_loop(
                             let branch = item.value.clone();
 
                             // Progress状態に遷移してworktreeを作成
-                            let has_copy_config =
-                                config_source.config.copy_ignored_files.is_some();
+                            let has_copy_config = config_source.config.copy_ignored_files.is_some();
                             let has_hooks = config_source
                                 .config
                                 .post_create_commands()
@@ -906,8 +913,10 @@ async fn run_main_loop(
                                 Ok((path, branch_name)) => {
                                     // ステップ1,2完了
                                     if let AppState::Progress { steps, .. } = &mut app.state {
-                                        steps[0] = StepState::Completed("Creating worktree".to_string());
-                                        steps[1] = StepState::Completed("Checking out branch".to_string());
+                                        steps[0] =
+                                            StepState::Completed("Creating worktree".to_string());
+                                        steps[1] =
+                                            StepState::Completed("Checking out branch".to_string());
                                     }
 
                                     terminal.draw(|f| {
@@ -1008,7 +1017,10 @@ async fn run_main_loop(
                                     let hooks_step_idx = get_hooks_step_index(config_source);
                                     app.set_progress(
                                         "Running hooks...",
-                                        create_worktree_steps_completed(config_source, hooks_step_idx),
+                                        create_worktree_steps_completed(
+                                            config_source,
+                                            hooks_step_idx,
+                                        ),
                                     );
                                     terminal.draw(|f| {
                                         let area = f.area();
@@ -1043,7 +1055,10 @@ async fn run_main_loop(
                                     let hooks_step_idx = get_hooks_step_index(config_source);
                                     app.set_progress(
                                         "Running hooks...",
-                                        create_worktree_steps_completed(config_source, hooks_step_idx),
+                                        create_worktree_steps_completed(
+                                            config_source,
+                                            hooks_step_idx,
+                                        ),
                                     );
                                     terminal.draw(|f| {
                                         let area = f.area();

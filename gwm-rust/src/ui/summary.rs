@@ -107,7 +107,10 @@ pub fn print_add_success_summary(summary: &AddOperationSummary) {
     // Print next steps
     println!("\n  {DIM}Next steps:{RESET}");
     println!("    cd {}", summary.path);
-    println!("    {DIM}# or: eval \"$(gwm go {})\"{RESET}", summary.branch);
+    println!(
+        "    {DIM}# or: eval \"$(gwm go {})\"{RESET}",
+        summary.branch
+    );
 }
 
 /// Print an error summary for add operation.

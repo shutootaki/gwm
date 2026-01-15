@@ -299,11 +299,7 @@ impl ChangeStatus {
     pub fn status_label(&self) -> &'static str {
         if self.is_clean() {
             "Clean"
-        } else if self.untracked > 0
-            && self.modified == 0
-            && self.added == 0
-            && self.deleted == 0
-        {
+        } else if self.untracked > 0 && self.modified == 0 && self.added == 0 && self.deleted == 0 {
             "Untracked"
         } else {
             "Modified"
@@ -314,11 +310,7 @@ impl ChangeStatus {
     pub fn status_color(&self) -> Color {
         if self.is_clean() {
             Color::Green
-        } else if self.untracked > 0
-            && self.modified == 0
-            && self.added == 0
-            && self.deleted == 0
-        {
+        } else if self.untracked > 0 && self.modified == 0 && self.added == 0 && self.deleted == 0 {
             Color::Red
         } else {
             Color::Yellow
