@@ -3,7 +3,7 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{"type": "command", "command": "cargo fmt --quiet"}]
+        "hooks": [{ "type": "command", "command": "cargo fmt --quiet" }]
       }
     ]
   }
