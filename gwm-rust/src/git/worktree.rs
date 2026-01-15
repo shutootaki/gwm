@@ -2,14 +2,16 @@
 //!
 //! Git worktreeの一覧取得・パース処理を提供します。
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::core::is_git_repository;
-use super::types::{Worktree, WorktreeStatus};
+use super::types::{ChangeStatus, SyncStatus, Worktree, WorktreeStatus};
 use crate::error::{GwmError, Result};
 use crate::shell::exec;
 
-/// `git worktree list --porcelain` の出力をパース
+use chrono::{DateTime, Utc};
+
+/// `git worktree list --porcelain` の出力をパース（内部用）
 ///
 /// # Porcelain形式の例
 /// ```text
@@ -33,7 +35,6 @@ use crate::shell::exec;
 /// 4. `bare` - ベアリポジトリ
 /// 5. `detached` - デタッチドHEAD状態
 /// 6. 空行 - エントリの区切り
-/// `git worktree list --porcelain` の出力をパース（内部用）
 fn parse_worktrees_raw(output: &str) -> Vec<Worktree> {
     let mut worktrees = Vec::new();
     let mut current: Option<WorktreeBuilder> = None;
@@ -107,6 +108,9 @@ impl WorktreeBuilder {
                 WorktreeStatus::Other
             },
             is_main: self.is_main,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         }
     }
 }
@@ -191,6 +195,231 @@ pub fn get_main_worktree_path() -> Option<PathBuf> {
         .into_iter()
         .find(|w| w.status == WorktreeStatus::Main)
         .map(|w| w.path)
+}
+
+/// Worktree一覧を詳細情報付きで取得
+///
+/// # Returns
+/// * `Ok(Vec<Worktree>)`: 詳細情報付きのworktree一覧
+/// * `Err(GwmError)`: エラー時
+pub fn get_worktrees_with_details() -> Result<Vec<Worktree>> {
+    let mut worktrees = get_worktrees()?;
+
+    for worktree in &mut worktrees {
+        // 同期状態を取得
+        worktree.sync_status = get_sync_status(&worktree.path, worktree.display_branch());
+
+        // 変更状態を取得
+        worktree.change_status = get_change_status(&worktree.path);
+
+        // 最終更新時間を取得
+        worktree.last_activity = get_last_activity(&worktree.path);
+    }
+
+    Ok(worktrees)
+}
+
+/// リモートとの同期状態を取得
+///
+/// リモートブランチが存在しない場合や detached HEAD 状態では `None` を返す。
+fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
+    // リモートブランチの存在確認と ahead/behind の取得
+    let output = match exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("HEAD...origin/{}", branch),
+        ],
+        None,
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            // リモートブランチが存在しない場合は正常なケース
+            let err_str = e.to_string();
+            if !err_str.contains("unknown revision") && !err_str.contains("ambiguous argument") {
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "Debug: get_sync_status failed for {} at {:?}: {}",
+                    branch, path, e
+                );
+            }
+            return None;
+        }
+    };
+
+    let parts: Vec<&str> = output.trim().split('\t').collect();
+    if parts.len() == 2 {
+        let ahead = parts[0].parse().unwrap_or(0);
+        let behind = parts[1].parse().unwrap_or(0);
+        Some(SyncStatus { ahead, behind })
+    } else {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "Debug: Unexpected rev-list output format for {} at {:?}: {:?}",
+            branch, path, output
+        );
+        None
+    }
+}
+
+/// ワーキングディレクトリの変更状態を取得
+///
+/// 変更状態（staged/unstaged/untracked）を集計して返す。
+/// gitコマンドが失敗した場合は `None` を返す。
+fn get_change_status(path: &Path) -> Option<ChangeStatus> {
+    let output = match exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "status",
+            "--porcelain",
+            "-uno", // untrackedは別途カウント
+        ],
+        None,
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: get_change_status failed at {:?}: {}", path, e);
+            return None;
+        }
+    };
+
+    let mut status = ChangeStatus::default();
+
+    for line in output.lines() {
+        if line.len() < 2 {
+            continue;
+        }
+
+        let index_status = line.chars().next().unwrap_or(' ');
+        let worktree_status = line.chars().nth(1).unwrap_or(' ');
+
+        // ステージされていない変更をカウント
+        match worktree_status {
+            'M' => status.modified += 1,
+            'D' => status.deleted += 1,
+            'A' => status.added += 1,
+            _ => {}
+        }
+
+        // ステージされた変更も含める（インデックスステータス）
+        match index_status {
+            'M' if worktree_status == ' ' => status.modified += 1,
+            'D' if worktree_status == ' ' => status.deleted += 1,
+            'A' if worktree_status == ' ' => status.added += 1,
+            _ => {}
+        }
+    }
+
+    // untracked ファイルを別途取得
+    match exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ],
+        None,
+    ) {
+        Ok(untracked_output) => {
+            status.untracked = untracked_output.lines().count();
+        }
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: Failed to get untracked files at {:?}: {}", path, e);
+            // untrackedは0のまま（デフォルト）
+        }
+    }
+
+    Some(status)
+}
+
+/// 最終更新時間を相対時間形式で取得
+///
+/// worktreeの最新コミット時刻を基準に、現在時刻との差分を
+/// "just now", "5m ago", "2h ago" などの形式で返す。
+/// コミット履歴がない場合や取得に失敗した場合は `None` を返す。
+fn get_last_activity(path: &Path) -> Option<String> {
+    let output = match exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "log",
+            "-1",
+            "--format=%cI", // ISO 8601 形式
+        ],
+        None,
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: get_last_activity failed at {:?}: {}", path, e);
+            return None;
+        }
+    };
+
+    let timestamp_str = output.trim();
+    if timestamp_str.is_empty() {
+        return None;
+    }
+
+    // ISO 8601 形式をパース
+    let commit_time = match DateTime::parse_from_rfc3339(timestamp_str) {
+        Ok(dt) => dt.with_timezone(&Utc),
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "Debug: Failed to parse timestamp '{}' at {:?}: {}",
+                timestamp_str, path, e
+            );
+            return None;
+        }
+    };
+    let now = Utc::now();
+    let duration = now.signed_duration_since(commit_time);
+
+    Some(format_relative_time(duration))
+}
+
+/// 時間単位の定数（秒）
+const MINUTE: i64 = 60;
+const HOUR: i64 = 3600;
+const DAY: i64 = 86400;
+const WEEK: i64 = 604800;
+const MONTH: i64 = 2592000;
+const YEAR: i64 = 31536000;
+
+/// 相対時間を表示用にフォーマット
+///
+/// # Format examples
+/// - < 1分: "just now"
+/// - < 1時間: "{n}m ago"
+/// - < 1日: "{n}h ago"
+/// - < 1週間: "{n}d ago"
+/// - < 1ヶ月: "{n}w ago"
+/// - < 1年: "{n}mo ago"
+/// - それ以上: "{n}y ago"
+fn format_relative_time(duration: chrono::Duration) -> String {
+    let seconds = duration.num_seconds();
+
+    match seconds {
+        s if s < MINUTE => "just now".to_string(),
+        s if s < HOUR => format!("{}m ago", s / MINUTE),
+        s if s < DAY => format!("{}h ago", s / HOUR),
+        s if s < WEEK => format!("{}d ago", s / DAY),
+        s if s < MONTH => format!("{}w ago", s / WEEK),
+        s if s < YEAR => format!("{}mo ago", s / MONTH),
+        s => format!("{}y ago", s / YEAR),
+    }
 }
 
 #[cfg(test)]
@@ -288,6 +517,9 @@ branch refs/heads/feature
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
             is_main: false,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -300,6 +532,9 @@ branch refs/heads/feature
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
             is_main: true,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }

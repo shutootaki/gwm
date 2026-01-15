@@ -16,13 +16,13 @@ USAGE:
     gwm [COMMAND]
 
 COMMANDS:
-    list, ls        List all worktrees
+    list (ls)       List all worktrees
     add             Add a new worktree
-    remove, rm      Remove worktree(s)
+    remove (rm)     Remove worktree(s)
     go              Navigate to a worktree
     init            Shell integration script
     clean           Clean up merged/deleted worktrees
-    pull-main       Update main branch worktrees
+    sync            Sync main branch worktrees
     help            Show this help message
 
 EXAMPLES:
@@ -226,11 +226,12 @@ EXAMPLES:
     gwm clean --force      Clean without confirmation (for CI/CD)
 "#;
 
-    pub const PULL_MAIN: &str = r#"
-gwm pull-main - Update main branch worktrees
+    pub const SYNC: &str = r#"
+gwm sync - Sync main branch worktrees
 
 USAGE:
-    gwm pull-main
+    gwm sync
+    gwm pull-main  (legacy alias)
 
 DESCRIPTION:
     Run 'git pull' in all worktrees that track main branches.
@@ -239,7 +240,7 @@ DESCRIPTION:
     Default main branches: main, master, develop
 
 EXAMPLES:
-    gwm pull-main          Update all main branch worktrees
+    gwm sync               Sync all main branch worktrees
 "#;
 
     pub const HELP: &str = r#"
@@ -272,7 +273,7 @@ pub fn run_help(args: HelpArgs) -> Result<()> {
         Some("go") => help_text::GO,
         Some("init") => help_text::INIT,
         Some("clean") => help_text::CLEAN,
-        Some("pull-main") => help_text::PULL_MAIN,
+        Some("sync") | Some("pull-main") => help_text::SYNC,
         Some("help") => help_text::HELP,
         Some(cmd) => {
             eprintln!("Unknown command: {}", cmd);
@@ -296,14 +297,15 @@ mod tests {
         let test_cases: &[(&str, Option<&str>)] = &[
             ("global", None),
             ("list", Some("list")),
-            ("list_alias", Some("ls")),
+            ("list_alias_ls", Some("ls")),
             ("add", Some("add")),
             ("remove", Some("remove")),
-            ("remove_alias", Some("rm")),
+            ("remove_alias_rm", Some("rm")),
             ("go", Some("go")),
             ("init", Some("init")),
             ("clean", Some("clean")),
-            ("pull_main", Some("pull-main")),
+            ("sync", Some("sync")),
+            ("sync_alias_pull_main", Some("pull-main")),
             ("help", Some("help")),
             ("unknown", Some("unknown")),
         ];
@@ -333,7 +335,7 @@ mod tests {
             ("GO", help_text::GO),
             ("INIT", help_text::INIT),
             ("CLEAN", help_text::CLEAN),
-            ("PULL_MAIN", help_text::PULL_MAIN),
+            ("SYNC", help_text::SYNC),
             ("HELP", help_text::HELP),
         ];
 

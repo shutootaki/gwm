@@ -2,8 +2,9 @@
 //!
 //! インクリメンタル検索付きの複数選択リストを提供します。
 //! removeコマンドなど、複数のworktreeを選択する場面で使用します。
+//! fuzzy matchingによる柔軟な検索とハイライト表示をサポートします。
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use ratatui::{
     buffer::Buffer,
@@ -12,7 +13,9 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Widget},
 };
+use unicode_width::UnicodeWidthChar;
 
+use crate::ui::fuzzy::fuzzy_match;
 use crate::ui::TextInputState;
 
 /// 複数選択可能なアイテム
@@ -73,6 +76,8 @@ pub struct MultiSelectState {
     pub filtered_indices: Vec<usize>,
     /// 最大表示数
     pub max_display: usize,
+    /// アイテムインデックス -> マッチ位置のマップ（ハイライト用）
+    pub match_indices: HashMap<usize, Vec<usize>>,
 }
 
 impl MultiSelectState {
@@ -86,6 +91,7 @@ impl MultiSelectState {
             scroll_offset: 0,
             filtered_indices,
             max_display: 10,
+            match_indices: HashMap::new(),
         }
     }
 
@@ -160,16 +166,36 @@ impl MultiSelectState {
         }
     }
 
-    /// フィルタリングを更新
+    /// フィルタリングを更新（fuzzy matching）
+    ///
+    /// 空のクエリの場合は全アイテムを表示（元の順序）。
+    /// クエリがある場合はfuzzy matchingでフィルタリングし、スコア順にソート。
     pub fn update_filter(&mut self, query: &str) {
-        let query_lower = query.to_lowercase();
+        self.match_indices.clear();
 
-        self.filtered_indices = self
+        if query.is_empty() {
+            self.filtered_indices = (0..self.items.len()).collect();
+            self.adjust_cursor_and_scroll();
+            return;
+        }
+
+        // fuzzy matchingでマッチとスコアを取得
+        let mut matches: Vec<(usize, i64, Vec<usize>)> = self
             .items
             .iter()
             .enumerate()
-            .filter(|(_, item)| item.label.to_lowercase().contains(&query_lower))
-            .map(|(i, _)| i)
+            .filter_map(|(i, item)| {
+                fuzzy_match(query, &item.label).map(|m| (i, m.score, m.indices))
+            })
+            .collect();
+
+        // スコア降順でソート
+        matches.sort_by(|a, b| b.1.cmp(&a.1));
+
+        self.filtered_indices = matches.iter().map(|(i, _, _)| *i).collect();
+        self.match_indices = matches
+            .into_iter()
+            .map(|(i, _, indices)| (i, indices))
             .collect();
 
         self.adjust_cursor_and_scroll();
@@ -227,6 +253,35 @@ impl<'a> MultiSelectListWidget<'a> {
             input,
             state,
         }
+    }
+}
+
+/// ラベルをマッチ位置ハイライト付きで描画
+#[allow(clippy::too_many_arguments)]
+fn render_label_with_highlight(
+    buf: &mut Buffer,
+    x: u16,
+    y: u16,
+    label: &str,
+    match_indices: &[usize],
+    base_style: Style,
+    highlight_style: Style,
+    max_width: u16,
+) {
+    let mut current_x = x;
+    for (i, c) in label.chars().enumerate() {
+        if current_x >= x + max_width {
+            break;
+        }
+        let style = if match_indices.contains(&i) {
+            highlight_style
+        } else {
+            base_style
+        };
+        buf.set_string(current_x, y, c.to_string(), style);
+        // マルチバイト文字の幅を考慮
+        let char_width = UnicodeWidthChar::width(c).unwrap_or(1) as u16;
+        current_x += char_width;
     }
 }
 
@@ -388,7 +443,24 @@ impl Widget for MultiSelectListWidget<'_> {
                     Style::default().fg(Color::White)
                 };
 
-                buf.set_string(area.x + 6, y, &item.label, label_style);
+                // マッチ位置がある場合はハイライト描画、なければ通常描画
+                if let Some(indices) = self.state.match_indices.get(&item_idx) {
+                    let highlight_style = Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
+                    render_label_with_highlight(
+                        buf,
+                        area.x + 6,
+                        y,
+                        &item.label,
+                        indices,
+                        label_style,
+                        highlight_style,
+                        area.width.saturating_sub(6),
+                    );
+                } else {
+                    buf.set_string(area.x + 6, y, &item.label, label_style);
+                }
 
                 // disabledの理由
                 if item.disabled {
@@ -594,17 +666,50 @@ mod tests {
         let items = create_test_items();
         let mut state = MultiSelectState::new(items);
 
-        // "feature"でフィルタ
+        // "feature"でフィルタ（fuzzy matchingではスコア順にソートされる）
         state.update_filter("feature");
-        assert_eq!(state.filtered_indices, vec![0, 2, 3]);
+        // 全てfeatureを含むアイテムがマッチ
+        assert_eq!(state.filtered_indices.len(), 3);
+        assert!(state.filtered_indices.contains(&0));
+        assert!(state.filtered_indices.contains(&2));
+        assert!(state.filtered_indices.contains(&3));
 
         // "auth"でフィルタ
         state.update_filter("auth");
-        assert_eq!(state.filtered_indices, vec![0]);
+        assert_eq!(state.filtered_indices.len(), 1);
+        assert!(state.filtered_indices.contains(&0));
 
         // フィルタ解除
         state.update_filter("");
         assert_eq!(state.filtered_indices, vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_fuzzy_match() {
+        let items = create_test_items();
+        let mut state = MultiSelectState::new(items);
+
+        // "fauth"でfuzzy match - "feature/auth"にマッチするはず
+        state.update_filter("fauth");
+        assert!(!state.filtered_indices.is_empty());
+        // feature/authが結果に含まれる
+        assert!(state.filtered_indices.contains(&0));
+    }
+
+    #[test]
+    fn test_match_indices() {
+        let items = create_test_items();
+        let mut state = MultiSelectState::new(items);
+
+        // フィルタリング
+        state.update_filter("auth");
+
+        // match_indicesが設定されている
+        assert!(!state.match_indices.is_empty());
+        // feature/authのマッチ位置が取得できる
+        assert!(state.match_indices.contains_key(&0));
+        let indices = state.match_indices.get(&0).unwrap();
+        assert!(!indices.is_empty());
     }
 
     #[test]

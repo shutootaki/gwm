@@ -84,6 +84,12 @@ pub struct Worktree {
     pub status: WorktreeStatus,
     /// メインworktreeかどうか（統計用、statusとは独立）
     pub is_main: bool,
+    /// リモートとの同期状態
+    pub sync_status: Option<SyncStatus>,
+    /// ワーキングディレクトリの変更状態
+    pub change_status: Option<ChangeStatus>,
+    /// 最終更新時間（相対表示用）
+    pub last_activity: Option<String>,
 }
 
 impl Worktree {
@@ -199,6 +205,73 @@ impl CleanableWorktree {
     }
 }
 
+/// リモートとの同期状態
+#[derive(Debug, Clone, Default)]
+pub struct SyncStatus {
+    /// リモートより先行しているコミット数
+    pub ahead: usize,
+    /// リモートより遅れているコミット数
+    pub behind: usize,
+}
+
+impl SyncStatus {
+    /// 同期済みかどうか
+    pub fn is_synced(&self) -> bool {
+        self.ahead == 0 && self.behind == 0
+    }
+
+    /// 表示用文字列を取得
+    pub fn display(&self) -> String {
+        if self.is_synced() {
+            "✓".to_string()
+        } else {
+            format!("↑{} ↓{}", self.ahead, self.behind)
+        }
+    }
+}
+
+/// ワーキングディレクトリの変更状態
+#[derive(Debug, Clone, Default)]
+pub struct ChangeStatus {
+    /// 変更されたファイル数
+    pub modified: usize,
+    /// 追加されたファイル数
+    pub added: usize,
+    /// 削除されたファイル数
+    pub deleted: usize,
+    /// 追跡されていないファイル数
+    pub untracked: usize,
+}
+
+impl ChangeStatus {
+    /// クリーンな状態かどうか
+    pub fn is_clean(&self) -> bool {
+        self.modified == 0 && self.added == 0 && self.deleted == 0 && self.untracked == 0
+    }
+
+    /// 表示用文字列を取得
+    pub fn display(&self) -> String {
+        if self.is_clean() {
+            "clean".to_string()
+        } else {
+            let mut parts = Vec::new();
+            if self.modified > 0 {
+                parts.push(format!("{}M", self.modified));
+            }
+            if self.added > 0 {
+                parts.push(format!("{}A", self.added));
+            }
+            if self.deleted > 0 {
+                parts.push(format!("{}D", self.deleted));
+            }
+            if self.untracked > 0 {
+                parts.push(format!("{}U", self.untracked));
+            }
+            parts.join(" ")
+        }
+    }
+}
+
 /// ローカル変更情報
 #[derive(Debug, Default)]
 pub struct LocalChanges {
@@ -287,6 +360,9 @@ mod tests {
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
             is_main: false,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -299,6 +375,9 @@ mod tests {
             head: "abc1234".to_string(),
             status: WorktreeStatus::Other,
             is_main: false,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.display_branch(), "(detached)");
     }
@@ -311,6 +390,9 @@ mod tests {
             head: "abc1234567890".to_string(),
             status: WorktreeStatus::Main,
             is_main: true,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
@@ -323,6 +405,9 @@ mod tests {
             head: "abc".to_string(),
             status: WorktreeStatus::Main,
             is_main: true,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.short_head(), "abc");
     }
@@ -335,7 +420,43 @@ mod tests {
             head: "abc1234".to_string(),
             status: WorktreeStatus::Main,
             is_main: true,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
+    }
+
+    #[test]
+    fn test_sync_status_display() {
+        let synced = SyncStatus {
+            ahead: 0,
+            behind: 0,
+        };
+        assert!(synced.is_synced());
+        assert_eq!(synced.display(), "✓");
+
+        let not_synced = SyncStatus {
+            ahead: 2,
+            behind: 3,
+        };
+        assert!(!not_synced.is_synced());
+        assert_eq!(not_synced.display(), "↑2 ↓3");
+    }
+
+    #[test]
+    fn test_change_status_display() {
+        let clean = ChangeStatus::default();
+        assert!(clean.is_clean());
+        assert_eq!(clean.display(), "clean");
+
+        let with_changes = ChangeStatus {
+            modified: 3,
+            added: 1,
+            deleted: 2,
+            untracked: 0,
+        };
+        assert!(!with_changes.is_clean());
+        assert_eq!(with_changes.display(), "3M 1A 2D");
     }
 }
