@@ -352,10 +352,7 @@ impl Widget for SelectListWidget<'_> {
                 buf.set_string(area.x, y, prefix, base_style);
 
                 // マッチ位置がある場合はハイライト描画、なければ通常描画
-                if let Some(indices) = self
-                    .match_indices
-                    .and_then(|m| m.get(&item_idx))
-                {
+                if let Some(indices) = self.match_indices.and_then(|m| m.get(&item_idx)) {
                     let highlight_style = Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);

@@ -159,10 +159,7 @@ impl GwmError {
     pub fn suggestions(&self) -> Vec<Suggestion> {
         match self {
             GwmError::NotGitRepository => vec![
-                Suggestion::with_command(
-                    "Navigate to a git repository",
-                    "cd /path/to/your/repo",
-                ),
+                Suggestion::with_command("Navigate to a git repository", "cd /path/to/your/repo"),
                 Suggestion::with_command("Initialize a new repository", "git init"),
             ],
 
@@ -232,7 +229,10 @@ impl GwmError {
 
             GwmError::Trust(_) => vec![
                 Suggestion::new("Review the trust settings for this repository"),
-                Suggestion::with_command("Check trust configuration", "cat ~/.config/gwm/trust.json"),
+                Suggestion::with_command(
+                    "Check trust configuration",
+                    "cat ~/.config/gwm/trust.json",
+                ),
             ],
 
             GwmError::Hook(_) => vec![
@@ -448,12 +448,18 @@ mod tests {
         assert!(details.path.is_none());
         assert!(details.branch.is_none());
         assert_eq!(details.extra.len(), 1);
-        assert_eq!(details.extra[0], ("Worktree".to_string(), "my-worktree".to_string()));
+        assert_eq!(
+            details.extra[0],
+            ("Worktree".to_string(), "my-worktree".to_string())
+        );
     }
 
     #[test]
     fn test_details_io_error_returns_default() {
-        let err = GwmError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "not found"));
+        let err = GwmError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "not found",
+        ));
         let details = err.details();
         assert!(details.path.is_none());
         assert!(details.branch.is_none());

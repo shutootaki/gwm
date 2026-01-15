@@ -179,7 +179,9 @@ impl Widget for NoticeWidget<'_> {
                     inner.x,
                     current_y,
                     "Suggestions:",
-                    Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
                 );
                 current_y += 1;
             }
@@ -325,7 +327,10 @@ mod tests {
         assert_eq!(notice.suggestions[0].description, "Do this");
         assert!(notice.suggestions[0].command.is_none());
         assert_eq!(notice.suggestions[1].description, "Run this");
-        assert_eq!(notice.suggestions[1].command, Some("git status".to_string()));
+        assert_eq!(
+            notice.suggestions[1].command,
+            Some("git status".to_string())
+        );
     }
 
     #[test]

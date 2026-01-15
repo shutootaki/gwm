@@ -334,10 +334,7 @@ fn get_change_status(path: &Path) -> Option<ChangeStatus> {
         }
         Err(e) => {
             #[cfg(debug_assertions)]
-            eprintln!(
-                "Debug: Failed to get untracked files at {:?}: {}",
-                path, e
-            );
+            eprintln!("Debug: Failed to get untracked files at {:?}: {}", path, e);
             // untrackedは0のまま（デフォルト）
         }
     }

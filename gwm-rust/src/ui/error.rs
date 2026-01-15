@@ -15,7 +15,10 @@ pub fn print_structured_error(error: &GwmError) {
     let title_suffix = "─".repeat(title_suffix_len);
 
     // ヘッダー
-    println!("\x1b[31m┌{}{} {}┐\x1b[0m", title_prefix, title, title_suffix);
+    println!(
+        "\x1b[31m┌{}{} {}┐\x1b[0m",
+        title_prefix, title, title_suffix
+    );
     println!("\x1b[31m│\x1b[0m");
 
     // エラーメッセージ
@@ -23,7 +26,11 @@ pub fn print_structured_error(error: &GwmError) {
 
     // 詳細情報
     let details = error.details();
-    if details.path.is_some() || details.branch.is_some() || !details.files.is_empty() || !details.extra.is_empty() {
+    if details.path.is_some()
+        || details.branch.is_some()
+        || !details.files.is_empty()
+        || !details.extra.is_empty()
+    {
         println!("\x1b[31m│\x1b[0m");
 
         if let Some(ref path) = details.path {

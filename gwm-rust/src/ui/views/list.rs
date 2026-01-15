@@ -142,9 +142,7 @@ fn run_list_detailed() -> Result<()> {
     println!();
 
     // 凡例
-    println!(
-        "\x1b[90mLegend: M=Modified, D=Deleted, A=Added, U=Untracked\x1b[0m"
-    );
+    println!("\x1b[90mLegend: M=Modified, D=Deleted, A=Added, U=Untracked\x1b[0m");
 
     Ok(())
 }
@@ -176,7 +174,11 @@ fn print_worktree_row_detailed(worktree: &Worktree, base_path: &str, widths: &Co
         .map(|c| c.display())
         .unwrap_or_else(|| "-".to_string());
     let changes_display = format!("{:<CHANGES_WIDTH$}", changes_str);
-    let changes_color = if worktree.change_status.as_ref().is_some_and(|c| c.is_clean()) {
+    let changes_color = if worktree
+        .change_status
+        .as_ref()
+        .is_some_and(|c| c.is_clean())
+    {
         "\x1b[32m" // Green
     } else {
         "\x1b[33m" // Yellow
@@ -193,10 +195,7 @@ fn print_worktree_row_detailed(worktree: &Worktree, base_path: &str, widths: &Co
     let path = truncate_start(&short_path, widths.path);
 
     // ACTIVITY表示
-    let activity = worktree
-        .last_activity
-        .as_deref()
-        .unwrap_or("-");
+    let activity = worktree.last_activity.as_deref().unwrap_or("-");
     let activity_display = format!("{:<ACTIVITY_WIDTH$}", activity);
 
     // ブランチの色分け

@@ -429,11 +429,17 @@ mod tests {
 
     #[test]
     fn test_sync_status_display() {
-        let synced = SyncStatus { ahead: 0, behind: 0 };
+        let synced = SyncStatus {
+            ahead: 0,
+            behind: 0,
+        };
         assert!(synced.is_synced());
         assert_eq!(synced.display(), "✓");
 
-        let not_synced = SyncStatus { ahead: 2, behind: 3 };
+        let not_synced = SyncStatus {
+            ahead: 2,
+            behind: 3,
+        };
         assert!(!not_synced.is_synced());
         assert_eq!(not_synced.display(), "↑2 ↓3");
     }
