@@ -14,6 +14,8 @@ pub enum EditorType {
     VsCode,
     /// Cursor
     Cursor,
+    /// Zed
+    Zed,
 }
 
 impl EditorType {
@@ -22,6 +24,16 @@ impl EditorType {
         match self {
             EditorType::VsCode => "code",
             EditorType::Cursor => "cursor",
+            EditorType::Zed => "zed",
+        }
+    }
+
+    /// 表示用のエディタ名を取得
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            EditorType::VsCode => "VS Code",
+            EditorType::Cursor => "Cursor",
+            EditorType::Zed => "Zed",
         }
     }
 }
@@ -47,6 +59,11 @@ pub fn open_in_cursor(path: &Path) -> Result<()> {
     open_in_editor(EditorType::Cursor, path)
 }
 
+/// Zedエディタでディレクトリを開く
+pub fn open_in_zed(path: &Path) -> Result<()> {
+    open_in_editor(EditorType::Zed, path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,8 +72,16 @@ mod tests {
     fn test_editor_type_command() {
         assert_eq!(EditorType::VsCode.command(), "code");
         assert_eq!(EditorType::Cursor.command(), "cursor");
+        assert_eq!(EditorType::Zed.command(), "zed");
     }
 
-    // Note: open_in_vscode, open_in_cursor の実際のテストは
+    #[test]
+    fn test_editor_type_display_name() {
+        assert_eq!(EditorType::VsCode.display_name(), "VS Code");
+        assert_eq!(EditorType::Cursor.display_name(), "Cursor");
+        assert_eq!(EditorType::Zed.display_name(), "Zed");
+    }
+
+    // Note: open_in_vscode, open_in_cursor, open_in_zed の実際のテストは
     // 環境に依存するため、手動テストで確認する
 }

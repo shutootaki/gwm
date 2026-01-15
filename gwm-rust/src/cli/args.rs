@@ -5,6 +5,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::CleanBranchMode;
+use crate::utils::EditorType;
 
 /// gwm - Git Worktree Manager
 ///
@@ -69,6 +70,12 @@ pub enum Commands {
     ///
     /// Display detailed help information for a specific command.
     Help(HelpArgs),
+
+    /// Generate shell completion scripts
+    ///
+    /// Generate completion scripts for bash, zsh, fish, or powershell.
+    /// Use --with-dynamic to enable dynamic completion for worktree names.
+    Completion(CompletionArgs),
 }
 
 /// Arguments for the `add` command.
@@ -93,12 +100,19 @@ pub struct AddArgs {
     #[arg(long = "from")]
     pub from_branch: Option<String>,
 
-    /// Open in VS Code after creation
-    #[arg(long = "code")]
+    /// Open in editor after creation
+    ///
+    /// Open the new worktree in the specified editor.
+    /// Supported editors: code (VS Code), cursor, zed
+    #[arg(short = 'o', long = "open", value_enum)]
+    pub open: Option<EditorArg>,
+
+    /// Open in VS Code after creation (deprecated, use --open code)
+    #[arg(long = "code", hide = true)]
     pub open_code: bool,
 
-    /// Open in Cursor after creation
-    #[arg(long = "cursor")]
+    /// Open in Cursor after creation (deprecated, use --open cursor)
+    #[arg(long = "cursor", hide = true)]
     pub open_cursor: bool,
 
     /// Output path only (for shell integration)
@@ -128,13 +142,37 @@ pub struct AddArgs {
 }
 
 impl AddArgs {
+    /// Check if any editor option is specified.
+    fn has_editor_option(&self) -> bool {
+        self.open.is_some() || self.open_code || self.open_cursor
+    }
+
+    /// Get the editor to open (with deprecation warnings for legacy options).
+    ///
+    /// Returns the editor type if any editor option is specified.
+    /// Shows a deprecation warning if the legacy --code or --cursor flags are used.
+    pub fn editor(&self) -> Option<EditorType> {
+        if let Some(editor) = self.open {
+            return Some(editor.to_editor_type());
+        }
+        if self.open_code {
+            eprintln!("\x1b[33mWarning: --code is deprecated. Use --open code instead.\x1b[0m");
+            return Some(EditorType::VsCode);
+        }
+        if self.open_cursor {
+            eprintln!("\x1b[33mWarning: --cursor is deprecated. Use --open cursor instead.\x1b[0m");
+            return Some(EditorType::Cursor);
+        }
+        None
+    }
+
     /// Calculate the effective output_path flag.
     ///
     /// Returns true (path-only output) when:
     /// - --no-cd is NOT specified
-    /// - No editor option (--code, --cursor) is specified
+    /// - No editor option (--open, --code, --cursor) is specified
     pub fn should_output_path_only(&self) -> bool {
-        !self.no_cd && !self.open_code && !self.open_cursor
+        !self.no_cd && !self.has_editor_option()
     }
 }
 
@@ -168,12 +206,19 @@ pub struct GoArgs {
     #[arg()]
     pub query: Option<String>,
 
-    /// Open in VS Code
-    #[arg(short = 'c', long = "code")]
+    /// Open in editor
+    ///
+    /// Open the worktree in the specified editor.
+    /// Supported editors: code (VS Code), cursor, zed
+    #[arg(short = 'o', long = "open", value_enum)]
+    pub open: Option<EditorArg>,
+
+    /// Open in VS Code (deprecated, use --open code)
+    #[arg(short = 'c', long = "code", hide = true)]
     pub open_code: bool,
 
-    /// Open in Cursor
-    #[arg(long = "cursor")]
+    /// Open in Cursor (deprecated, use --open cursor)
+    #[arg(long = "cursor", hide = true)]
     pub open_cursor: bool,
 
     /// Show success message instead of path output
@@ -184,13 +229,37 @@ pub struct GoArgs {
 }
 
 impl GoArgs {
+    /// Check if any editor option is specified.
+    fn has_editor_option(&self) -> bool {
+        self.open.is_some() || self.open_code || self.open_cursor
+    }
+
+    /// Get the editor to open (with deprecation warnings for legacy options).
+    ///
+    /// Returns the editor type if any editor option is specified.
+    /// Shows a deprecation warning if the legacy --code or --cursor flags are used.
+    pub fn editor(&self) -> Option<EditorType> {
+        if let Some(editor) = self.open {
+            return Some(editor.to_editor_type());
+        }
+        if self.open_code {
+            eprintln!("\x1b[33mWarning: --code is deprecated. Use --open code instead.\x1b[0m");
+            return Some(EditorType::VsCode);
+        }
+        if self.open_cursor {
+            eprintln!("\x1b[33mWarning: --cursor is deprecated. Use --open cursor instead.\x1b[0m");
+            return Some(EditorType::Cursor);
+        }
+        None
+    }
+
     /// Calculate the effective output_path flag.
     ///
     /// Returns true (path-only output) when:
     /// - --no-cd is NOT specified
-    /// - No editor option (--code, --cursor) is specified
+    /// - No editor option (--open, --code, --cursor) is specified
     pub fn should_output_path_only(&self) -> bool {
-        !self.no_cd && !self.open_code && !self.open_cursor
+        !self.no_cd && !self.has_editor_option()
     }
 }
 
@@ -208,6 +277,31 @@ pub enum ShellType {
     Bash,
     Zsh,
     Fish,
+}
+
+/// Editor types for `--open` option.
+///
+/// Used by `add` and `go` commands to open the worktree in an editor.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorArg {
+    /// VS Code (also accepts "vscode")
+    #[value(alias = "vscode")]
+    Code,
+    /// Cursor
+    Cursor,
+    /// Zed
+    Zed,
+}
+
+impl EditorArg {
+    /// Convert to EditorType for editor operations.
+    pub fn to_editor_type(self) -> EditorType {
+        match self {
+            EditorArg::Code => EditorType::VsCode,
+            EditorArg::Cursor => EditorType::Cursor,
+            EditorArg::Zed => EditorType::Zed,
+        }
+    }
 }
 
 /// Arguments for the `clean` command.
@@ -228,6 +322,29 @@ pub struct HelpArgs {
     /// Command to show help for
     #[arg()]
     pub command: Option<String>,
+}
+
+/// Arguments for the `completion` command.
+#[derive(Parser, Debug)]
+pub struct CompletionArgs {
+    /// Shell type (bash, zsh, fish)
+    #[arg(value_enum)]
+    pub shell: CompletionShell,
+
+    /// Enable dynamic completion for worktree names
+    ///
+    /// When enabled, the completion script will call gwm to get
+    /// real-time worktree suggestions.
+    #[arg(long = "with-dynamic")]
+    pub with_dynamic: bool,
+}
+
+/// Shell types supported by `gwm completion`.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionShell {
+    Bash,
+    Zsh,
+    Fish,
 }
 
 /// Arguments for the `list` command.
@@ -253,6 +370,8 @@ pub enum OutputFormat {
     Table,
     /// JSON format for scripting
     Json,
+    /// Names only (for shell completion)
+    Names,
 }
 
 /// Parse clean branch mode from string.
@@ -449,6 +568,144 @@ mod tests {
                 !args.should_output_path_only(),
                 "--cursor should disable path-only output"
             );
+        }
+    }
+
+    #[test]
+    fn test_editor_arg_to_editor_type() {
+        assert_eq!(EditorArg::Code.to_editor_type(), EditorType::VsCode);
+        assert_eq!(EditorArg::Cursor.to_editor_type(), EditorType::Cursor);
+        assert_eq!(EditorArg::Zed.to_editor_type(), EditorType::Zed);
+    }
+
+    #[test]
+    fn test_parse_add_with_open_option() {
+        let cli = Cli::parse_from(["gwm", "add", "test", "--open", "code"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Code));
+            assert!(!args.should_output_path_only());
+        } else {
+            panic!("Expected Add command");
+        }
+    }
+
+    #[test]
+    fn test_parse_add_with_open_short_form() {
+        let cli = Cli::parse_from(["gwm", "add", "test", "-o", "zed"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Zed));
+        } else {
+            panic!("Expected Add command");
+        }
+    }
+
+    #[test]
+    fn test_parse_add_with_open_vscode_alias() {
+        let cli = Cli::parse_from(["gwm", "add", "test", "--open", "vscode"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Code));
+        } else {
+            panic!("Expected Add command");
+        }
+    }
+
+    #[test]
+    fn test_parse_add_with_open_cursor() {
+        let cli = Cli::parse_from(["gwm", "add", "test", "--open", "cursor"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Cursor));
+        } else {
+            panic!("Expected Add command");
+        }
+    }
+
+    #[test]
+    fn test_parse_go_with_open_option() {
+        let cli = Cli::parse_from(["gwm", "go", "main", "--open", "cursor"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Cursor));
+            assert!(!args.should_output_path_only());
+        } else {
+            panic!("Expected Go command");
+        }
+    }
+
+    #[test]
+    fn test_parse_go_with_open_short_form() {
+        let cli = Cli::parse_from(["gwm", "go", "main", "-o", "code"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert_eq!(args.open, Some(EditorArg::Code));
+        } else {
+            panic!("Expected Go command");
+        }
+    }
+
+    #[test]
+    fn test_legacy_code_flag_still_works() {
+        // 後方互換性: --code は hide=true でも動作する
+        let cli = Cli::parse_from(["gwm", "add", "test", "--code"]);
+        if let Some(Commands::Add(args)) = cli.command {
+            assert!(args.open_code);
+            assert!(!args.should_output_path_only());
+        } else {
+            panic!("Expected Add command");
+        }
+    }
+
+    #[test]
+    fn test_legacy_cursor_flag_still_works() {
+        // 後方互換性: --cursor は hide=true でも動作する
+        let cli = Cli::parse_from(["gwm", "go", "main", "--cursor"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(args.open_cursor);
+            assert!(!args.should_output_path_only());
+        } else {
+            panic!("Expected Go command");
+        }
+    }
+
+    #[test]
+    fn test_legacy_short_c_flag_still_works() {
+        // 後方互換性: -c は hide=true でも動作する（goコマンド専用）
+        let cli = Cli::parse_from(["gwm", "go", "main", "-c"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(args.open_code);
+        } else {
+            panic!("Expected Go command");
+        }
+    }
+
+    #[test]
+    fn test_parse_completion_bash() {
+        let cli = Cli::parse_from(["gwm", "completion", "bash"]);
+        match cli.command {
+            Some(Commands::Completion(args)) => {
+                assert_eq!(args.shell, CompletionShell::Bash);
+                assert!(!args.with_dynamic);
+            }
+            _ => panic!("Expected Completion command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_completion_with_dynamic() {
+        let cli = Cli::parse_from(["gwm", "completion", "zsh", "--with-dynamic"]);
+        match cli.command {
+            Some(Commands::Completion(args)) => {
+                assert_eq!(args.shell, CompletionShell::Zsh);
+                assert!(args.with_dynamic);
+            }
+            _ => panic!("Expected Completion command"),
+        }
+    }
+
+    #[test]
+    fn test_list_format_names() {
+        let cli = Cli::parse_from(["gwm", "list", "--format", "names"]);
+        if let Some(Commands::List(args)) = cli.command {
+            assert_eq!(args.format, OutputFormat::Names);
+        } else {
+            panic!("Expected List command");
         }
     }
 }

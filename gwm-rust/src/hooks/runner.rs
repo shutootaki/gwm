@@ -4,8 +4,9 @@
 
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
+use std::time::Instant;
 
-use super::types::{HookContext, HookResult};
+use super::types::{HookContext, HookExecutionDetail, HookResult};
 use crate::config::Config;
 use crate::error::Result;
 
@@ -49,7 +50,7 @@ fn execute_command(
 pub fn run_post_create_hooks(config: &Config, context: &HookContext) -> Result<HookResult> {
     let commands = match config.post_create_commands() {
         Some(cmds) if !cmds.is_empty() => cmds,
-        _ => return Ok(HookResult::success(0)),
+        _ => return Ok(HookResult::no_hooks()),
     };
 
     execute_hooks(commands, context)
@@ -64,7 +65,7 @@ pub fn run_post_create_hooks_with_commands(
     context: &HookContext,
 ) -> Result<HookResult> {
     if commands.is_empty() {
-        return Ok(HookResult::success(0));
+        return Ok(HookResult::no_hooks());
     }
 
     execute_hooks(commands, context)
@@ -74,6 +75,8 @@ pub fn run_post_create_hooks_with_commands(
 fn execute_hooks(commands: &[String], context: &HookContext) -> Result<HookResult> {
     let env = prepare_hook_env(context);
     let total = commands.len();
+    let total_start = Instant::now();
+    let mut details: Vec<HookExecutionDetail> = Vec::with_capacity(total);
 
     println!(
         "\n\x1b[36mRunning post_create hooks ({} command{})...\x1b[0m",
@@ -84,43 +87,77 @@ fn execute_hooks(commands: &[String], context: &HookContext) -> Result<HookResul
     for (i, cmd) in commands.iter().enumerate() {
         println!("  [{}/{}] Executing: {}", i + 1, total, cmd);
 
-        match execute_command(cmd, &context.worktree_path, &env) {
+        let cmd_start = Instant::now();
+        let result = execute_command(cmd, &context.worktree_path, &env);
+        let cmd_duration = cmd_start.elapsed();
+
+        match result {
             Ok(0) => {
                 println!(
-                    "  \x1b[32m✓ [{}/{}] {} (completed)\x1b[0m",
+                    "  \x1b[32m✓ [{}/{}] {} ({:.1}s)\x1b[0m",
                     i + 1,
                     total,
-                    cmd
+                    cmd,
+                    cmd_duration.as_secs_f64()
                 );
+                details.push(HookExecutionDetail::success(cmd.clone(), cmd_duration));
             }
             Ok(code) => {
                 println!(
-                    "  \x1b[31m✗ [{}/{}] {} (failed, exit code: {})\x1b[0m",
+                    "  \x1b[31m✗ [{}/{}] {} (failed, exit code: {}, {:.1}s)\x1b[0m",
                     i + 1,
                     total,
                     cmd,
-                    code
+                    code,
+                    cmd_duration.as_secs_f64()
                 );
-                return Ok(HookResult::failure(i + 1, cmd.clone(), code));
+                details.push(HookExecutionDetail::failure_with_code(
+                    cmd.clone(),
+                    cmd_duration,
+                    code,
+                ));
+                return Ok(HookResult::failure(
+                    i + 1,
+                    cmd.clone(),
+                    code,
+                    total_start.elapsed(),
+                    details,
+                ));
             }
             Err(e) => {
+                let error_msg = e.to_string();
                 println!(
-                    "  \x1b[31m✗ [{}/{}] {} (error: {})\x1b[0m",
+                    "  \x1b[31m✗ [{}/{}] {} (error: {}, {:.1}s)\x1b[0m",
                     i + 1,
                     total,
                     cmd,
-                    e
+                    error_msg,
+                    cmd_duration.as_secs_f64()
                 );
-                return Ok(HookResult::failure(i + 1, cmd.clone(), 1));
+                details.push(HookExecutionDetail::failure_with_error(
+                    cmd.clone(),
+                    cmd_duration,
+                    error_msg,
+                ));
+                return Ok(HookResult::failure(
+                    i + 1,
+                    cmd.clone(),
+                    1,
+                    total_start.elapsed(),
+                    details,
+                ));
             }
         }
     }
 
+    let total_duration = total_start.elapsed();
     println!(
-        "\x1b[32m✓ post_create hooks completed ({}/{})\x1b[0m",
-        total, total
+        "\x1b[32m✓ post_create hooks completed ({}/{}, {:.1}s)\x1b[0m",
+        total,
+        total,
+        total_duration.as_secs_f64()
     );
-    Ok(HookResult::success(total))
+    Ok(HookResult::success(total, total_duration, details))
 }
 
 #[cfg(test)]

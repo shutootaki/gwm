@@ -27,6 +27,7 @@ fn show_welcome() {
     println!("  sync          Update the main branch worktrees");
     println!("  remove (rm)   Remove one or more worktrees");
     println!("  clean         Clean up safe-to-delete worktrees");
+    println!("  completion    Generate shell completion scripts");
     println!("  help          Show help for gwm or a specific command");
     println!();
     println!("Use \"gwm help <command>\" for more information about a specific command.");
@@ -45,6 +46,9 @@ async fn main() {
         Some(Commands::Clean(args)) => handle_error(gwm::ui::views::run_clean(args)),
         Some(Commands::Sync) => handle_error(gwm::ui::views::run_pull_main()),
         Some(Commands::Help(args)) => handle_error(gwm::ui::views::run_help(args)),
+        Some(Commands::Completion(args)) => {
+            handle_error(gwm::shell::run_completion(args.shell, args.with_dynamic))
+        }
         None => show_welcome(),
     }
 }

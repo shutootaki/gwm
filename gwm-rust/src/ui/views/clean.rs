@@ -6,7 +6,7 @@
 //! - 安全なworktree削除
 
 use std::io::stdout;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -20,7 +20,9 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_cleanable_worktrees, remove_worktree, CleanableWorktree,
 };
+use crate::ui::colors::{DIM, GREEN, RED, RESET, YELLOW};
 use crate::ui::event::{is_cancel_key, poll_event};
+use crate::ui::summary::print_clean_summary;
 
 /// ターミナル復元を保証するガード構造体
 struct TerminalGuard;
@@ -28,7 +30,7 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         if let Err(e) = disable_raw_mode() {
-            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+            eprintln!("{YELLOW} Warning: Failed to restore terminal: {e}{RESET}");
         }
     }
 }
@@ -41,7 +43,7 @@ pub fn run_clean(args: CleanArgs) -> Result<()> {
     let cleanable = get_cleanable_worktrees(&config);
 
     if cleanable.is_empty() {
-        println!("\x1b[32m✓ No worktrees to clean.\x1b[0m");
+        println!("{GREEN}✓ No worktrees to clean.{RESET}");
         println!("  All worktrees are either:");
         println!("  - Main/active worktrees");
         println!("  - Have unmerged changes");
@@ -56,14 +58,14 @@ pub fn run_clean(args: CleanArgs) -> Result<()> {
             let branch = cw.worktree.display_branch();
             let reason = cw.reason_text();
             println!(
-                "  {} \x1b[33m{}\x1b[0m ({})",
+                "  {} {YELLOW}{}{RESET} ({})",
                 cw.reason.ansi_color(),
                 branch,
                 reason
             );
             println!("    Path: {}", cw.worktree.path.display());
         }
-        println!("\n\x1b[90mRun without --dry-run to actually clean.\x1b[0m");
+        println!("\n{DIM}Run without --dry-run to actually clean.{RESET}");
         return Ok(());
     }
 
@@ -179,6 +181,7 @@ fn render_clean_confirm_ui(
 
 /// 選択されたworktreeを削除
 fn execute_clean(targets: &[CleanableWorktree]) -> Result<()> {
+    let start = Instant::now();
     println!("\nCleaning {} worktree(s)...\n", targets.len());
 
     let mut success_count = 0;
@@ -192,38 +195,24 @@ fn execute_clean(targets: &[CleanableWorktree]) -> Result<()> {
 
         match remove_worktree(path, false) {
             Ok(()) => {
-                println!(" \x1b[32m✓\x1b[0m");
+                println!(" {GREEN}✓{RESET}");
                 success_count += 1;
 
                 // ローカルブランチも削除
                 if let Err(e) = delete_local_branch(branch, false) {
-                    println!("    \x1b[33m⚠ Branch not deleted: {}\x1b[0m", e);
+                    println!("    {YELLOW}⚠ Branch not deleted: {e}{RESET}");
                 } else {
-                    println!("    \x1b[90mDeleted branch: {}\x1b[0m", branch);
+                    println!("    {DIM}Deleted branch: {branch}{RESET}");
                 }
             }
             Err(e) => {
-                println!(" \x1b[31m✗\x1b[0m");
-                println!("    \x1b[31mError: {}\x1b[0m", e);
+                println!(" {RED}✗{RESET}");
+                println!("    {RED}Error: {e}{RESET}");
                 fail_count += 1;
             }
         }
     }
 
-    println!();
-    if fail_count == 0 {
-        println!(
-            "\x1b[32m✓ Cleaned {} worktree(s) successfully.\x1b[0m",
-            success_count
-        );
-    } else {
-        println!(
-            "\x1b[33m⚠ Cleaned {}/{} worktree(s). {} failed.\x1b[0m",
-            success_count,
-            targets.len(),
-            fail_count
-        );
-    }
-
+    print_clean_summary(success_count, fail_count, start.elapsed());
     Ok(())
 }

@@ -3,6 +3,7 @@
 //! TUIアプリケーションの状態をElmアーキテクチャライクに管理します。
 
 use crate::config::Config;
+use crate::git::types::{ChangeStatus, SyncStatus};
 use crate::ui::widgets::SelectState;
 use crate::utils::generate_worktree_preview;
 
@@ -150,6 +151,10 @@ pub struct SelectItemMetadata {
     pub last_committer_name: String,
     /// 最後のコミットメッセージ
     pub last_commit_message: String,
+    /// リモートとの同期状態
+    pub sync_status: Option<SyncStatus>,
+    /// ワーキングディレクトリの変更状態
+    pub change_status: Option<ChangeStatus>,
 }
 
 /// テキスト入力の状態

@@ -26,7 +26,7 @@ use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
 use crate::ui::{SelectItem, TextInputState};
-use crate::utils::{open_in_editor, EditorType};
+use crate::utils::open_in_editor;
 
 /// TUI用インライン viewport の高さ
 const TUI_GO_INLINE_HEIGHT: u16 = 15;
@@ -102,21 +102,13 @@ pub fn run_go(args: GoArgs) -> Result<()> {
 fn handle_selection(item: &SelectItem, args: &GoArgs) -> Result<()> {
     let path = std::path::Path::new(&item.value);
 
-    let editor = if args.open_code {
-        Some(EditorType::VsCode)
-    } else if args.open_cursor {
-        Some(EditorType::Cursor)
-    } else {
-        None
-    };
-
-    if let Some(editor_type) = editor {
-        open_in_editor(editor_type, path)?;
-        let editor_name = match editor_type {
-            EditorType::VsCode => "Editor",
-            EditorType::Cursor => "Cursor",
-        };
-        println!("\x1b[32m✓\x1b[0m Opened {} in {}", item.label, editor_name);
+    if let Some(editor) = args.editor() {
+        open_in_editor(editor, path)?;
+        println!(
+            "\x1b[32m✓\x1b[0m Opened {} in {}",
+            item.label,
+            editor.display_name()
+        );
         std::thread::sleep(std::time::Duration::from_millis(500));
     } else {
         // パスを標準出力（シェル統合用）

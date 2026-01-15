@@ -23,6 +23,7 @@ COMMANDS:
     init            Shell integration script
     clean           Clean up merged/deleted worktrees
     sync            Sync main branch worktrees
+    completion      Generate shell completion scripts
     help            Show this help message
 
 EXAMPLES:
@@ -172,7 +173,7 @@ EXAMPLES:
 "#;
 
     pub const INIT: &str = r#"
-gwm init - Shell integration
+gwm init - Print shell integration script
 
 USAGE:
     gwm init <SHELL>
@@ -181,20 +182,30 @@ ARGUMENTS:
     <SHELL>    Shell type (bash, zsh, fish)
 
 DESCRIPTION:
-    Output a shell function that wraps the gwm binary to enable directory
-    navigation for 'gwm add' and 'gwm go'. The wrapper uses a temporary file
-    (GWM_CWD_FILE) to receive the target directory and cd into it without
-    breaking interactive TUI commands.
+    Output a shell script that:
+    1. Defines a `gwm` wrapper function for `cd` integration
+    2. Sets up shell completion with dynamic worktree name completion
+
+    Add the output to your shell configuration file.
 
 INSTALLATION:
-    Bash:
+    Bash (~/.bashrc):
         eval "$(gwm init bash)"
 
-    Zsh:
+    Zsh (~/.zshrc):
         eval "$(gwm init zsh)"
 
-    Fish:
+    Fish (~/.config/fish/config.fish):
         gwm init fish | source
+
+NOTE:
+    The `gwm completion` command is still available if you need:
+    - Static completion only (without dynamic worktree names)
+    - Completion script saved to a file instead of eval
+
+EXAMPLES:
+    eval "$(gwm init zsh)"    Full setup (recommended)
+    gwm init fish | source    Fish shell setup
 "#;
 
     pub const CLEAN: &str = r#"
@@ -261,6 +272,45 @@ EXAMPLES:
     gwm help add     Show help for 'add' command
     gwm help remove  Show help for 'remove' command
 "#;
+
+    pub const COMPLETION: &str = r#"
+gwm completion - Generate shell completion scripts
+
+USAGE:
+    gwm completion <SHELL> [OPTIONS]
+
+ARGUMENTS:
+    <SHELL>    Shell type (bash, zsh, fish)
+
+OPTIONS:
+    --with-dynamic    Enable dynamic completion for worktree names
+
+DESCRIPTION:
+    Generate shell completion scripts for command and option completion.
+    With --with-dynamic, the script will also provide real-time completion
+    for worktree names when using commands like 'go' and 'remove'.
+
+INSTALLATION:
+
+    Bash:
+        gwm completion bash --with-dynamic > ~/.local/share/bash-completion/completions/gwm
+        # or add to ~/.bashrc:
+        eval "$(gwm completion bash --with-dynamic)"
+
+    Zsh:
+        gwm completion zsh --with-dynamic > ~/.zfunc/_gwm
+        # Add to ~/.zshrc:
+        fpath=(~/.zfunc $fpath)
+        autoload -Uz compinit && compinit
+
+    Fish:
+        gwm completion fish --with-dynamic > ~/.config/fish/completions/gwm.fish
+
+EXAMPLES:
+    gwm completion bash              Generate basic Bash completion
+    gwm completion zsh --with-dynamic  Generate Zsh completion with worktree names
+    gwm completion fish --with-dynamic Generate Fish completion with worktree names
+"#;
 }
 
 /// helpコマンドを実行
@@ -274,6 +324,7 @@ pub fn run_help(args: HelpArgs) -> Result<()> {
         Some("init") => help_text::INIT,
         Some("clean") => help_text::CLEAN,
         Some("sync") | Some("pull-main") => help_text::SYNC,
+        Some("completion") => help_text::COMPLETION,
         Some("help") => help_text::HELP,
         Some(cmd) => {
             eprintln!("Unknown command: {}", cmd);
@@ -306,6 +357,7 @@ mod tests {
             ("clean", Some("clean")),
             ("sync", Some("sync")),
             ("sync_alias_pull_main", Some("pull-main")),
+            ("completion", Some("completion")),
             ("help", Some("help")),
             ("unknown", Some("unknown")),
         ];
@@ -336,6 +388,7 @@ mod tests {
             ("INIT", help_text::INIT),
             ("CLEAN", help_text::CLEAN),
             ("SYNC", help_text::SYNC),
+            ("COMPLETION", help_text::COMPLETION),
             ("HELP", help_text::HELP),
         ];
 

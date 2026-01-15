@@ -65,13 +65,18 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> std::io::Result<u64> {
         let entry = entry?;
         let source_path = entry.path();
         let target_path = target.join(entry.file_name());
+
+        // シンボリックリンクは明示的にスキップ（循環参照防止）
+        if source_path.is_symlink() {
+            continue;
+        }
+
         if source_path.is_dir() {
             count += copy_dir_recursive(&source_path, &target_path)?;
         } else if source_path.is_file() {
             fs::copy(&source_path, &target_path)?;
             count += 1;
         }
-        // シンボリックリンク等はスキップ
     }
     Ok(count)
 }
