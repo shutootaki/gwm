@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use super::core::is_git_repository;
-use super::types::{ChangeStatus, SyncStatus, Worktree, WorktreeStatus};
+use super::types::{ChangeStatus, ChangedFile, SyncStatus, Worktree, WorktreeStatus};
 use crate::error::{GwmError, Result};
 use crate::shell::exec;
 
@@ -269,17 +269,12 @@ fn get_sync_status(path: &Path, branch: &str) -> Option<SyncStatus> {
 /// ワーキングディレクトリの変更状態を取得
 ///
 /// 変更状態（staged/unstaged/untracked）を集計して返す。
+/// 変更ファイルリストは最大5件まで収集する。
 /// gitコマンドが失敗した場合は `None` を返す。
 fn get_change_status(path: &Path) -> Option<ChangeStatus> {
     let output = match exec(
         "git",
-        &[
-            "-C",
-            &path.display().to_string(),
-            "status",
-            "--porcelain",
-            "-uno", // untrackedは別途カウント
-        ],
+        &["-C", &path.display().to_string(), "status", "--porcelain"],
         None,
     ) {
         Ok(out) => out,
@@ -291,54 +286,48 @@ fn get_change_status(path: &Path) -> Option<ChangeStatus> {
     };
 
     let mut status = ChangeStatus::default();
+    let mut files: Vec<ChangedFile> = Vec::new();
 
     for line in output.lines() {
-        if line.len() < 2 {
+        if line.len() < 3 {
             continue;
         }
 
         let index_status = line.chars().next().unwrap_or(' ');
         let worktree_status = line.chars().nth(1).unwrap_or(' ');
+        let file_path = line[3..].to_string();
 
-        // ステージされていない変更をカウント
-        match worktree_status {
-            'M' => status.modified += 1,
-            'D' => status.deleted += 1,
-            'A' => status.added += 1,
-            _ => {}
-        }
+        // ステータスに基づいてカウントと表示用ステータスを決定
+        let display_status = match (index_status, worktree_status) {
+            ('?', '?') => {
+                status.untracked += 1;
+                '?'
+            }
+            ('M', _) | (_, 'M') => {
+                status.modified += 1;
+                'M'
+            }
+            ('A', _) => {
+                status.added += 1;
+                'A'
+            }
+            ('D', _) | (_, 'D') => {
+                status.deleted += 1;
+                'D'
+            }
+            _ => continue,
+        };
 
-        // ステージされた変更も含める（インデックスステータス）
-        match index_status {
-            'M' if worktree_status == ' ' => status.modified += 1,
-            'D' if worktree_status == ' ' => status.deleted += 1,
-            'A' if worktree_status == ' ' => status.added += 1,
-            _ => {}
-        }
-    }
-
-    // untracked ファイルを別途取得
-    match exec(
-        "git",
-        &[
-            "-C",
-            &path.display().to_string(),
-            "ls-files",
-            "--others",
-            "--exclude-standard",
-        ],
-        None,
-    ) {
-        Ok(untracked_output) => {
-            status.untracked = untracked_output.lines().count();
-        }
-        Err(e) => {
-            #[cfg(debug_assertions)]
-            eprintln!("Debug: Failed to get untracked files at {:?}: {}", path, e);
-            // untrackedは0のまま（デフォルト）
+        // 最大5件までファイルを収集
+        if files.len() < 5 {
+            files.push(ChangedFile {
+                status: display_status,
+                path: file_path,
+            });
         }
     }
 
+    status.changed_files = files;
     Some(status)
 }
 

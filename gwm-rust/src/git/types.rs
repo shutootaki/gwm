@@ -230,6 +230,28 @@ impl SyncStatus {
     }
 }
 
+/// 変更されたファイル情報
+#[derive(Debug, Clone)]
+pub struct ChangedFile {
+    /// ステータス文字 (M, A, D, ?)
+    pub status: char,
+    /// ファイルパス
+    pub path: String,
+}
+
+impl ChangedFile {
+    /// ステータスに応じた表示色を取得
+    pub fn status_color(&self) -> Color {
+        match self.status {
+            'M' => Color::Yellow,
+            'A' => Color::Green,
+            'D' => Color::Red,
+            '?' => Color::Magenta,
+            _ => Color::White,
+        }
+    }
+}
+
 /// ワーキングディレクトリの変更状態
 #[derive(Debug, Clone, Default)]
 pub struct ChangeStatus {
@@ -241,6 +263,8 @@ pub struct ChangeStatus {
     pub deleted: usize,
     /// 追跡されていないファイル数
     pub untracked: usize,
+    /// 変更ファイル一覧（最大5件）
+    pub changed_files: Vec<ChangedFile>,
 }
 
 impl ChangeStatus {
@@ -268,6 +292,36 @@ impl ChangeStatus {
                 parts.push(format!("{}U", self.untracked));
             }
             parts.join(" ")
+        }
+    }
+
+    /// ステータスラベルを取得（Clean/Modified/Untracked）
+    pub fn status_label(&self) -> &'static str {
+        if self.is_clean() {
+            "Clean"
+        } else if self.untracked > 0
+            && self.modified == 0
+            && self.added == 0
+            && self.deleted == 0
+        {
+            "Untracked"
+        } else {
+            "Modified"
+        }
+    }
+
+    /// ステータスに応じた表示色を取得
+    pub fn status_color(&self) -> Color {
+        if self.is_clean() {
+            Color::Green
+        } else if self.untracked > 0
+            && self.modified == 0
+            && self.added == 0
+            && self.deleted == 0
+        {
+            Color::Red
+        } else {
+            Color::Yellow
         }
     }
 }
@@ -455,8 +509,86 @@ mod tests {
             added: 1,
             deleted: 2,
             untracked: 0,
+            changed_files: vec![],
         };
         assert!(!with_changes.is_clean());
         assert_eq!(with_changes.display(), "3M 1A 2D");
+    }
+
+    #[test]
+    fn test_change_status_label_and_color() {
+        // Clean状態
+        let clean = ChangeStatus::default();
+        assert_eq!(clean.status_label(), "Clean");
+        assert_eq!(clean.status_color(), Color::Green);
+
+        // Modified状態（変更あり）
+        let modified = ChangeStatus {
+            modified: 1,
+            added: 0,
+            deleted: 0,
+            untracked: 0,
+            changed_files: vec![],
+        };
+        assert_eq!(modified.status_label(), "Modified");
+        assert_eq!(modified.status_color(), Color::Yellow);
+
+        // Untracked状態（untrackedのみ）
+        let untracked = ChangeStatus {
+            modified: 0,
+            added: 0,
+            deleted: 0,
+            untracked: 2,
+            changed_files: vec![],
+        };
+        assert_eq!(untracked.status_label(), "Untracked");
+        assert_eq!(untracked.status_color(), Color::Red);
+
+        // 混合状態（Modified優先）
+        let mixed = ChangeStatus {
+            modified: 1,
+            added: 0,
+            deleted: 0,
+            untracked: 1,
+            changed_files: vec![],
+        };
+        assert_eq!(mixed.status_label(), "Modified");
+        assert_eq!(mixed.status_color(), Color::Yellow);
+    }
+
+    #[test]
+    fn test_changed_file_status_color() {
+        assert_eq!(
+            ChangedFile {
+                status: 'M',
+                path: "test.rs".to_string()
+            }
+            .status_color(),
+            Color::Yellow
+        );
+        assert_eq!(
+            ChangedFile {
+                status: 'A',
+                path: "new.rs".to_string()
+            }
+            .status_color(),
+            Color::Green
+        );
+        assert_eq!(
+            ChangedFile {
+                status: 'D',
+                path: "deleted.rs".to_string()
+            }
+            .status_color(),
+            Color::Red
+        );
+        assert_eq!(
+            ChangedFile {
+                status: '?',
+                path: "untracked.rs".to_string()
+            }
+            .status_color(),
+            Color::Magenta
+        );
     }
 }
