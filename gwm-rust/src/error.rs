@@ -117,6 +117,13 @@ pub enum GwmError {
 /// Type alias for Results using GwmError
 pub type Result<T> = std::result::Result<T, GwmError>;
 
+/// パスからworktree名を抽出（ファイル名またはフルパス）
+fn extract_worktree_name(path: &std::path::Path) -> String {
+    path.file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.display().to_string())
+}
+
 impl GwmError {
     /// Create a GitCommand error from a command output
     pub fn git_command(message: impl Into<String>) -> Self {
@@ -178,32 +185,24 @@ impl GwmError {
             ],
 
             GwmError::UncommittedChanges { path } => {
-                let name = path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
+                let name = extract_worktree_name(path);
                 vec![
                     Suggestion::with_command("Commit your changes", "git commit -am \"WIP\""),
                     Suggestion::with_command("Stash your changes", "git stash"),
                     Suggestion::with_command(
                         "Force delete (will lose changes)",
-                        format!("gwm rm {} --force", name),
+                        format!("gwm rm \"{}\" --force", name),
                     ),
                 ]
             }
 
             GwmError::UnpushedCommits { path } => {
-                let name = path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
+                let name = extract_worktree_name(path);
                 vec![
                     Suggestion::with_command("Push your commits", "git push"),
                     Suggestion::with_command(
                         "Force delete (commits will remain in reflog)",
-                        format!("gwm rm {} --force", name),
+                        format!("gwm rm \"{}\" --force", name),
                     ),
                 ]
             }
