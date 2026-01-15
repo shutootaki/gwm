@@ -278,4 +278,62 @@ mod tests {
             "trust_verified: false must be preserved after serialization"
         );
     }
+
+    #[test]
+    fn test_delete_file_not_exist() {
+        // 存在しないファイルの削除は成功する
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("nonexistent.json");
+
+        let result = DeferredHooks::delete_file(&file_path);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_delete_file_exists() {
+        // 存在するファイルの削除
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("hooks.json");
+
+        // ファイルを作成
+        std::fs::write(&file_path, "{}").unwrap();
+        assert!(file_path.exists());
+
+        // 削除
+        let result = DeferredHooks::delete_file(&file_path);
+        assert!(result.is_ok());
+        assert!(!file_path.exists());
+    }
+
+    #[test]
+    fn test_deferred_hooks_empty_commands() {
+        // 空コマンドのシリアライズ
+        let context = HookContext {
+            worktree_path: PathBuf::from("/path/to/worktree"),
+            branch_name: "feature/test".to_string(),
+            repo_root: PathBuf::from("/path/to/repo"),
+            repo_name: "test-repo".to_string(),
+        };
+
+        let hooks = DeferredHooks::new(&context, vec![], true);
+        assert!(hooks.commands.is_empty());
+        assert!(hooks.trust_verified);
+
+        let json = serde_json::to_string(&hooks).unwrap();
+        let parsed: DeferredHooks = serde_json::from_str(&json).unwrap();
+        assert!(parsed.commands.is_empty());
+    }
+
+    #[test]
+    fn test_deferred_hooks_version_constant() {
+        // バージョン定数の確認
+        assert_eq!(DEFERRED_HOOKS_VERSION, 1);
+    }
+
+    #[test]
+    fn test_read_from_file_not_exist() {
+        // 存在しないファイルの読み込みはエラー
+        let result = DeferredHooks::read_from_file(Path::new("/nonexistent/hooks.json"));
+        assert!(result.is_err());
+    }
 }

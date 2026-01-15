@@ -226,4 +226,63 @@ mod tests {
         assert_eq!(widget.preview, Some("/path/to/preview"));
         assert!(widget.show_mode_switch);
     }
+
+    #[test]
+    fn test_text_input_widget_without_options() {
+        // オプションなしの場合
+        let state = TextInputState::new();
+        let widget = TextInputWidget::new("Branch Name", "Enter branch name:", &state);
+
+        assert!(widget.validation_error.is_none());
+        assert!(widget.preview.is_none());
+        assert!(!widget.show_mode_switch);
+    }
+
+    #[test]
+    fn test_text_input_widget_empty_state() {
+        // 空の入力状態
+        let state = TextInputState::new();
+        let widget = TextInputWidget::new("Title", "Placeholder", &state);
+
+        assert_eq!(widget.state.value, "");
+        assert_eq!(widget.state.cursor, 0);
+    }
+
+    #[test]
+    fn test_text_input_widget_with_value() {
+        // 値がある入力状態
+        let mut state = TextInputState::new();
+        state.value = "feature/test".to_string();
+        state.cursor = 12;
+
+        let widget = TextInputWidget::new("Title", "Placeholder", &state);
+
+        assert_eq!(widget.state.value, "feature/test");
+        assert_eq!(widget.state.cursor, 12);
+    }
+
+    #[test]
+    fn test_text_input_widget_validation_error_only() {
+        // バリデーションエラーのみ設定
+        let state = TextInputState::new();
+        let widget = TextInputWidget::new("Title", "Placeholder", &state)
+            .validation_error(Some("Branch name contains invalid characters"));
+
+        assert_eq!(
+            widget.validation_error,
+            Some("Branch name contains invalid characters")
+        );
+        assert!(widget.preview.is_none());
+    }
+
+    #[test]
+    fn test_text_input_widget_preview_only() {
+        // プレビューのみ設定
+        let state = TextInputState::new();
+        let widget = TextInputWidget::new("Title", "Placeholder", &state)
+            .preview(Some("~/worktrees/feature-test"));
+
+        assert!(widget.validation_error.is_none());
+        assert_eq!(widget.preview, Some("~/worktrees/feature-test"));
+    }
 }

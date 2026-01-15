@@ -1208,3 +1208,88 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_confirm_viewport_height_zero_commands() {
+        // コマンド0個 → 最小高さ (MIN_CMD_HEIGHT=4 + 12 = 16)
+        let height = calc_confirm_viewport_height(0);
+        assert_eq!(height, 16);
+    }
+
+    #[test]
+    fn test_calc_confirm_viewport_height_one_command() {
+        // コマンド1個 → raw_height=3, MIN_CMD_HEIGHT=4 適用 → 16
+        let height = calc_confirm_viewport_height(1);
+        assert_eq!(height, 16);
+    }
+
+    #[test]
+    fn test_calc_confirm_viewport_height_two_commands() {
+        // コマンド2個 → raw_height=4 = MIN_CMD_HEIGHT → 16
+        let height = calc_confirm_viewport_height(2);
+        assert_eq!(height, 16);
+    }
+
+    #[test]
+    fn test_calc_confirm_viewport_height_mid_range() {
+        // コマンド3個 → raw_height=5, 5+12=17
+        assert_eq!(calc_confirm_viewport_height(3), 17);
+
+        // コマンド4個 → raw_height=6, 6+12=18
+        assert_eq!(calc_confirm_viewport_height(4), 18);
+
+        // コマンド5個 → raw_height=7, 7+12=19
+        assert_eq!(calc_confirm_viewport_height(5), 19);
+    }
+
+    #[test]
+    fn test_calc_confirm_viewport_height_at_max_boundary() {
+        // コマンド6個 → raw_height=8 = MAX_CMD_HEIGHT → 20
+        let height = calc_confirm_viewport_height(6);
+        assert_eq!(height, 20);
+    }
+
+    #[test]
+    fn test_calc_confirm_viewport_height_exceeds_max() {
+        // コマンド7個以上 → MAX_CMD_HEIGHT=8 適用 → 20
+        assert_eq!(calc_confirm_viewport_height(7), 20);
+        assert_eq!(calc_confirm_viewport_height(10), 20);
+        assert_eq!(calc_confirm_viewport_height(100), 20);
+    }
+
+    #[test]
+    fn test_tui_inline_height_constant() {
+        // TUI_INLINE_HEIGHT定数の値確認
+        assert_eq!(TUI_INLINE_HEIGHT, 23);
+    }
+
+    #[test]
+    fn test_main_loop_result_construction() {
+        // MainLoopResultの構造確認
+        let result = MainLoopResult {
+            path: "/path/to/worktree".to_string(),
+            branch_name: "feature/test".to_string(),
+            hooks_written: true,
+        };
+
+        assert_eq!(result.path, "/path/to/worktree");
+        assert_eq!(result.branch_name, "feature/test");
+        assert!(result.hooks_written);
+    }
+
+    #[test]
+    fn test_main_loop_result_hooks_not_written() {
+        // hooks_written=false の場合
+        let result = MainLoopResult {
+            path: "/path/to/worktree".to_string(),
+            branch_name: "feature/cancel".to_string(),
+            hooks_written: false,
+        };
+
+        assert!(!result.hooks_written);
+    }
+}

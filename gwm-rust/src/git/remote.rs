@@ -164,4 +164,76 @@ mod tests {
         assert_eq!(info.name, "feature/test");
         assert_eq!(info.full_name, "origin/feature/test");
     }
+
+    #[test]
+    fn test_remote_branch_status_deleted() {
+        // is_deleted=true の状態確認
+        let status = RemoteBranchStatus {
+            is_deleted: true,
+            is_merged: false,
+            merged_into_branch: None,
+        };
+        assert!(status.is_deleted);
+        assert!(!status.is_merged);
+        assert!(status.merged_into_branch.is_none());
+    }
+
+    #[test]
+    fn test_remote_branch_status_merged() {
+        // is_merged=true, merged_into_branch の確認
+        let status = RemoteBranchStatus {
+            is_deleted: false,
+            is_merged: true,
+            merged_into_branch: Some("main".to_string()),
+        };
+        assert!(!status.is_deleted);
+        assert!(status.is_merged);
+        assert_eq!(status.merged_into_branch, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_remote_branch_status_deleted_and_merged() {
+        // 削除済みかつマージ済みの状態（通常はis_deleted=trueの場合is_merged=falseになるが、構造体としては設定可能）
+        let status = RemoteBranchStatus {
+            is_deleted: true,
+            is_merged: true,
+            merged_into_branch: Some("develop".to_string()),
+        };
+        assert!(status.is_deleted);
+        assert!(status.is_merged);
+        assert_eq!(status.merged_into_branch, Some("develop".to_string()));
+    }
+
+    #[test]
+    fn test_remote_branch_info_all_fields() {
+        // 全フィールドの設定確認
+        let info = RemoteBranchInfo {
+            name: "feature/auth-system".to_string(),
+            full_name: "origin/feature/auth-system".to_string(),
+            last_commit_date: "2025-01-15T14:30:00+09:00".to_string(),
+            last_committer_name: "Alice Developer".to_string(),
+            last_commit_message: "Add authentication middleware".to_string(),
+        };
+
+        assert_eq!(info.name, "feature/auth-system");
+        assert_eq!(info.full_name, "origin/feature/auth-system");
+        assert_eq!(info.last_commit_date, "2025-01-15T14:30:00+09:00");
+        assert_eq!(info.last_committer_name, "Alice Developer");
+        assert_eq!(info.last_commit_message, "Add authentication middleware");
+    }
+
+    #[test]
+    fn test_remote_branch_info_name_without_origin_prefix() {
+        // origin/ プレフィックスがない場合の動作確認
+        let info = RemoteBranchInfo {
+            name: "main".to_string(),
+            full_name: "main".to_string(), // origin/ なし
+            last_commit_date: "2025-01-01T00:00:00Z".to_string(),
+            last_committer_name: "Bot".to_string(),
+            last_commit_message: "Initial commit".to_string(),
+        };
+
+        assert_eq!(info.name, "main");
+        assert_eq!(info.full_name, "main");
+    }
 }
