@@ -14,7 +14,7 @@ pub mod validation;
 pub mod virtualenv;
 
 pub use copy::{copy_ignored_files, CopyResult};
-pub use editor::{open_in_cursor, open_in_editor, open_in_vscode, EditorType};
+pub use editor::{open_in_cursor, open_in_editor, open_in_vscode, open_in_zed, EditorType};
 pub use formatting::format_relative_time;
 pub use validation::{generate_worktree_preview, sanitize_branch_name, validate_branch_name};
 pub use virtualenv::{
