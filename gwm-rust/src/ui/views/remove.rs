@@ -3,7 +3,7 @@
 //! 複数のworktreeを選択して削除する機能を提供します。
 
 use std::io::stdout;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::{
     event::{Event, KeyCode, KeyModifiers},
@@ -17,7 +17,9 @@ use crate::error::Result;
 use crate::git::{
     delete_local_branch, get_worktrees, is_branch_merged, remove_worktree, WorktreeStatus,
 };
+use crate::ui::colors::{GREEN, RED, RESET, YELLOW};
 use crate::ui::event::{is_cancel_key, poll_event};
+use crate::ui::summary::print_remove_summary;
 use crate::ui::widgets::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 use crate::ui::TextInputState;
 
@@ -30,16 +32,10 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         if let Err(e) = disable_raw_mode() {
-            eprintln!("\x1b[33m Warning: Failed to restore terminal: {}\x1b[0m", e);
+            eprintln!("{YELLOW} Warning: Failed to restore terminal: {e}{RESET}");
         }
     }
 }
-
-// ANSI color codes
-const GREEN: &str = "\x1b[32m";
-const RED: &str = "\x1b[31m";
-const YELLOW: &str = "\x1b[33m";
-const RESET: &str = "\x1b[0m";
 
 /// removeコマンドを実行
 ///
@@ -210,6 +206,10 @@ fn execute_remove(
     main_branches: &[String],
     clean_branch_mode: CleanBranchMode,
 ) -> Result<()> {
+    let start = Instant::now();
+    let mut removed = 0;
+    let mut failed = 0;
+
     println!("Removing {} worktree(s)...\n", items.len());
 
     for item in items {
@@ -220,13 +220,16 @@ fn execute_remove(
             Ok(()) => {
                 println!("{GREEN}✓ Removed worktree: {branch}{RESET}");
                 handle_branch_cleanup(branch, main_branches, clean_branch_mode);
+                removed += 1;
             }
             Err(e) => {
                 println!("{RED}✗ Failed to remove {branch}: {e}{RESET}");
+                failed += 1;
             }
         }
     }
 
+    print_remove_summary(removed, failed, start.elapsed());
     Ok(())
 }
 
@@ -237,6 +240,10 @@ fn execute_remove_force(
     main_branches: &[String],
     clean_branch_mode: Option<CleanBranchMode>,
 ) -> Result<()> {
+    let start = Instant::now();
+    let mut removed = 0;
+    let mut failed = 0;
+
     // クエリでフィルタリング
     let targets: Vec<_> = if let Some(ref query) = args.query {
         let query_lower = query.to_lowercase();
@@ -268,13 +275,16 @@ fn execute_remove_force(
                 if mode == CleanBranchMode::Auto {
                     handle_branch_cleanup(branch, main_branches, mode);
                 }
+                removed += 1;
             }
             Err(e) => {
                 println!("{RED}✗ Failed: {branch} - {e}{RESET}");
+                failed += 1;
             }
         }
     }
 
+    print_remove_summary(removed, failed, start.elapsed());
     Ok(())
 }
 

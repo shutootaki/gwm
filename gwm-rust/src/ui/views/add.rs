@@ -1,7 +1,7 @@
 //! `gwm add` コマンドのエントリーポイント
 
 use std::io::{self, stderr};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -28,10 +28,13 @@ use crate::ui::event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
     is_cancel_key, poll_event,
 };
+use crate::ui::summary::{
+    print_add_error_summary, print_add_success_summary, AddOperationSummary, PartialState,
+};
 use crate::ui::widgets::{
     ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, TextInputWidget,
 };
-use crate::utils::editor::{open_in_editor, EditorType};
+use crate::utils::editor::open_in_editor;
 use crate::utils::{copy_ignored_files, validate_branch_name};
 
 /// TUI用インライン viewport の高さ
@@ -166,28 +169,14 @@ fn run_confirm_loop<W: io::Write>(
 
 /// エディタ起動ヘルパー（エラーをユーザーに通知）
 fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
-    let editor_type = if args.open_code {
-        Some(EditorType::VsCode)
-    } else if args.open_cursor {
-        Some(EditorType::Cursor)
-    } else {
-        None
-    };
-
-    if let Some(editor) = editor_type {
-        let editor_name = match editor {
-            EditorType::VsCode => "VS Code",
-            EditorType::Cursor => "Cursor",
-        };
+    if let Some(editor) = args.editor() {
         if let Err(e) = open_in_editor(editor, path) {
             eprintln!(
                 "\x1b[33m Warning: Could not open {}: {}\x1b[0m",
-                editor_name, e
+                editor.display_name(),
+                e
             );
-            eprintln!(
-                "  Make sure '{}' command is in your PATH.",
-                editor_name.to_lowercase().replace(' ', "")
-            );
+            eprintln!("  Make sure '{}' command is in your PATH.", editor.command());
         }
     }
 }
@@ -348,10 +337,8 @@ async fn execute_add_direct(
     }
 
     // エディタを先に起動してからhooksを実行
-    if args.open_code {
-        open_in_editor(EditorType::VsCode, &result.path)?;
-    } else if args.open_cursor {
-        open_in_editor(EditorType::Cursor, &result.path)?;
+    if let Some(editor) = args.editor() {
+        open_in_editor(editor, &result.path)?;
     }
 
     if !args.skip_hooks {
@@ -640,6 +627,8 @@ async fn fetch_remote_branches_as_items() -> Result<Vec<SelectItem>> {
                 last_commit_date: b.last_commit_date,
                 last_committer_name: b.last_committer_name,
                 last_commit_message: b.last_commit_message,
+                sync_status: None,
+                change_status: None,
             }),
         })
         .collect())
@@ -1000,30 +989,51 @@ fn execute_hooks_and_finish(
         // 改行を出力してTUI描画領域から抜ける
         println!();
 
+        let operation_start = Instant::now();
         let worktree_path = std::path::Path::new(path);
         let context = config_source.build_hook_context(worktree_path, branch_name);
 
         // エディタを先に起動してからhooksを実行
         maybe_open_editor(args, &context.worktree_path);
 
+        // コピーされたファイルを収集
+        let copied_files = collect_copied_files(config_source, worktree_path);
+
         match run_post_create_hooks(&config_source.config, &context) {
             Ok(result) if result.success => {
-                println!("\n\x1b[32m✓ Worktree created!\x1b[0m");
-                println!("  Path: {}", path);
-                println!("  Hooks completed ({} commands)", result.executed_count);
+                let summary = AddOperationSummary {
+                    branch: branch_name.clone(),
+                    path: path.clone(),
+                    base_branch: args.from_branch.clone(),
+                    base_commit: None,
+                    duration: operation_start.elapsed(),
+                    hooks: Some(result),
+                    copied_files,
+                };
+                print_add_success_summary(&summary);
             }
             Ok(result) => {
-                let failed_msg = result
+                let error_msg = result
                     .failed_command
-                    .map(|c| format!("Failed: {}", c))
-                    .unwrap_or_else(|| "Unknown error".to_string());
-                println!("\n\x1b[31m✗ Hook execution failed\x1b[0m");
-                println!("  Path: {}", path);
-                println!("  {}", failed_msg);
+                    .as_ref()
+                    .map(|c| format!("Hook failed: {}", c))
+                    .unwrap_or_else(|| "Unknown hook error".to_string());
+                let partial_state = PartialState::hook_failed(!copied_files.is_empty());
+                print_add_error_summary(
+                    branch_name,
+                    operation_start.elapsed(),
+                    &error_msg,
+                    &partial_state,
+                );
             }
             Err(e) => {
-                println!("\n\x1b[31m✗ Hook execution error\x1b[0m");
-                println!("  {}", e);
+                let partial_state = PartialState::hook_failed(!copied_files.is_empty());
+                print_add_error_summary(
+                    branch_name,
+                    operation_start.elapsed(),
+                    &e.to_string(),
+                    &partial_state,
+                );
             }
         }
 
@@ -1035,6 +1045,21 @@ fn execute_hooks_and_finish(
             vec!["No worktree path available".to_string()],
         );
     }
+}
+
+/// コピーされたファイルのリストを収集する
+fn collect_copied_files(
+    config_source: &ConfigWithSource,
+    worktree_path: &std::path::Path,
+) -> Vec<String> {
+    if let Some(ref copy_config) = config_source.config.copy_ignored_files {
+        if let Some(ref repo_root) = config_source.repo_root {
+            if let Ok(result) = copy_ignored_files(repo_root, worktree_path, copy_config) {
+                return result.copied;
+            }
+        }
+    }
+    Vec::new()
 }
 
 fn create_worktree_from_input(app: &App, branch: &str, args: &AddArgs) -> Result<(String, String)> {
