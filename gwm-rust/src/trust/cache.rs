@@ -3,9 +3,9 @@
 //! Handles reading and writing the trusted repositories cache file.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::types::{TrustCache, TrustedRepo};
+use super::types::{normalize_repo_path_or_display, TrustCache, TrustedRepo};
 use crate::error::Result;
 
 /// Name of the cache file.
@@ -90,15 +90,19 @@ pub fn save_cache(cache: &TrustCache) -> Result<()> {
 }
 
 /// Register a repository as trusted.
+///
+/// The repo_root path is normalized to ensure consistent cache lookups
+/// regardless of symlinks or relative path usage.
 pub fn trust_repository(
-    repo_root: &str,
+    repo_root: &Path,
     config_path: PathBuf,
     config_hash: String,
     commands: Vec<String>,
 ) -> Result<()> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
     let mut cache = load_cache();
     cache.repos.insert(
-        repo_root.to_string(),
+        normalized_key,
         TrustedRepo {
             config_path,
             config_hash,
@@ -110,14 +114,20 @@ pub fn trust_repository(
 }
 
 /// Get trust information for a repository.
-pub fn get_trusted_info(repo_root: &str) -> Option<TrustedRepo> {
-    load_cache().repos.get(repo_root).cloned()
+///
+/// The repo_root path is normalized for consistent cache lookups.
+pub fn get_trusted_info(repo_root: &Path) -> Option<TrustedRepo> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
+    load_cache().repos.get(&normalized_key).cloned()
 }
 
 /// Remove trust for a repository.
-pub fn revoke_trust(repo_root: &str) -> Result<()> {
+///
+/// The repo_root path is normalized for consistent cache lookups.
+pub fn revoke_trust(repo_root: &Path) -> Result<()> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
     let mut cache = load_cache();
-    cache.repos.remove(repo_root);
+    cache.repos.remove(&normalized_key);
     save_cache(&cache)
 }
 
