@@ -19,8 +19,31 @@ import {
   parseGoArgs,
   parsePullMainArgs,
   parseHelpArgs,
+  parseInitArgs,
   isHelpRequested,
+  generateShellIntegrationScript,
 } from './utils/index.js';
+
+// Non-interactive command: print shell integration and exit early (avoid Ink rendering)
+{
+  const args = process.argv.slice(2);
+  const command = args[0];
+  if (command === 'init' && !isHelpRequested(args, command)) {
+    try {
+      const { shell } = parseInitArgs(args);
+      const script = generateShellIntegrationScript(shell, {
+        nodePath: process.execPath,
+        scriptPath: process.argv[1] ?? '',
+      });
+      process.stdout.write(script);
+      process.exit(0);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`${message}\n`);
+      process.exit(1);
+    }
+  }
+}
 
 const App: React.FC = () => {
   const args = process.argv.slice(2);
@@ -91,6 +114,10 @@ const App: React.FC = () => {
     case 'help': {
       const { command: helpCommand } = parseHelpArgs(args);
       return <Help command={helpCommand} />;
+    }
+    case 'init': {
+      // init is handled before Ink render
+      return <Help command="init" />;
     }
     case 'config':
       return <ConfigTest />;

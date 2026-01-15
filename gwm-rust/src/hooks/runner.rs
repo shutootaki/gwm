@@ -13,7 +13,6 @@ use crate::error::Result;
 fn prepare_hook_env(context: &HookContext) -> HashMap<String, String> {
     let mut env: HashMap<String, String> = std::env::vars().collect();
 
-    // Add gwm-specific environment variables
     env.insert(
         "GWM_WORKTREE_PATH".to_string(),
         context.worktree_path.display().to_string(),
@@ -46,24 +45,33 @@ fn execute_command(
     Ok(status.code().unwrap_or(1))
 }
 
-/// Run post_create hooks.
-///
-/// Executes each command in sequence, stopping on the first failure.
-///
-/// # Arguments
-///
-/// * `config` - Configuration containing hook commands
-/// * `context` - Hook execution context (paths, branch name, etc.)
-///
-/// # Returns
-///
-/// A `HookResult` indicating success or failure with details.
+/// Run post_create hooks from configuration.
 pub fn run_post_create_hooks(config: &Config, context: &HookContext) -> Result<HookResult> {
     let commands = match config.post_create_commands() {
         Some(cmds) if !cmds.is_empty() => cmds,
         _ => return Ok(HookResult::success(0)),
     };
 
+    execute_hooks(commands, context)
+}
+
+/// Run post_create hooks with explicit command list.
+///
+/// Used by deferred hooks execution where commands are stored in
+/// the hooks file rather than loaded from config.
+pub fn run_post_create_hooks_with_commands(
+    commands: &[String],
+    context: &HookContext,
+) -> Result<HookResult> {
+    if commands.is_empty() {
+        return Ok(HookResult::success(0));
+    }
+
+    execute_hooks(commands, context)
+}
+
+/// Execute hook commands in sequence.
+fn execute_hooks(commands: &[String], context: &HookContext) -> Result<HookResult> {
     let env = prepare_hook_env(context);
     let total = commands.len();
 

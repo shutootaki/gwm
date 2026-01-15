@@ -51,8 +51,10 @@
 //! }
 //! ```
 
+pub mod deferred;
 pub mod runner;
 pub mod types;
 
-pub use runner::run_post_create_hooks;
+pub use deferred::{hooks_file_path, try_write_deferred_hooks, DeferredHooks};
+pub use runner::{run_post_create_hooks, run_post_create_hooks_with_commands};
 pub use types::{HookContext, HookResult};
