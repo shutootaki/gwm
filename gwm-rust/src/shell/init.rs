@@ -5,31 +5,34 @@
 
 use crate::cli::ShellType;
 use crate::error::Result;
-use crate::shell::escape_shell_arg;
+use crate::shell::{completion, get_gwm_bin_expr};
 
 /// Generate and print shell integration script to stdout.
+///
+/// Outputs both shell integration (gwm function wrapper) and
+/// dynamic completion script for a complete setup with a single eval.
 pub fn run_init(shell: ShellType) -> Result<()> {
-    let gwm_bin = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.to_str().map(|s| s.to_string()));
-    print!("{}", generate(shell, gwm_bin.as_deref()));
+    let gwm_bin_expr = get_gwm_bin_expr();
+
+    // Part 1: Shell integration (gwm function wrapper)
+    print!("{}", generate(shell, &gwm_bin_expr));
+
+    // Part 2: Shell completion (dynamic)
+    print!("\n{}", completion::generate_for_shell_type(shell));
+
     Ok(())
 }
 
 /// Generate shell integration script.
-pub fn generate(shell: ShellType, gwm_bin: Option<&str>) -> String {
+pub fn generate(shell: ShellType, gwm_bin_expr: &str) -> String {
     match shell {
-        ShellType::Bash => bash_zsh_template("bash", "~/.bashrc", gwm_bin),
-        ShellType::Zsh => bash_zsh_template("zsh", "~/.zshrc", gwm_bin),
-        ShellType::Fish => fish_template(gwm_bin),
+        ShellType::Bash => bash_zsh_template("bash", "~/.bashrc", gwm_bin_expr),
+        ShellType::Zsh => bash_zsh_template("zsh", "~/.zshrc", gwm_bin_expr),
+        ShellType::Fish => fish_template(gwm_bin_expr),
     }
 }
 
-fn bash_zsh_template(shell: &str, rc_file: &str, gwm_bin: Option<&str>) -> String {
-    let gwm_bin_expr = match gwm_bin {
-        Some(path) => escape_shell_arg(path),
-        None => "'gwm'".to_string(),
-    };
+fn bash_zsh_template(shell: &str, rc_file: &str, gwm_bin_expr: &str) -> String {
     format!(
         r#"# gwm shell integration
 # Add to your {rc_file}:
@@ -115,12 +118,7 @@ gwm() {{
     )
 }
 
-fn fish_template(gwm_bin: Option<&str>) -> String {
-    let gwm_bin_expr = match gwm_bin {
-        Some(path) => escape_shell_arg(path),
-        None => "'gwm'".to_string(),
-    };
-
+fn fish_template(gwm_bin_expr: &str) -> String {
     format!(
         r#"# gwm shell integration
 # Add to your ~/.config/fish/config.fish:
@@ -236,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_generate_bash() {
-        let script = generate(ShellType::Bash, Some("/path/to/gwm"));
+        let script = generate(ShellType::Bash, "'/path/to/gwm'");
         assert!(script.contains(r#"eval "$(gwm init bash)""#));
         assert!(script.contains("unalias gwm"));
         assert!(script.contains("gwm()"));
@@ -250,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_generate_zsh() {
-        let script = generate(ShellType::Zsh, Some("/path/to/gwm"));
+        let script = generate(ShellType::Zsh, "'/path/to/gwm'");
         assert!(script.contains(r#"eval "$(gwm init zsh)""#));
         assert!(script.contains("gwm()"));
         assert!(script.contains("GWM_HOOKS_FILE"));
@@ -259,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_generate_fish() {
-        let script = generate(ShellType::Fish, Some("/path/to/gwm"));
+        let script = generate(ShellType::Fish, "'/path/to/gwm'");
         assert!(script.contains("gwm init fish | source"));
         assert!(script.contains("function gwm"));
         assert!(script.contains("switch $argv[1]"));
@@ -269,5 +267,48 @@ mod tests {
         assert!(script.contains("GWM_CWD_FILE"));
         assert!(script.contains("GWM_HOOKS_FILE"));
         assert!(script.contains("--run-deferred-hooks"));
+    }
+
+    #[test]
+    fn test_init_includes_completion_bash() {
+        // run_init prints to stdout, so we test generate functions
+        let shell_script = generate(ShellType::Bash, "'gwm'");
+        let completion_script = completion::generate_for_shell_type(ShellType::Bash);
+
+        // Shell integration should have gwm function
+        assert!(shell_script.contains("gwm()"));
+
+        // Completion should have complete command
+        assert!(completion_script.contains("complete -F _gwm gwm"));
+        // Dynamic completion should be included
+        assert!(completion_script.contains("_gwm_worktrees"));
+    }
+
+    #[test]
+    fn test_init_includes_completion_zsh() {
+        let shell_script = generate(ShellType::Zsh, "'gwm'");
+        let completion_script = completion::generate_for_shell_type(ShellType::Zsh);
+
+        // Shell integration should have gwm function
+        assert!(shell_script.contains("gwm()"));
+
+        // Zsh completion should have compdef
+        assert!(completion_script.contains("#compdef gwm"));
+        // Dynamic completion should be included
+        assert!(completion_script.contains("_gwm_worktrees"));
+    }
+
+    #[test]
+    fn test_init_includes_completion_fish() {
+        let shell_script = generate(ShellType::Fish, "'gwm'");
+        let completion_script = completion::generate_for_shell_type(ShellType::Fish);
+
+        // Shell integration should have gwm function
+        assert!(shell_script.contains("function gwm"));
+
+        // Fish completion
+        assert!(completion_script.contains("complete -c gwm"));
+        // Dynamic completion
+        assert!(completion_script.contains("__gwm_worktrees"));
     }
 }

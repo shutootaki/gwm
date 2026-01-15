@@ -1232,8 +1232,14 @@ fn collect_copied_files(
 ) -> Vec<String> {
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
-            if let Ok(result) = copy_ignored_files(repo_root, worktree_path, copy_config) {
-                return result.copied;
+            match copy_ignored_files(repo_root, worktree_path, copy_config) {
+                Ok(result) => return result.copied,
+                Err(e) => {
+                    eprintln!(
+                        "\x1b[33mWarning: Failed to copy ignored files: {}\x1b[0m",
+                        e
+                    );
+                }
             }
         }
     }

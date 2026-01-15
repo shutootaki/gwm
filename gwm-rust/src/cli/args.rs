@@ -70,6 +70,12 @@ pub enum Commands {
     ///
     /// Display detailed help information for a specific command.
     Help(HelpArgs),
+
+    /// Generate shell completion scripts
+    ///
+    /// Generate completion scripts for bash, zsh, fish, or powershell.
+    /// Use --with-dynamic to enable dynamic completion for worktree names.
+    Completion(CompletionArgs),
 }
 
 /// Arguments for the `add` command.
@@ -318,6 +324,29 @@ pub struct HelpArgs {
     pub command: Option<String>,
 }
 
+/// Arguments for the `completion` command.
+#[derive(Parser, Debug)]
+pub struct CompletionArgs {
+    /// Shell type (bash, zsh, fish)
+    #[arg(value_enum)]
+    pub shell: CompletionShell,
+
+    /// Enable dynamic completion for worktree names
+    ///
+    /// When enabled, the completion script will call gwm to get
+    /// real-time worktree suggestions.
+    #[arg(long = "with-dynamic")]
+    pub with_dynamic: bool,
+}
+
+/// Shell types supported by `gwm completion`.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionShell {
+    Bash,
+    Zsh,
+    Fish,
+}
+
 /// Arguments for the `list` command.
 #[derive(Parser, Debug, Default)]
 pub struct ListArgs {
@@ -341,6 +370,8 @@ pub enum OutputFormat {
     Table,
     /// JSON format for scripting
     Json,
+    /// Names only (for shell completion)
+    Names,
 }
 
 /// Parse clean branch mode from string.
@@ -641,6 +672,40 @@ mod tests {
             assert!(args.open_code);
         } else {
             panic!("Expected Go command");
+        }
+    }
+
+    #[test]
+    fn test_parse_completion_bash() {
+        let cli = Cli::parse_from(["gwm", "completion", "bash"]);
+        match cli.command {
+            Some(Commands::Completion(args)) => {
+                assert_eq!(args.shell, CompletionShell::Bash);
+                assert!(!args.with_dynamic);
+            }
+            _ => panic!("Expected Completion command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_completion_with_dynamic() {
+        let cli = Cli::parse_from(["gwm", "completion", "zsh", "--with-dynamic"]);
+        match cli.command {
+            Some(Commands::Completion(args)) => {
+                assert_eq!(args.shell, CompletionShell::Zsh);
+                assert!(args.with_dynamic);
+            }
+            _ => panic!("Expected Completion command"),
+        }
+    }
+
+    #[test]
+    fn test_list_format_names() {
+        let cli = Cli::parse_from(["gwm", "list", "--format", "names"]);
+        if let Some(Commands::List(args)) = cli.command {
+            assert_eq!(args.format, OutputFormat::Names);
+        } else {
+            panic!("Expected List command");
         }
     }
 }
