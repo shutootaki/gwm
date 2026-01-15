@@ -32,7 +32,8 @@ use crate::ui::summary::{
     print_add_error_summary, print_add_success_summary, AddOperationSummary, PartialState,
 };
 use crate::ui::widgets::{
-    ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, TextInputWidget,
+    ConfirmWidget, NoticeWidget, SelectListWidget, SpinnerWidget, StepProgressWidget, StepState,
+    TextInputWidget,
 };
 use crate::utils::editor::open_in_editor;
 use crate::utils::{copy_ignored_files, validate_branch_name};
@@ -292,8 +293,24 @@ async fn execute_add_direct(
         from_branch: args.from_branch.clone(),
     };
 
-    let result = add_worktree(&config_source.config, &options)?;
     let output_path_only = args.should_output_path_only();
+
+    // CLI進捗表示（パス出力モードではstderr）
+    let print_progress = |msg: &str| {
+        if output_path_only {
+            eprintln!("{}", msg);
+        } else {
+            println!("{}", msg);
+        }
+    };
+
+    print_progress("\x1b[36mCreating worktree...\x1b[0m");
+    print_progress("  \x1b[90m[1/2] ⠙ Creating worktree\x1b[0m");
+
+    let result = add_worktree(&config_source.config, &options)?;
+
+    print_progress("  \x1b[32m[1/2] ✓ Creating worktree\x1b[0m");
+    print_progress("  \x1b[32m[2/2] ✓ Checking out branch\x1b[0m");
 
     if output_path_only {
         // パス出力モード: ignored files コピー（ログは stderr へ）
@@ -386,7 +403,11 @@ fn write_deferred_hooks_for_shell(
                 .post_create_commands()
                 .map(|c| c.to_vec())
                 .unwrap_or_default();
-            try_write_deferred_hooks(&context, commands, true)?;
+            // deferred hooks の書き出しを試みる
+            if !try_write_deferred_hooks(&context, commands, true)? {
+                // GWM_HOOKS_FILE が設定されていない場合は直接実行
+                run_hooks_impl(config_source, branch, worktree_path)?;
+            }
         }
         TrustStatus::NoHooks => {
             // hooksなし: 何もしない
@@ -419,11 +440,37 @@ fn write_deferred_hooks_for_shell(
                             );
                         }
                     }
-                    try_write_deferred_hooks(&context, commands, true)?;
+                    // deferred hooks の書き出しを試みる
+                    if !try_write_deferred_hooks(&context, commands.clone(), true)? {
+                        // GWM_HOOKS_FILE が設定されていない場合は直接実行
+                        let hook_result = run_post_create_hooks_with_commands(&commands, &context)?;
+                        if !hook_result.success {
+                            if let Some(failed_cmd) = &hook_result.failed_command {
+                                return Err(GwmError::hook(format!(
+                                    "Command failed: {} (exit code: {})",
+                                    failed_cmd,
+                                    hook_result.exit_code.unwrap_or(1)
+                                )));
+                            }
+                        }
+                    }
                 }
                 Some(ConfirmChoice::Once) => {
-                    // 一度だけhooksをファイルに書き出す（キャッシュに保存しない）
-                    try_write_deferred_hooks(&context, commands, true)?;
+                    // 一度だけhooksを実行（キャッシュに保存しない）
+                    // deferred hooks の書き出しを試みる
+                    if !try_write_deferred_hooks(&context, commands.clone(), true)? {
+                        // GWM_HOOKS_FILE が設定されていない場合は直接実行
+                        let hook_result = run_post_create_hooks_with_commands(&commands, &context)?;
+                        if !hook_result.success {
+                            if let Some(failed_cmd) = &hook_result.failed_command {
+                                return Err(GwmError::hook(format!(
+                                    "Command failed: {} (exit code: {})",
+                                    failed_cmd,
+                                    hook_result.exit_code.unwrap_or(1)
+                                )));
+                            }
+                        }
+                    }
                 }
                 Some(ConfirmChoice::Cancel) | None => {
                     // スキップ: hooksファイルは書き出さない
@@ -733,9 +780,40 @@ async fn run_main_loop(
                     if key.code == KeyCode::Enter {
                         if let Some(branch) = get_input_value(app) {
                             if get_validation_error(app).is_none() {
+                                // Progress状態に遷移してworktreeを作成
+                                let has_copy_config =
+                                    config_source.config.copy_ignored_files.is_some();
+                                let has_hooks = config_source
+                                    .config
+                                    .post_create_commands()
+                                    .map(|c| !c.is_empty())
+                                    .unwrap_or(false)
+                                    && !args.skip_hooks;
+
+                                let mut steps = create_worktree_steps(has_copy_config, has_hooks);
+                                steps[0] = StepState::InProgress("Creating worktree".to_string(), None);
+                                app.set_progress("Creating worktree...", steps);
+
+                                // 進捗表示を描画
+                                terminal.draw(|f| {
+                                    let area = f.area();
+                                    render_app(f.buffer_mut(), area, app, frame_count);
+                                })?;
+
                                 let result = create_worktree_from_input(app, &branch, args);
                                 match result {
                                     Ok((path, branch_name)) => {
+                                        // ステップ1,2完了
+                                        if let AppState::Progress { steps, .. } = &mut app.state {
+                                            steps[0] = StepState::Completed("Creating worktree".to_string());
+                                            steps[1] = StepState::Completed("Checking out branch".to_string());
+                                        }
+
+                                        terminal.draw(|f| {
+                                            let area = f.area();
+                                            render_app(f.buffer_mut(), area, app, frame_count);
+                                        })?;
+
                                         created_worktree =
                                             Some((path.clone(), branch_name.clone()));
                                         let should_execute_hooks = handle_creation_success(
@@ -748,20 +826,27 @@ async fn run_main_loop(
                                         if should_execute_hooks {
                                             // 信頼済み: hooksを実行
                                             if args.should_output_path_only() {
-                                                // パス出力モード: hooks実行後にパスを返す
-                                                write_deferred_hooks_and_return_path(
-                                                    &created_worktree,
-                                                    config_source,
-                                                )?;
-                                                if let Some((path, branch_name)) = &created_worktree
+                                                // パス出力モード: deferred hooksを書き出し
+                                                if let Some((path, branch_name)) =
+                                                    write_deferred_hooks_and_return_path(
+                                                        &created_worktree,
+                                                        config_source,
+                                                    )?
                                                 {
+                                                    // 書き出し成功 → シェル統合でhooks実行
                                                     return Ok(Some(MainLoopResult {
-                                                        path: path.clone(),
-                                                        branch_name: branch_name.clone(),
+                                                        path,
+                                                        branch_name,
                                                         hooks_written: true,
                                                     }));
                                                 }
+                                                // 書き出しなし → 直接実行（下にフォールスルー）
                                             }
+                                            // Progress状態を描画して更新を反映
+                                            terminal.draw(|f| {
+                                                let area = f.area();
+                                                render_app(f.buffer_mut(), area, app, frame_count);
+                                            })?;
                                             execute_hooks_and_finish(
                                                 app,
                                                 &created_worktree,
@@ -795,9 +880,41 @@ async fn run_main_loop(
                     if key.code == KeyCode::Enter {
                         if let Some(item) = get_selected_item(app) {
                             let branch = item.value.clone();
+
+                            // Progress状態に遷移してworktreeを作成
+                            let has_copy_config =
+                                config_source.config.copy_ignored_files.is_some();
+                            let has_hooks = config_source
+                                .config
+                                .post_create_commands()
+                                .map(|c| !c.is_empty())
+                                .unwrap_or(false)
+                                && !args.skip_hooks;
+
+                            let mut steps = create_worktree_steps(has_copy_config, has_hooks);
+                            steps[0] = StepState::InProgress("Creating worktree".to_string(), None);
+                            app.set_progress("Creating worktree...", steps);
+
+                            // 進捗表示を描画
+                            terminal.draw(|f| {
+                                let area = f.area();
+                                render_app(f.buffer_mut(), area, app, frame_count);
+                            })?;
+
                             let result = create_worktree_from_remote(app, &branch);
                             match result {
                                 Ok((path, branch_name)) => {
+                                    // ステップ1,2完了
+                                    if let AppState::Progress { steps, .. } = &mut app.state {
+                                        steps[0] = StepState::Completed("Creating worktree".to_string());
+                                        steps[1] = StepState::Completed("Checking out branch".to_string());
+                                    }
+
+                                    terminal.draw(|f| {
+                                        let area = f.area();
+                                        render_app(f.buffer_mut(), area, app, frame_count);
+                                    })?;
+
                                     created_worktree = Some((path.clone(), branch_name.clone()));
                                     let should_execute_hooks = handle_creation_success(
                                         app,
@@ -809,19 +926,27 @@ async fn run_main_loop(
                                     if should_execute_hooks {
                                         // 信頼済み: hooksを実行
                                         if args.should_output_path_only() {
-                                            // パス出力モード: hooks実行後にパスを返す
-                                            write_deferred_hooks_and_return_path(
-                                                &created_worktree,
-                                                config_source,
-                                            )?;
-                                            if let Some((path, branch_name)) = &created_worktree {
+                                            // パス出力モード: deferred hooksを書き出し
+                                            if let Some((path, branch_name)) =
+                                                write_deferred_hooks_and_return_path(
+                                                    &created_worktree,
+                                                    config_source,
+                                                )?
+                                            {
+                                                // 書き出し成功 → シェル統合でhooks実行
                                                 return Ok(Some(MainLoopResult {
-                                                    path: path.clone(),
-                                                    branch_name: branch_name.clone(),
+                                                    path,
+                                                    branch_name,
                                                     hooks_written: true,
                                                 }));
                                             }
+                                            // 書き出しなし → 直接実行（下にフォールスルー）
                                         }
+                                        // Progress状態を描画して更新を反映
+                                        terminal.draw(|f| {
+                                            let area = f.area();
+                                            render_app(f.buffer_mut(), area, app, frame_count);
+                                        })?;
                                         execute_hooks_and_finish(
                                             app,
                                             &created_worktree,
@@ -863,18 +988,32 @@ async fn run_main_loop(
                                         }
                                     }
                                     if args.should_output_path_only() {
-                                        write_deferred_hooks_and_return_path(
-                                            &created_worktree,
-                                            config_source,
-                                        )?;
-                                        if let Some((path, branch_name)) = &created_worktree {
+                                        // パス出力モード: deferred hooksを書き出し
+                                        if let Some((path, branch_name)) =
+                                            write_deferred_hooks_and_return_path(
+                                                &created_worktree,
+                                                config_source,
+                                            )?
+                                        {
+                                            // 書き出し成功 → シェル統合でhooks実行
                                             return Ok(Some(MainLoopResult {
-                                                path: path.clone(),
-                                                branch_name: branch_name.clone(),
+                                                path,
+                                                branch_name,
                                                 hooks_written: true,
                                             }));
                                         }
+                                        // 書き出しなし → 直接実行（下にフォールスルー）
                                     }
+                                    // hooksステップをInProgressに更新して描画
+                                    let hooks_step_idx = get_hooks_step_index(config_source);
+                                    app.set_progress(
+                                        "Running hooks...",
+                                        create_worktree_steps_completed(config_source, hooks_step_idx),
+                                    );
+                                    terminal.draw(|f| {
+                                        let area = f.area();
+                                        render_app(f.buffer_mut(), area, app, frame_count);
+                                    })?;
                                     execute_hooks_and_finish(
                                         app,
                                         &created_worktree,
@@ -884,18 +1023,32 @@ async fn run_main_loop(
                                 }
                                 ConfirmChoice::Once => {
                                     if args.should_output_path_only() {
-                                        write_deferred_hooks_and_return_path(
-                                            &created_worktree,
-                                            config_source,
-                                        )?;
-                                        if let Some((path, branch_name)) = &created_worktree {
+                                        // パス出力モード: deferred hooksを書き出し
+                                        if let Some((path, branch_name)) =
+                                            write_deferred_hooks_and_return_path(
+                                                &created_worktree,
+                                                config_source,
+                                            )?
+                                        {
+                                            // 書き出し成功 → シェル統合でhooks実行
                                             return Ok(Some(MainLoopResult {
-                                                path: path.clone(),
-                                                branch_name: branch_name.clone(),
+                                                path,
+                                                branch_name,
                                                 hooks_written: true,
                                             }));
                                         }
+                                        // 書き出しなし → 直接実行（下にフォールスルー）
                                     }
+                                    // hooksステップをInProgressに更新して描画
+                                    let hooks_step_idx = get_hooks_step_index(config_source);
+                                    app.set_progress(
+                                        "Running hooks...",
+                                        create_worktree_steps_completed(config_source, hooks_step_idx),
+                                    );
+                                    terminal.draw(|f| {
+                                        let area = f.area();
+                                        render_app(f.buffer_mut(), area, app, frame_count);
+                                    })?;
                                     execute_hooks_and_finish(
                                         app,
                                         &created_worktree,
@@ -967,11 +1120,21 @@ fn write_deferred_hooks_and_return_path(
     let context = config_source.build_hook_context(worktree_path, branch_name);
     let commands = config_source.get_post_create_commands();
 
-    if let Err(e) = try_write_deferred_hooks(&context, commands, true) {
-        eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
+    match try_write_deferred_hooks(&context, commands, true) {
+        Ok(true) => {
+            // 書き出し成功 → パスを返す（シェル統合でhooks実行）
+            Ok(Some((path.clone(), branch_name.clone())))
+        }
+        Ok(false) => {
+            // 書き出しなし（GWM_HOOKS_FILEが設定されていない）
+            // → 直接実行なのでhooksを直接実行する必要あり
+            Ok(None)
+        }
+        Err(e) => {
+            eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
+            Ok(None)
+        }
     }
-
-    Ok(Some((path.clone(), branch_name.clone())))
 }
 
 fn execute_hooks_and_finish(
@@ -1062,6 +1225,48 @@ fn collect_copied_files(
     Vec::new()
 }
 
+/// worktree作成の初期ステップを生成
+fn create_worktree_steps(has_copy_config: bool, has_hooks: bool) -> Vec<StepState> {
+    let mut steps = vec![
+        StepState::Pending("Creating worktree".to_string()),
+        StepState::Pending("Checking out branch".to_string()),
+    ];
+    if has_copy_config {
+        steps.push(StepState::Pending("Copying ignored files".to_string()));
+    }
+    if has_hooks {
+        steps.push(StepState::Pending("Running hooks".to_string()));
+    }
+    steps
+}
+
+/// hooksステップのインデックスを取得
+fn get_hooks_step_index(config_source: &ConfigWithSource) -> usize {
+    if config_source.config.copy_ignored_files.is_some() {
+        3 // [0] Creating, [1] Checking out, [2] Copying, [3] Hooks
+    } else {
+        2 // [0] Creating, [1] Checking out, [2] Hooks
+    }
+}
+
+/// Confirmダイアログ後に使用するステップ状態を生成（hooksがInProgress）
+fn create_worktree_steps_completed(
+    config_source: &ConfigWithSource,
+    _hooks_step_idx: usize,
+) -> Vec<StepState> {
+    let has_copy_config = config_source.config.copy_ignored_files.is_some();
+    let mut steps = vec![
+        StepState::Completed("Creating worktree".to_string()),
+        StepState::Completed("Checking out branch".to_string()),
+    ];
+    if has_copy_config {
+        steps.push(StepState::Completed("Copying ignored files".to_string()));
+    }
+    // hooksステップはInProgress
+    steps.push(StepState::InProgress("Running hooks".to_string(), None));
+    steps
+}
+
 fn create_worktree_from_input(app: &App, branch: &str, args: &AddArgs) -> Result<(String, String)> {
     let options = AddWorktreeOptions {
         branch: branch.to_string(),
@@ -1096,14 +1301,33 @@ fn handle_creation_success(
     // 無視ファイルのコピー（エラーは警告として表示）
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
+            // Progress状態を更新: ファイルコピー中
+            app.update_progress_step(
+                2,
+                StepState::InProgress("Copying ignored files".to_string(), None),
+            );
+
             match copy_ignored_files(repo_root, std::path::Path::new(path), copy_config) {
                 Ok(result) if result.has_copied() => {
-                    // コピー成功は後で成功メッセージと一緒に表示される
+                    // コピー成功: Progress状態を完了に更新
+                    app.update_progress_step(
+                        2,
+                        StepState::Completed("Copying ignored files".to_string()),
+                    );
                 }
                 Ok(_) => {
-                    // コピー対象なし
+                    // コピー対象なし: Progress状態を完了に更新
+                    app.update_progress_step(
+                        2,
+                        StepState::Completed("Copying ignored files".to_string()),
+                    );
                 }
                 Err(e) => {
+                    // エラー: Progress状態を失敗に更新
+                    app.update_progress_step(
+                        2,
+                        StepState::Failed("Copying ignored files".to_string()),
+                    );
                     eprintln!(
                         "\x1b[33m Warning: Failed to copy ignored files: {}\x1b[0m",
                         e
@@ -1140,6 +1364,12 @@ fn handle_creation_success(
                 .map(|c| !c.is_empty())
                 .unwrap_or(false)
             {
+                // hooksステップをInProgressに更新
+                let hooks_step_idx = get_hooks_step_index(config_source);
+                app.update_progress_step(
+                    hooks_step_idx,
+                    StepState::InProgress("Running hooks".to_string(), None),
+                );
                 return true; // 直接フック実行
             }
             // エディタ起動（フックがない場合）
@@ -1230,6 +1460,11 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
             ..
         } => {
             let widget = ConfirmWidget::new(title, message, commands, *selected);
+            widget.render(area, buf);
+        }
+
+        AppState::Progress { title, steps } => {
+            let widget = StepProgressWidget::new(title, steps).frame(frame_count);
             widget.render(area, buf);
         }
     }
