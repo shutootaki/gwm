@@ -26,6 +26,27 @@ export function tryGetRepoRoot(): string | null {
 }
 
 /**
+ * プロジェクト設定ディレクトリの候補（優先順位順）
+ * .gwm/ を優先、存在しなければ gwm/ にフォールバック（後方互換性）
+ */
+export const PROJECT_CONFIG_DIRS = ['.gwm', 'gwm'] as const;
+
+/**
+ * 指定されたリポジトリルートから既存のプロジェクト設定ファイルパスを検索
+ * @param repoRoot リポジトリルートパス
+ * @returns 存在する設定ファイルパス、または見つからなければ null
+ */
+export function findExistingProjectConfigPath(repoRoot: string): string | null {
+  for (const dir of PROJECT_CONFIG_DIRS) {
+    const configPath = join(repoRoot, dir, 'config.toml');
+    if (existsSync(configPath)) {
+      return configPath;
+    }
+  }
+  return null;
+}
+
+/**
  * プロジェクト設定ファイルのパスを取得
  * @returns プロジェクト設定パス、またはリポジトリ外なら null
  */
@@ -34,7 +55,14 @@ export function getProjectConfigPath(): string | null {
   if (!repoRoot) {
     return null;
   }
-  return join(repoRoot, 'gwm', 'config.toml');
+
+  const existingPath = findExistingProjectConfigPath(repoRoot);
+  if (existingPath) {
+    return existingPath;
+  }
+
+  // どちらも存在しない場合は新形式のパスを返す
+  return join(repoRoot, '.gwm', 'config.toml');
 }
 
 /**

@@ -2,7 +2,7 @@
 //!
 //! Supports two configuration levels:
 //! 1. Global: ~/.config/gwm/config.toml or ~/.gwmrc
-//! 2. Project: <repo-root>/gwm/config.toml
+//! 2. Project: <repo-root>/.gwm/config.toml (fallback: gwm/config.toml)
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,8 +15,9 @@ use super::types::Config;
 /// Global configuration file paths (in order of priority).
 const GLOBAL_CONFIG_PATHS: &[&str] = &[".config/gwm/config.toml", ".gwmrc"];
 
-/// Project-level configuration file path (relative to repo root).
-const PROJECT_CONFIG_PATH: &str = "gwm/config.toml";
+/// Project-level configuration directories (in order of priority).
+/// .gwm/ is preferred, gwm/ is fallback for backward compatibility.
+const PROJECT_CONFIG_DIRS: &[&str] = &[".gwm", "gwm"];
 
 /// Result of loading configuration with source information.
 #[derive(Debug)]
@@ -48,13 +49,15 @@ fn find_global_config() -> Option<PathBuf> {
 }
 
 /// Find the project configuration file.
+/// Searches .gwm/config.toml first, falls back to gwm/config.toml for backward compatibility.
 fn find_project_config(repo_root: &Path) -> Option<PathBuf> {
-    let path = repo_root.join(PROJECT_CONFIG_PATH);
-    if path.exists() {
-        Some(path)
-    } else {
-        None
+    for dir in PROJECT_CONFIG_DIRS {
+        let path = repo_root.join(dir).join("config.toml");
+        if path.exists() {
+            return Some(path);
+        }
     }
+    None
 }
 
 /// Find the Git repository root from the current directory.
@@ -156,6 +159,44 @@ pub fn load_config_with_source() -> ConfigWithSource {
     }
 }
 
+impl ConfigWithSource {
+    /// Build a HookContext from this configuration.
+    ///
+    /// Extracts repository name and root path from the configuration,
+    /// providing sensible defaults when not available.
+    pub fn build_hook_context(
+        &self,
+        worktree_path: &Path,
+        branch_name: &str,
+    ) -> crate::hooks::HookContext {
+        let repo_name = self
+            .repo_root
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let repo_root = self.repo_root.clone().unwrap_or_else(|| PathBuf::from("."));
+
+        crate::hooks::HookContext {
+            worktree_path: worktree_path.to_path_buf(),
+            branch_name: branch_name.to_string(),
+            repo_root,
+            repo_name,
+        }
+    }
+
+    /// Get the post-create hook commands from this configuration.
+    ///
+    /// Returns an empty vector if no commands are configured.
+    pub fn get_post_create_commands(&self) -> Vec<String> {
+        self.config
+            .post_create_commands()
+            .map(|c| c.to_vec())
+            .unwrap_or_default()
+    }
+}
+
 /// Load the merged configuration.
 ///
 /// Convenience function that returns just the merged config without source info.
@@ -213,5 +254,61 @@ clean_branch = "auto"
     fn test_load_default_config() {
         let config = Config::default();
         assert_eq!(config.worktree_base_path, "~/git-worktrees");
+    }
+
+    #[test]
+    fn test_build_hook_context() {
+        let temp = TempDir::new().unwrap();
+        let repo_root = temp.path().join("my-repo");
+        fs::create_dir(&repo_root).unwrap();
+
+        let config_source = ConfigWithSource {
+            config: Config::default(),
+            global_config_path: None,
+            project_config_path: None,
+            has_project_hooks: false,
+            repo_root: Some(repo_root.clone()),
+        };
+
+        let worktree_path = temp.path().join("worktree");
+        let context = config_source.build_hook_context(&worktree_path, "feature/test");
+
+        assert_eq!(context.worktree_path, worktree_path);
+        assert_eq!(context.branch_name, "feature/test");
+        assert_eq!(context.repo_root, repo_root);
+        assert_eq!(context.repo_name, "my-repo");
+    }
+
+    #[test]
+    fn test_build_hook_context_without_repo_root() {
+        let config_source = ConfigWithSource {
+            config: Config::default(),
+            global_config_path: None,
+            project_config_path: None,
+            has_project_hooks: false,
+            repo_root: None,
+        };
+
+        let worktree_path = Path::new("/tmp/worktree");
+        let context = config_source.build_hook_context(worktree_path, "main");
+
+        assert_eq!(context.worktree_path, worktree_path);
+        assert_eq!(context.branch_name, "main");
+        assert_eq!(context.repo_root, PathBuf::from("."));
+        assert_eq!(context.repo_name, "unknown");
+    }
+
+    #[test]
+    fn test_get_post_create_commands_empty() {
+        let config_source = ConfigWithSource {
+            config: Config::default(),
+            global_config_path: None,
+            project_config_path: None,
+            has_project_hooks: false,
+            repo_root: None,
+        };
+
+        let commands = config_source.get_post_create_commands();
+        assert!(commands.is_empty());
     }
 }

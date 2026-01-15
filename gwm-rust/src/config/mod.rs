@@ -2,7 +2,7 @@
 //!
 //! This module handles loading and merging configuration from:
 //! - Global config: ~/.config/gwm/config.toml or ~/.gwmrc
-//! - Project config: <repo-root>/gwm/config.toml
+//! - Project config: <repo-root>/.gwm/config.toml (fallback: gwm/config.toml)
 //!
 //! # Example
 //!
