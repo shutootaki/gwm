@@ -181,6 +181,7 @@ fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
                 "  Make sure '{}' command is in your PATH.",
                 editor.command()
             );
+            eprintln!("  Worktree created successfully at: {}", path.display());
         }
     }
 }
@@ -441,6 +442,7 @@ fn write_deferred_hooks_for_shell(
                                 "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
                                 e
                             );
+                            eprintln!("  You will be prompted again next time.");
                         }
                     }
                     // deferred hooks の書き出しを試みる
@@ -541,6 +543,7 @@ fn execute_hooks_direct_impl(
                                 "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
                                 e
                             );
+                            eprintln!("  You will be prompted again next time.");
                         }
                     }
                     run_hooks_impl(config_source, branch, worktree_path)?;
@@ -993,6 +996,9 @@ async fn run_main_loop(
                                                     .unwrap_or_default(),
                                             ) {
                                                 eprintln!("\x1b[33m Warning: Could not save trust setting: {}\x1b[0m", e);
+                                                eprintln!(
+                                                    "  You will be prompted again next time."
+                                                );
                                             }
                                         }
                                     }
@@ -1147,7 +1153,8 @@ fn write_deferred_hooks_and_return_path(
         }
         Err(e) => {
             eprintln!("\x1b[31m✗ Hook error: {}\x1b[0m", e);
-            Ok(None)
+            eprintln!("  Worktree was created but hooks could not be deferred.");
+            Err(e)
         }
     }
 }
