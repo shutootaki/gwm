@@ -16,8 +16,20 @@ pub use exec::{escape_shell_arg, exec, exec_async, exec_silent};
 /// Returns the current executable path escaped for shell usage,
 /// or `'gwm'` as fallback if the path cannot be determined.
 pub fn get_gwm_bin_expr() -> String {
-    std::env::current_exe()
-        .ok()
-        .and_then(|p| p.to_str().map(escape_shell_arg))
-        .unwrap_or_else(|| "'gwm'".to_string())
+    match std::env::current_exe() {
+        Ok(path) => match path.to_str() {
+            Some(s) => escape_shell_arg(s),
+            None => {
+                eprintln!("Warning: gwm path contains non-UTF8 characters, falling back to 'gwm'");
+                "'gwm'".to_string()
+            }
+        },
+        Err(e) => {
+            eprintln!(
+                "Warning: Could not determine gwm binary path ({}), falling back to 'gwm'",
+                e
+            );
+            "'gwm'".to_string()
+        }
+    }
 }

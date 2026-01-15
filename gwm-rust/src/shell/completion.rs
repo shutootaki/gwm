@@ -50,7 +50,13 @@ fn generate_static_completion(shell: Shell) -> String {
     let mut cmd = Cli::command();
     let mut buf = Vec::new();
     generate(shell, &mut cmd, "gwm", &mut buf);
-    String::from_utf8(buf).unwrap_or_default()
+    match String::from_utf8(buf) {
+        Ok(script) => script,
+        Err(e) => {
+            eprintln!("Warning: Failed to generate completion script: {}", e);
+            "# Error: Failed to generate completion script\n".to_string()
+        }
+    }
 }
 
 /// Generate Bash completion script.
