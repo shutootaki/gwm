@@ -6,7 +6,6 @@
 
 A CLI tool for managing Git worktrees, allowing you to work on multiple branches simultaneously.
 
-
 <div align="center">
 
 [![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
@@ -17,7 +16,6 @@ A CLI tool for managing Git worktrees, allowing you to work on multiple branches
 </div>
 
 <img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/2b14f573-9e71-436d-b2d6-656231199c83" />
-
 
 ## What problem does gwm solve?
 
@@ -47,6 +45,24 @@ npm install -g @shutootaki/gwm
 
 # Try without installing
 npx @shutootaki/gwm
+```
+
+## Shell integration (cd)
+
+To automatically change your current shell directory after `gwm add` / `gwm go`,
+add the following to your shell config:
+
+```bash
+# Bash
+eval "$(gwm init bash)"
+
+# Zsh
+eval "$(gwm init zsh)"
+```
+
+```fish
+# Fish
+gwm init fish | source
 ```
 
 ## Usage
@@ -106,7 +122,6 @@ M       main              ~/git-worktrees/project/main      123abc4
 
 Create a new worktree.
 
-
 **Without arguments (`gwm add`):**
 
 - Opens interactive UI for entering a new branch name
@@ -120,14 +135,15 @@ Create a new worktree.
 
 **Options:**
 
-| Option            | Description                                          |
-| ----------------- | ---------------------------------------------------- |
-| `-r, --remote`    | Create from remote branch                            |
-| `--from <branch>` | Base branch (default: main or master)                |
-| `--code`          | Open in VS Code after creation                       |
-| `--cursor`        | Open in Cursor after creation                        |
-| `--cd`            | Change to worktree directory (for shell integration) |
-| `--skip-hooks`    | Skip post_create hooks execution                     |
+| Option            | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `-r, --remote`    | Create from remote branch                         |
+| `--from <branch>` | Base branch (default: main or master)             |
+| `--code`          | Open in VS Code after creation                    |
+| `--cursor`        | Open in Cursor after creation                     |
+| `--cd`            | Output path only (default, for shell integration) |
+| `--no-cd`         | Show success message instead of path output       |
+| `--skip-hooks`    | Skip post_create hooks execution                  |
 
 **Automatic file copying:**
 
@@ -137,7 +153,10 @@ When `copy_ignored_files` is enabled, `.env` files are automatically copied from
 
 ### `gwm go [query]`
 
-Select a worktree and jump to it (launches a subshell).
+Select a worktree and jump to it.
+
+With shell integration enabled (see "Shell integration (cd)"), it changes the
+current shell directory. Otherwise, it launches a subshell.
 
 - `gwm go`: Interactive selection
 - `gwm go feat`: Filter by "feat" and select
@@ -259,11 +278,13 @@ commands = ["npm install"]
 
 ### Project-specific Configuration
 
-Create `gwm/config.toml` in your repository for project-specific settings. Project settings override global settings.
+Create `.gwm/config.toml` in your repository for project-specific settings. Project settings override global settings.
+
+> **Note**: For backward compatibility, `gwm/config.toml` is also supported but `.gwm/config.toml` is recommended for new projects.
 
 **Example: Use pnpm for this project**
 
-`my-project/gwm/config.toml`:
+`my-project/.gwm/config.toml`:
 
 ```toml
 [hooks.post_create]
