@@ -99,7 +99,11 @@ pub struct HookResult {
 
 impl HookResult {
     /// Create a successful result.
-    pub fn success(executed_count: usize, total_duration: Duration, details: Vec<HookExecutionDetail>) -> Self {
+    pub fn success(
+        executed_count: usize,
+        total_duration: Duration,
+        details: Vec<HookExecutionDetail>,
+    ) -> Self {
         Self {
             success: true,
             executed_count,
@@ -232,7 +236,8 @@ mod tests {
 
     #[test]
     fn test_hook_execution_detail_success_helper() {
-        let detail = HookExecutionDetail::success("npm install".to_string(), Duration::from_millis(1500));
+        let detail =
+            HookExecutionDetail::success("npm install".to_string(), Duration::from_millis(1500));
         assert_eq!(detail.command, "npm install");
         assert!(detail.success);
         assert_eq!(detail.exit_code, Some(0));
@@ -241,7 +246,11 @@ mod tests {
 
     #[test]
     fn test_hook_execution_detail_failure_with_code() {
-        let detail = HookExecutionDetail::failure_with_code("npm run build".to_string(), Duration::from_millis(200), 1);
+        let detail = HookExecutionDetail::failure_with_code(
+            "npm run build".to_string(),
+            Duration::from_millis(200),
+            1,
+        );
         assert_eq!(detail.command, "npm run build");
         assert!(!detail.success);
         assert_eq!(detail.exit_code, Some(1));

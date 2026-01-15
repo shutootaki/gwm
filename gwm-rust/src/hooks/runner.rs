@@ -111,7 +111,11 @@ fn execute_hooks(commands: &[String], context: &HookContext) -> Result<HookResul
                     code,
                     cmd_duration.as_secs_f64()
                 );
-                details.push(HookExecutionDetail::failure_with_code(cmd.clone(), cmd_duration, code));
+                details.push(HookExecutionDetail::failure_with_code(
+                    cmd.clone(),
+                    cmd_duration,
+                    code,
+                ));
                 return Ok(HookResult::failure(
                     i + 1,
                     cmd.clone(),
@@ -130,7 +134,11 @@ fn execute_hooks(commands: &[String], context: &HookContext) -> Result<HookResul
                     error_msg,
                     cmd_duration.as_secs_f64()
                 );
-                details.push(HookExecutionDetail::failure_with_error(cmd.clone(), cmd_duration, error_msg));
+                details.push(HookExecutionDetail::failure_with_error(
+                    cmd.clone(),
+                    cmd_duration,
+                    error_msg,
+                ));
                 return Ok(HookResult::failure(
                     i + 1,
                     cmd.clone(),

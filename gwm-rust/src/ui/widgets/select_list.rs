@@ -61,7 +61,14 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 /// ラベル付きの行を描画するヘルパー
 ///
 /// "Status:  " や "Sync:    " のような固定幅ラベルと値を描画します。
-fn render_labeled_row(buf: &mut Buffer, x: u16, y: u16, label: &str, value: &str, value_color: Color) {
+fn render_labeled_row(
+    buf: &mut Buffer,
+    x: u16,
+    y: u16,
+    label: &str,
+    value: &str,
+    value_color: Color,
+) {
     buf.set_string(x, y, label, Style::default().fg(Color::DarkGray));
     buf.set_string(
         x + PREVIEW_LABEL_WIDTH,

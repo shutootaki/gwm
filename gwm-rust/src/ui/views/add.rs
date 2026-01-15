@@ -176,7 +176,10 @@ fn maybe_open_editor(args: &AddArgs, path: &std::path::Path) {
                 editor.display_name(),
                 e
             );
-            eprintln!("  Make sure '{}' command is in your PATH.", editor.command());
+            eprintln!(
+                "  Make sure '{}' command is in your PATH.",
+                editor.command()
+            );
         }
     }
 }
