@@ -25,8 +25,16 @@
 //!
 //! # Pattern Matching
 //!
-//! - `patterns`: Glob patterns for files to include
+//! - `patterns`: Glob patterns for files to include. **If empty, all gitignored
+//!   files in the worktree will be considered as copy candidates** (determined
+//!   by `git check-ignore`).
 //! - `exclude_patterns`: Glob patterns for files to exclude (takes precedence)
+//!
+//! # Differences from TypeScript version
+//!
+//! In the TypeScript version, if both `patterns` and `exclude_patterns` are empty,
+//! no files are copied. In this Rust version, if `patterns` is empty, all gitignored
+//! files are copied (minus any `exclude_patterns`).
 
 use std::collections::HashSet;
 use std::fs;
@@ -77,13 +85,25 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> std::io::Result<u64> {
 /// # Returns
 ///
 /// gitignore されたファイルのパスの集合
+///
+/// # Errors
+///
+/// - ワークツリーが git リポジトリでない場合
+/// - `git check-ignore` コマンドの実行に失敗した場合
+/// - ディレクトリの走査中にエラーが発生した場合（警告のみ出力し継続）
 fn get_gitignored_files(worktree: &Path) -> Result<HashSet<PathBuf>> {
     let mut ignored_files = HashSet::new();
 
     // ワークツリー内の全ファイルを再帰的に列挙
     let all_paths: Vec<PathBuf> = WalkDir::new(worktree)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(|entry_result| match entry_result {
+            Ok(entry) => Some(entry),
+            Err(err) => {
+                eprintln!("Warning: Error walking directory: {}", err);
+                None
+            }
+        })
         .filter(|e| e.path() != worktree) // ルート自体はスキップ
         .filter(|e| !e.path().to_string_lossy().contains("/.git/")) // .git ディレクトリはスキップ
         .filter(|e| e.file_type().is_file() || e.file_type().is_dir())
@@ -105,20 +125,58 @@ fn get_gitignored_files(worktree: &Path) -> Result<HashSet<PathBuf>> {
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()?;
 
     // 全パスを stdin に書き込む（NUL区切り）
     if let Some(mut stdin) = child.stdin.take() {
         for path in &all_paths {
             if let Ok(relative) = path.strip_prefix(worktree) {
-                let _ = stdin.write_all(relative.to_string_lossy().as_bytes());
-                let _ = stdin.write_all(b"\0");
+                if let Err(e) = stdin.write_all(relative.to_string_lossy().as_bytes()) {
+                    eprintln!("Warning: Failed to write path to git check-ignore: {}", e);
+                    continue;
+                }
+                if let Err(e) = stdin.write_all(b"\0") {
+                    eprintln!(
+                        "Warning: Failed to write null byte to git check-ignore: {}",
+                        e
+                    );
+                }
             }
         }
     }
 
     let output = child.wait_with_output()?;
+
+    // git check-ignore の終了コード:
+    // - 0: 少なくとも1つのパスが無視された
+    // - 1: どのパスも無視されなかった（正常）
+    // - 128: not a git repository（空の結果を返す）
+    // - その他: エラー
+    if !output.status.success() {
+        let exit_code = output.status.code();
+        // exit code 1 は「無視されたファイルなし」を意味するので正常
+        if exit_code != Some(1) {
+            // exit code 128 は「not a git repository」を意味する
+            // この場合は gitignore されたファイルがないため、空の結果を返す
+            if exit_code == Some(128) {
+                return Ok(ignored_files);
+            }
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if !stderr.is_empty() {
+                eprintln!("Warning: git check-ignore stderr: {}", stderr.trim());
+            }
+            // 致命的なエラーの場合はエラーを返す
+            if exit_code.is_some() && exit_code != Some(0) && exit_code != Some(1) {
+                return Err(crate::error::GwmError::git_command(format!(
+                    "git check-ignore failed with exit code {:?}: {}",
+                    exit_code,
+                    stderr.trim()
+                )));
+            }
+        }
+    }
 
     // 出力をパース（NUL区切り）
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -229,7 +287,13 @@ pub fn copy_ignored_files(
     let exclude_patterns: Vec<Pattern> = config
         .exclude_patterns
         .iter()
-        .filter_map(|p| Pattern::new(p).ok())
+        .filter_map(|p| match Pattern::new(p) {
+            Ok(pattern) => Some(pattern),
+            Err(e) => {
+                eprintln!("Warning: Invalid exclude pattern '{}': {}", p, e);
+                None
+            }
+        })
         .collect();
 
     // Use glob to find matching files/directories
@@ -244,9 +308,14 @@ pub fn copy_ignored_files(
             let full_pattern = source_worktree.join(pattern);
             let pattern_str = full_pattern.to_string_lossy();
 
-            if let Ok(paths) = glob::glob(&pattern_str) {
-                for entry in paths.flatten() {
-                    matched_paths.insert(entry);
+            match glob::glob(&pattern_str) {
+                Ok(paths) => {
+                    for entry in paths.flatten() {
+                        matched_paths.insert(entry);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: Invalid glob pattern '{}': {}", pattern, e);
                 }
             }
         }
@@ -257,7 +326,14 @@ pub fn copy_ignored_files(
         // Get relative path from source_worktree
         let relative_path = match source_path.strip_prefix(source_worktree) {
             Ok(p) => p,
-            Err(_) => continue,
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to get relative path for '{}': {}",
+                    source_path.display(),
+                    e
+                );
+                continue;
+            }
         };
         let relative_str = relative_path.to_string_lossy().to_string();
 
