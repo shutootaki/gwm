@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use rayon::prelude::*;
+
 use super::core::is_git_repository;
 use super::types::{ChangeStatus, ChangedFile, SyncStatus, Worktree, WorktreeStatus};
 use crate::error::{GwmError, Result};
@@ -199,21 +201,32 @@ pub fn get_main_worktree_path() -> Option<PathBuf> {
 
 /// Worktree一覧を詳細情報付きで取得
 ///
+/// 各worktreeの詳細情報（同期状態、変更状態、最終更新時間）を並列に取得することで
+/// パフォーマンスを向上させています。
+///
 /// # Returns
 /// * `Ok(Vec<Worktree>)`: 詳細情報付きのworktree一覧
 /// * `Err(GwmError)`: エラー時
 pub fn get_worktrees_with_details() -> Result<Vec<Worktree>> {
-    let mut worktrees = get_worktrees()?;
+    let worktrees = get_worktrees()?;
 
-    for worktree in &mut worktrees {
-        // 同期状態を取得
-        worktree.sync_status = get_sync_status(&worktree.path, worktree.display_branch());
+    // 詳細情報を並列に取得
+    let details: Vec<_> = worktrees
+        .par_iter()
+        .map(|wt| {
+            let sync = get_sync_status(&wt.path, wt.display_branch());
+            let change = get_change_status(&wt.path);
+            let activity = get_last_activity(&wt.path);
+            (sync, change, activity)
+        })
+        .collect();
 
-        // 変更状態を取得
-        worktree.change_status = get_change_status(&worktree.path);
-
-        // 最終更新時間を取得
-        worktree.last_activity = get_last_activity(&worktree.path);
+    // 結果をworktreesにマージ
+    let mut worktrees = worktrees;
+    for (i, (sync, change, activity)) in details.into_iter().enumerate() {
+        worktrees[i].sync_status = sync;
+        worktrees[i].change_status = change;
+        worktrees[i].last_activity = activity;
     }
 
     Ok(worktrees)
