@@ -433,9 +433,23 @@ fn render_label_with_highlight(
     }
 }
 
+/// Minimum terminal width required for SelectListWidget
+const MIN_WIDTH: u16 = 20;
+/// Minimum terminal height required for SelectListWidget
+const MIN_HEIGHT: u16 = 10;
+
 impl Widget for SelectListWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if area.width < 20 || area.height < 10 {
+        if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
+            // Display a helpful message instead of blank screen
+            let message = format!(
+                "Terminal too small ({}x{}). Need {}x{}",
+                area.width, area.height, MIN_WIDTH, MIN_HEIGHT
+            );
+            let truncated = &message[..message.len().min(area.width as usize)];
+            let style = Style::default().fg(Color::Yellow);
+            let y = area.y + area.height.saturating_sub(1) / 2;
+            buf.set_string(area.x, y, truncated, style);
             return;
         }
 

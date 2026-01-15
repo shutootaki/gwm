@@ -2,12 +2,32 @@
 //!
 //! エラーメッセージを構造化して、原因・詳細・対処法を明確に表示します。
 
+use crossterm::terminal;
+
 use crate::error::GwmError;
+
+/// Minimum width for error display
+const MIN_ERROR_WIDTH: usize = 40;
+/// Maximum width for error display
+const MAX_ERROR_WIDTH: usize = 100;
+/// Default width when terminal size cannot be determined
+const DEFAULT_ERROR_WIDTH: usize = 60;
+
+/// Get the appropriate width for error display based on terminal size.
+fn get_error_display_width() -> usize {
+    terminal::size()
+        .map(|(w, _)| {
+            // Leave some margin (4 chars) from terminal edge
+            let available = (w as usize).saturating_sub(4);
+            available.clamp(MIN_ERROR_WIDTH, MAX_ERROR_WIDTH)
+        })
+        .unwrap_or(DEFAULT_ERROR_WIDTH)
+}
 
 /// 構造化されたエラーをターミナルに表示
 pub fn print_structured_error(error: &GwmError) {
     let title = error.title();
-    let width = 60usize;
+    let width = get_error_display_width();
 
     // タイトル部分の長さを計算
     let title_prefix = "─ ";
