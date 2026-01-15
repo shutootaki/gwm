@@ -64,7 +64,31 @@ cargo build
 ./target/debug/gwm pull-main
 ```
 
-### Step 6: TUI起動確認（手動）
+### Step 6: TUI起動確認（自動）
+
+TUIコマンドの動作確認は`tui-automation`スキルを使用して自動化できます。
+
+**自動テストの実行:**
+
+```bash
+SKILL_DIR=".claude/skills/tui-automation"
+
+# gwm add のテスト
+$SKILL_DIR/tui-start.sh "./target/debug/gwm add"
+$SKILL_DIR/tui-state.sh   # text_input を期待
+$SKILL_DIR/tui-type.sh "feature/test"
+$SKILL_DIR/tui-state.sh   # preview が表示されることを確認
+$SKILL_DIR/tui-send.sh Escape
+$SKILL_DIR/tui-close.sh
+
+# gwm go のテスト
+$SKILL_DIR/tui-start.sh "./target/debug/gwm go"
+$SKILL_DIR/tui-state.sh   # select_list を期待
+$SKILL_DIR/tui-send.sh Escape
+$SKILL_DIR/tui-close.sh
+```
+
+**手動確認が必要な場合:**
 
 以下はインタラクティブなTUIを起動するため、ユーザーに手動実行を案内する:
 
