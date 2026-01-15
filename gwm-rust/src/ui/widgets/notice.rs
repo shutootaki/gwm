@@ -68,7 +68,6 @@ impl<'a> NoticeWidget<'a> {
         self.suggestions = suggestions;
         self
     }
-
 }
 
 impl Widget for NoticeWidget<'_> {
