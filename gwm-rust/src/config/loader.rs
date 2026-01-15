@@ -164,19 +164,28 @@ impl ConfigWithSource {
     ///
     /// Extracts repository name and root path from the configuration,
     /// providing sensible defaults when not available.
+    /// Note: Warns to stderr when falling back to defaults, as this may affect hook execution.
     pub fn build_hook_context(
         &self,
         worktree_path: &Path,
         branch_name: &str,
     ) -> crate::hooks::HookContext {
+        let repo_root = self.repo_root.clone().unwrap_or_else(|| {
+            eprintln!(
+                "\x1b[33m⚠ Warning: Could not determine repository root, using current directory for hooks\x1b[0m"
+            );
+            PathBuf::from(".")
+        });
+
         let repo_name = self
             .repo_root
             .as_ref()
             .and_then(|p| p.file_name())
             .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-
-        let repo_root = self.repo_root.clone().unwrap_or_else(|| PathBuf::from("."));
+            .unwrap_or_else(|| {
+                // repo_rootがNoneの場合は上で既に警告済みなので、ここでは静かにフォールバック
+                "unknown".to_string()
+            });
 
         crate::hooks::HookContext {
             worktree_path: worktree_path.to_path_buf(),

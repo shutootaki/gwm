@@ -199,9 +199,17 @@ fn maybe_copy_ignored_files_for_shell(
 ) {
     if let Some(ref copy_config) = config_source.config.copy_ignored_files {
         if let Some(ref repo_root) = config_source.repo_root {
-            if let Ok(copy_result) = copy_ignored_files(repo_root, worktree_path, copy_config) {
-                for file in &copy_result.copied {
-                    eprintln!("Copied: {}", file);
+            match copy_ignored_files(repo_root, worktree_path, copy_config) {
+                Ok(copy_result) => {
+                    for file in &copy_result.copied {
+                        eprintln!("Copied: {}", file);
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "\x1b[33m⚠ Warning: Failed to copy ignored files: {}\x1b[0m",
+                        e
+                    );
                 }
             }
         }
@@ -230,8 +238,16 @@ fn run_deferred_hooks(hooks_file_path: &str) -> Result<()> {
 
     let path = Path::new(hooks_file_path);
 
-    // ファイルが存在しない場合は何もしない
+    // ファイルが存在しない場合は何もしない（ユーザーがキャンセルした場合などに発生）
     if !path.exists() {
+        // デバッグ用：ファイルが見つからない場合のログ
+        // 通常はhooksが設定されていない場合やキャンセル時に発生するため警告レベルではない
+        if std::env::var("GWM_DEBUG").is_ok() {
+            eprintln!(
+                "\x1b[90m[debug] Deferred hooks file not found: {}\x1b[0m",
+                hooks_file_path
+            );
+        }
         return Ok(());
     }
 

@@ -204,4 +204,78 @@ mod tests {
         assert_eq!(converted.repo_root, context.repo_root);
         assert_eq!(converted.repo_name, context.repo_name);
     }
+
+    #[test]
+    fn test_read_from_file_version_mismatch() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("hooks.json");
+
+        // Write a file with an incompatible version
+        let content = r#"{
+            "version": 99,
+            "worktree_path": "/path/to/worktree",
+            "branch_name": "test",
+            "repo_root": "/path/to/repo",
+            "repo_name": "repo",
+            "commands": [],
+            "trust_verified": true
+        }"#;
+        std::fs::write(&file_path, content).unwrap();
+
+        let result = DeferredHooks::read_from_file(&file_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("Unsupported deferred hooks version"),
+            "Error message should mention version mismatch: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_read_from_file_malformed_json() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("hooks.json");
+
+        // Write invalid JSON
+        std::fs::write(&file_path, "{ invalid json }").unwrap();
+
+        let result = DeferredHooks::read_from_file(&file_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("Failed to parse"),
+            "Error message should mention parse failure: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_trust_verified_false_preserved() {
+        // This test verifies that trust_verified: false is correctly preserved
+        // through serialization/deserialization, which is critical for security
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("hooks.json");
+
+        let context = HookContext {
+            worktree_path: PathBuf::from("/path/to/worktree"),
+            branch_name: "feature/test".to_string(),
+            repo_root: PathBuf::from("/path/to/repo"),
+            repo_name: "test-repo".to_string(),
+        };
+
+        // Create hooks with trust_verified = false
+        let hooks = DeferredHooks::new(&context, vec!["npm install".to_string()], false);
+        assert!(!hooks.trust_verified);
+
+        // Write and read back
+        hooks.write_to_file(&file_path).unwrap();
+        let loaded = DeferredHooks::read_from_file(&file_path).unwrap();
+
+        // Verify trust_verified: false is preserved
+        assert!(
+            !loaded.trust_verified,
+            "trust_verified: false must be preserved after serialization"
+        );
+    }
 }

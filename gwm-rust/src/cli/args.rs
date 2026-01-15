@@ -328,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn test_should_output_path_only() {
+    fn test_add_should_output_path_only() {
         // Default: should output path only
         let cli = Cli::parse_from(["gwm", "add", "feature/test"]);
         if let Some(Commands::Add(args)) = cli.command {
@@ -351,6 +351,45 @@ mod tests {
         let cli = Cli::parse_from(["gwm", "add", "feature/test", "--cursor"]);
         if let Some(Commands::Add(args)) = cli.command {
             assert!(!args.should_output_path_only());
+        }
+    }
+
+    #[test]
+    fn test_go_should_output_path_only() {
+        // Default: should output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                args.should_output_path_only(),
+                "Default go should output path only"
+            );
+        }
+
+        // --no-cd: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--no-cd"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--no-cd should disable path-only output"
+            );
+        }
+
+        // --code: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--code"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--code should disable path-only output"
+            );
+        }
+
+        // --cursor: should NOT output path only
+        let cli = Cli::parse_from(["gwm", "go", "feature/test", "--cursor"]);
+        if let Some(Commands::Go(args)) = cli.command {
+            assert!(
+                !args.should_output_path_only(),
+                "--cursor should disable path-only output"
+            );
         }
     }
 }
