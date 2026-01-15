@@ -73,6 +73,7 @@ struct WorktreeJson {
 pub fn run_list(args: ListArgs) -> Result<()> {
     match args.format {
         OutputFormat::Json => run_list_json(),
+        OutputFormat::Names => run_list_names(),
         OutputFormat::Table => {
             if args.compact {
                 run_list_compact()
@@ -334,6 +335,20 @@ fn run_list_json() -> Result<()> {
         .collect();
 
     println!("{}", serde_json::to_string_pretty(&json_data)?);
+
+    Ok(())
+}
+
+/// ブランチ名のみ出力（シェル補完用）
+///
+/// 各行にブランチ名を1つずつ出力します。
+/// シェル補完スクリプトから呼び出されることを想定しています。
+fn run_list_names() -> Result<()> {
+    let worktrees = get_worktrees()?;
+
+    for worktree in &worktrees {
+        println!("{}", worktree.display_branch());
+    }
 
     Ok(())
 }
