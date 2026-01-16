@@ -2,7 +2,6 @@
 //!
 //! 長時間操作時の進捗状況を表示します。
 //!
-//! - `ProgressBarWidget`: 定量進捗（プログレスバー）
 //! - `StepProgressWidget`: ステップ進捗（[1/4] ✓ Step name 形式）
 
 use ratatui::{
@@ -64,63 +63,6 @@ impl StepState {
     /// 失敗したかどうか
     pub fn is_failed(&self) -> bool {
         matches!(self, StepState::Failed(_))
-    }
-}
-
-/// プログレスバーウィジェット（定量進捗）
-pub struct ProgressBarWidget<'a> {
-    /// 表示メッセージ
-    message: &'a str,
-    /// 現在の進捗
-    current: usize,
-    /// 合計
-    total: usize,
-    /// バーの幅
-    bar_width: usize,
-}
-
-impl<'a> ProgressBarWidget<'a> {
-    /// 新しいProgressBarWidgetを作成
-    pub fn new(message: &'a str, current: usize, total: usize) -> Self {
-        Self {
-            message,
-            current,
-            total,
-            bar_width: 20,
-        }
-    }
-
-    /// バーの幅を設定
-    pub fn bar_width(mut self, width: usize) -> Self {
-        self.bar_width = width;
-        self
-    }
-}
-
-impl Widget for ProgressBarWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        if area.width < 10 || area.height < 1 {
-            return;
-        }
-
-        let progress = if self.total > 0 {
-            self.current as f64 / self.total as f64
-        } else {
-            0.0
-        };
-
-        let filled = (progress * self.bar_width as f64) as usize;
-        let empty = self.bar_width.saturating_sub(filled);
-
-        let bar = format!("{}{}", "━".repeat(filled), "─".repeat(empty));
-        let percent = (progress * 100.0) as usize;
-
-        let text = format!(
-            "{} {} {}% ({}/{})",
-            self.message, bar, percent, self.current, self.total
-        );
-
-        buf.set_string(area.x, area.y, &text, Style::default().fg(Color::Cyan));
     }
 }
 
@@ -293,21 +235,6 @@ mod tests {
     }
 
     #[test]
-    fn test_progress_bar_creation() {
-        let bar = ProgressBarWidget::new("Loading", 50, 100);
-        assert_eq!(bar.message, "Loading");
-        assert_eq!(bar.current, 50);
-        assert_eq!(bar.total, 100);
-        assert_eq!(bar.bar_width, 20);
-    }
-
-    #[test]
-    fn test_progress_bar_custom_width() {
-        let bar = ProgressBarWidget::new("Loading", 50, 100).bar_width(30);
-        assert_eq!(bar.bar_width, 30);
-    }
-
-    #[test]
     fn test_step_progress_creation() {
         let steps = vec![
             StepState::Completed("Step 1".to_string()),
@@ -339,5 +266,42 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_spinner_char_cycles_correctly() {
+        let steps = vec![StepState::InProgress("Test".to_string(), None)];
+        let frames_len = StepProgressWidget::SPINNER_FRAMES.len();
+
+        // フレーム0〜9が正しいスピナー文字を返すことを確認
+        for i in 0..frames_len {
+            let widget = StepProgressWidget::new("Test", &steps).frame(i);
+            assert_eq!(
+                widget.spinner_char(),
+                StepProgressWidget::SPINNER_FRAMES[i],
+                "Frame {} should return SPINNER_FRAMES[{}]",
+                i,
+                i
+            );
+        }
+
+        // フレーム番号がSPINNER_FRAMES.len()以上の場合、正しく循環することを確認
+        for i in 0..frames_len {
+            let widget = StepProgressWidget::new("Test", &steps).frame(frames_len + i);
+            assert_eq!(
+                widget.spinner_char(),
+                StepProgressWidget::SPINNER_FRAMES[i],
+                "Frame {} should cycle to SPINNER_FRAMES[{}]",
+                frames_len + i,
+                i
+            );
+        }
+
+        // 大きなフレーム番号でも正しく循環することを確認
+        let widget = StepProgressWidget::new("Test", &steps).frame(100);
+        assert_eq!(
+            widget.spinner_char(),
+            StepProgressWidget::SPINNER_FRAMES[100 % frames_len]
+        );
     }
 }
