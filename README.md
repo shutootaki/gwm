@@ -21,9 +21,13 @@ A CLI tool for managing Git worktrees, allowing you to work on multiple branches
 
 When reviewing multiple PRs or working on a hotfix while developing another feature, you end up running `git stash` and `git checkout` repeatedly. gwm uses Git's worktree feature to **manage separate directories for each branch**.
 
+gwm wraps Git's built-in `git worktree` command with an **interactive TUI**, **intuitive commands**, and **useful features** to make worktree management effortless.
+
 - Switch branches without stashing
 - Create worktrees from remote branches instantly
 - Auto-detect and remove merged worktrees
+- Interactive selection with fuzzy search
+- Automatic shell directory change after operations
 
 ## Commands
 
