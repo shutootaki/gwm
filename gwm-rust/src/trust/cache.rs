@@ -187,4 +187,44 @@ mod tests {
         let cache = TrustCache::default();
         assert!(cache.repos.is_empty());
     }
+
+    #[test]
+    fn test_get_trusted_info_not_found() {
+        // 存在しないリポジトリの情報取得
+        let result = get_trusted_info(Path::new("/nonexistent/repo/12345"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_trust_cache_default_version() {
+        let cache = TrustCache::default();
+        assert_eq!(cache.version, 1);
+        assert!(cache.repos.is_empty());
+    }
+
+    #[test]
+    fn test_trusted_repo_with_empty_commands() {
+        let repo = TrustedRepo {
+            config_path: PathBuf::from("/path/to/config.toml"),
+            config_hash: "hash".to_string(),
+            trusted_at: "2025-01-15T00:00:00Z".to_string(),
+            trusted_commands: vec![],
+        };
+        assert!(repo.trusted_commands.is_empty());
+    }
+
+    #[test]
+    fn test_trusted_repo_multiple_commands() {
+        let repo = TrustedRepo {
+            config_path: PathBuf::from("/path/to/config.toml"),
+            config_hash: "hash".to_string(),
+            trusted_at: "2025-01-15T00:00:00Z".to_string(),
+            trusted_commands: vec![
+                "npm install".to_string(),
+                "npm run build".to_string(),
+                "npm test".to_string(),
+            ],
+        };
+        assert_eq!(repo.trusted_commands.len(), 3);
+    }
 }

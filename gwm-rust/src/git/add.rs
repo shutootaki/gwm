@@ -147,4 +147,46 @@ mod tests {
         assert!(options.is_remote);
         assert!(options.from_branch.is_none());
     }
+
+    #[test]
+    fn test_add_worktree_options_default_from_branch() {
+        let options = AddWorktreeOptions {
+            branch: "feature/new".to_string(),
+            is_remote: false,
+            from_branch: None,
+        };
+        assert!(options.from_branch.is_none());
+    }
+
+    #[test]
+    fn test_add_worktree_result_construction() {
+        let result = AddWorktreeResult {
+            path: PathBuf::from("/path/to/worktree"),
+            actions: vec![
+                "Creating new branch".to_string(),
+                "Worktree created".to_string(),
+            ],
+        };
+        assert_eq!(result.path, PathBuf::from("/path/to/worktree"));
+        assert_eq!(result.actions.len(), 2);
+    }
+
+    #[test]
+    fn test_add_worktree_result_empty_actions() {
+        let result = AddWorktreeResult {
+            path: PathBuf::from("/path"),
+            actions: vec![],
+        };
+        assert!(result.actions.is_empty());
+    }
+
+    #[test]
+    fn test_add_worktree_options_branch_with_slashes() {
+        let options = AddWorktreeOptions {
+            branch: "feature/sub/deep/branch".to_string(),
+            is_remote: false,
+            from_branch: Some("develop".to_string()),
+        };
+        assert!(options.branch.contains('/'));
+    }
 }

@@ -123,6 +123,38 @@ mod tests {
         assert_eq!(result.error, Some("worktree not found".to_string()));
     }
 
+    #[test]
+    fn test_remove_result_with_empty_strings() {
+        let result = RemoveResult::success(String::new(), String::new(), false);
+        assert!(result.is_success());
+        assert!(result.path.is_empty());
+        assert!(result.branch.is_empty());
+    }
+
+    #[test]
+    fn test_remove_result_error_message_preserved() {
+        let error_msg = "Cannot remove worktree with uncommitted changes";
+        let result = RemoveResult::failure(
+            "/path/to/wt".to_string(),
+            "feature/test".to_string(),
+            error_msg,
+        );
+        assert!(!result.is_success());
+        assert_eq!(result.error, Some(error_msg.to_string()));
+    }
+
+    #[test]
+    fn test_remove_result_branch_deleted_true() {
+        let result = RemoveResult::success("/path".to_string(), "branch".to_string(), true);
+        assert!(result.branch_deleted);
+    }
+
+    #[test]
+    fn test_remove_result_branch_deleted_false() {
+        let result = RemoveResult::success("/path".to_string(), "branch".to_string(), false);
+        assert!(!result.branch_deleted);
+    }
+
     // Note: remove_worktree, delete_local_branch, is_branch_merged の
     // 実際のテストは統合テストで行う（実際のGitリポジトリが必要なため）
 }

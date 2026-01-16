@@ -216,3 +216,101 @@ fn execute_clean(targets: &[CleanableWorktree]) -> Result<()> {
     print_clean_summary(success_count, fail_count, start.elapsed());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::git::{CleanReason, CleanableWorktree, Worktree, WorktreeStatus};
+    use ratatui::buffer::Buffer;
+    use std::path::PathBuf;
+
+    fn create_test_worktree(branch: &str) -> Worktree {
+        Worktree {
+            path: PathBuf::from(format!("/path/to/{}", branch)),
+            branch: format!("refs/heads/{}", branch),
+            head: "abc1234567890".to_string(),
+            status: WorktreeStatus::Other,
+            is_main: false,
+            sync_status: None,
+            change_status: None,
+            last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
+        }
+    }
+
+    fn create_test_cleanable(branch: &str, reason: CleanReason) -> CleanableWorktree {
+        CleanableWorktree {
+            worktree: create_test_worktree(branch),
+            reason,
+            merged_into: None,
+        }
+    }
+
+    #[test]
+    fn test_render_clean_confirm_ui_empty() {
+        let mut buf = Buffer::empty(Rect::new(0, 0, 80, 10));
+        let cleanable: Vec<CleanableWorktree> = vec![];
+        render_clean_confirm_ui(&mut buf, Rect::new(0, 0, 80, 10), &cleanable);
+
+        // タイトル行の確認
+        let content: String = (0..80)
+            .map(|x| buf.cell((x, 0)).unwrap().symbol().to_string())
+            .collect();
+        assert!(content.contains("Found 0 cleanable"));
+    }
+
+    #[test]
+    fn test_render_clean_confirm_ui_with_items() {
+        let cleanable = vec![
+            create_test_cleanable("feature/merged", CleanReason::Merged),
+            create_test_cleanable("feature/deleted", CleanReason::RemoteDeleted),
+        ];
+        let mut buf = Buffer::empty(Rect::new(0, 0, 100, 10));
+        render_clean_confirm_ui(&mut buf, Rect::new(0, 0, 100, 10), &cleanable);
+
+        // タイトル行に件数が含まれる
+        let content: String = (0..100)
+            .map(|x| buf.cell((x, 0)).unwrap().symbol().to_string())
+            .collect();
+        assert!(content.contains("Found 2 cleanable"));
+    }
+
+    #[test]
+    fn test_render_clean_confirm_ui_footer() {
+        let cleanable = vec![create_test_cleanable("test", CleanReason::Merged)];
+        let mut buf = Buffer::empty(Rect::new(0, 0, 100, 10));
+        render_clean_confirm_ui(&mut buf, Rect::new(0, 0, 100, 10), &cleanable);
+
+        // フッター行にキー操作の説明が含まれる
+        // y=0: タイトル, y=1: アイテム, y=2: 空行, y=3: フッター
+        let footer_line: String = (0..100)
+            .map(|x| buf.cell((x, 3)).unwrap().symbol().to_string())
+            .collect();
+        assert!(footer_line.contains("Enter") || footer_line.contains("Esc"));
+    }
+
+    #[test]
+    fn test_render_clean_confirm_ui_truncation() {
+        // 領域が小さい場合でもパニックしない
+        let cleanable = vec![
+            create_test_cleanable("feature/1", CleanReason::Merged),
+            create_test_cleanable("feature/2", CleanReason::Merged),
+            create_test_cleanable("feature/3", CleanReason::Merged),
+        ];
+        let mut buf = Buffer::empty(Rect::new(0, 0, 50, 3));
+        render_clean_confirm_ui(&mut buf, Rect::new(0, 0, 50, 3), &cleanable);
+        // クラッシュしなければOK
+    }
+
+    #[test]
+    fn test_clean_reason_colors() {
+        // CleanReasonの色分けが正しく動作する
+        assert_eq!(CleanReason::Merged.color(), ratatui::style::Color::Green);
+        assert_eq!(
+            CleanReason::RemoteDeleted.color(),
+            ratatui::style::Color::Red
+        );
+    }
+}
