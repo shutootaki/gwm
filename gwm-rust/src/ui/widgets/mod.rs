@@ -23,11 +23,10 @@ pub mod text_input;
 pub use confirm::ConfirmWidget;
 pub use multi_select_list::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
 pub use notice::{NoticeVariant, NoticeWidget};
-pub use progress::{ProgressBarWidget, StepProgressWidget, StepState};
+pub use progress::{StepProgressWidget, StepState};
 pub use select_list::{SelectListWidget, SelectState};
 pub use spinner::SpinnerWidget;
 pub use table::{
     calculate_column_widths, pad_text, truncate_and_pad, truncate_start, ColumnWidths,
-    WorktreeTable,
 };
 pub use text_input::TextInputWidget;

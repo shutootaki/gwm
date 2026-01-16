@@ -3,9 +3,9 @@
 //! Handles reading and writing the trusted repositories cache file.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::types::{TrustCache, TrustedRepo};
+use super::types::{normalize_repo_path_or_display, TrustCache, TrustedRepo};
 use crate::error::Result;
 
 /// Name of the cache file.
@@ -90,15 +90,19 @@ pub fn save_cache(cache: &TrustCache) -> Result<()> {
 }
 
 /// Register a repository as trusted.
+///
+/// The repo_root path is normalized to ensure consistent cache lookups
+/// regardless of symlinks or relative path usage.
 pub fn trust_repository(
-    repo_root: &str,
+    repo_root: &Path,
     config_path: PathBuf,
     config_hash: String,
     commands: Vec<String>,
 ) -> Result<()> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
     let mut cache = load_cache();
     cache.repos.insert(
-        repo_root.to_string(),
+        normalized_key,
         TrustedRepo {
             config_path,
             config_hash,
@@ -110,14 +114,20 @@ pub fn trust_repository(
 }
 
 /// Get trust information for a repository.
-pub fn get_trusted_info(repo_root: &str) -> Option<TrustedRepo> {
-    load_cache().repos.get(repo_root).cloned()
+///
+/// The repo_root path is normalized for consistent cache lookups.
+pub fn get_trusted_info(repo_root: &Path) -> Option<TrustedRepo> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
+    load_cache().repos.get(&normalized_key).cloned()
 }
 
 /// Remove trust for a repository.
-pub fn revoke_trust(repo_root: &str) -> Result<()> {
+///
+/// The repo_root path is normalized for consistent cache lookups.
+pub fn revoke_trust(repo_root: &Path) -> Result<()> {
+    let normalized_key = normalize_repo_path_or_display(repo_root);
     let mut cache = load_cache();
-    cache.repos.remove(repo_root);
+    cache.repos.remove(&normalized_key);
     save_cache(&cache)
 }
 
@@ -176,5 +186,45 @@ mod tests {
         // デフォルトキャッシュはreposが空
         let cache = TrustCache::default();
         assert!(cache.repos.is_empty());
+    }
+
+    #[test]
+    fn test_get_trusted_info_not_found() {
+        // 存在しないリポジトリの情報取得
+        let result = get_trusted_info(Path::new("/nonexistent/repo/12345"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_trust_cache_default_version() {
+        let cache = TrustCache::default();
+        assert_eq!(cache.version, 1);
+        assert!(cache.repos.is_empty());
+    }
+
+    #[test]
+    fn test_trusted_repo_with_empty_commands() {
+        let repo = TrustedRepo {
+            config_path: PathBuf::from("/path/to/config.toml"),
+            config_hash: "hash".to_string(),
+            trusted_at: "2025-01-15T00:00:00Z".to_string(),
+            trusted_commands: vec![],
+        };
+        assert!(repo.trusted_commands.is_empty());
+    }
+
+    #[test]
+    fn test_trusted_repo_multiple_commands() {
+        let repo = TrustedRepo {
+            config_path: PathBuf::from("/path/to/config.toml"),
+            config_hash: "hash".to_string(),
+            trusted_at: "2025-01-15T00:00:00Z".to_string(),
+            trusted_commands: vec![
+                "npm install".to_string(),
+                "npm run build".to_string(),
+                "npm test".to_string(),
+            ],
+        };
+        assert_eq!(repo.trusted_commands.len(), 3);
     }
 }

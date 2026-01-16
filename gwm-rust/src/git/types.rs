@@ -90,6 +90,12 @@ pub struct Worktree {
     pub change_status: Option<ChangeStatus>,
     /// 最終更新時間（相対表示用）
     pub last_activity: Option<String>,
+    /// 最終コミット日時（ISO8601形式）
+    pub commit_date: Option<String>,
+    /// 最終コミッター名
+    pub committer_name: Option<String>,
+    /// 最終コミットメッセージ
+    pub commit_message: Option<String>,
 }
 
 impl Worktree {
@@ -409,6 +415,9 @@ mod tests {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -424,6 +433,9 @@ mod tests {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.display_branch(), "(detached)");
     }
@@ -439,6 +451,9 @@ mod tests {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
@@ -454,6 +469,9 @@ mod tests {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.short_head(), "abc");
     }
@@ -469,6 +487,9 @@ mod tests {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }

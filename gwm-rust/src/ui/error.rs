@@ -9,8 +9,28 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
+use crossterm::terminal;
+
 use crate::error::GwmError;
 use crate::ui::widgets::NoticeWidget;
+
+/// Minimum width for error display
+const MIN_ERROR_WIDTH: u16 = 40;
+/// Maximum width for error display
+const MAX_ERROR_WIDTH: u16 = 100;
+/// Default width when terminal size cannot be determined
+const DEFAULT_ERROR_WIDTH: u16 = 60;
+
+/// Get the appropriate width for error display based on terminal size.
+fn get_error_display_width() -> u16 {
+    terminal::size()
+        .map(|(w, _)| {
+            // Leave some margin (4 chars) from terminal edge
+            let available = w.saturating_sub(4);
+            available.clamp(MIN_ERROR_WIDTH, MAX_ERROR_WIDTH)
+        })
+        .unwrap_or(DEFAULT_ERROR_WIDTH)
+}
 
 /// エラー表示に必要な高さを計算
 fn calculate_error_height(error: &GwmError) -> u16 {
@@ -110,8 +130,8 @@ pub fn print_structured_error(error: &GwmError) {
         Ok(mut terminal) => {
             let _ = terminal.draw(|frame| {
                 let area = frame.area();
-                // 幅を70%に制限（最小40文字）
-                let max_width = (area.width * 70 / 100).max(40).min(area.width);
+                // ターミナルサイズに基づいて動的に幅を決定
+                let max_width = get_error_display_width().min(area.width);
                 let limited_area = Rect::new(area.x, area.y, max_width, area.height);
                 frame.render_widget(widget, limited_area);
             });

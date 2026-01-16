@@ -352,3 +352,119 @@ fn run_list_names() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sync_json_construction() {
+        let sync = SyncJson {
+            ahead: 5,
+            behind: 3,
+        };
+        assert_eq!(sync.ahead, 5);
+        assert_eq!(sync.behind, 3);
+    }
+
+    #[test]
+    fn test_changes_json_construction() {
+        let changes = ChangesJson {
+            modified: 1,
+            added: 2,
+            deleted: 3,
+            untracked: 4,
+        };
+        assert_eq!(changes.modified, 1);
+        assert_eq!(changes.added, 2);
+        assert_eq!(changes.deleted, 3);
+        assert_eq!(changes.untracked, 4);
+    }
+
+    #[test]
+    fn test_worktree_json_serialization() {
+        let json = WorktreeJson {
+            branch: "feature/test".to_string(),
+            path: "/path/to/worktree".to_string(),
+            status: "other".to_string(),
+            head: "abc1234".to_string(),
+            sync: Some(SyncJson {
+                ahead: 2,
+                behind: 1,
+            }),
+            changes: Some(ChangesJson {
+                modified: 3,
+                added: 1,
+                deleted: 0,
+                untracked: 2,
+            }),
+            last_activity: Some("2d ago".to_string()),
+        };
+        let serialized = serde_json::to_string(&json).unwrap();
+        assert!(serialized.contains("feature/test"));
+        assert!(serialized.contains("ahead"));
+    }
+
+    #[test]
+    fn test_worktree_json_skip_serializing_none() {
+        let json = WorktreeJson {
+            branch: "main".to_string(),
+            path: "/path".to_string(),
+            status: "main".to_string(),
+            head: "def5678".to_string(),
+            sync: None,
+            changes: None,
+            last_activity: None,
+        };
+        let serialized = serde_json::to_string(&json).unwrap();
+        assert!(!serialized.contains("sync"));
+        assert!(!serialized.contains("changes"));
+        assert!(!serialized.contains("last_activity"));
+    }
+
+    #[test]
+    fn test_default_terminal_size() {
+        assert_eq!(DEFAULT_TERMINAL_SIZE, (120, 24));
+    }
+
+    #[test]
+    fn test_column_width_constants() {
+        assert_eq!(SYNC_WIDTH, 8);
+        assert_eq!(CHANGES_WIDTH, 10);
+        assert_eq!(ACTIVITY_WIDTH, 10);
+    }
+
+    #[test]
+    fn test_worktree_json_all_fields() {
+        let json = WorktreeJson {
+            branch: "feature/x".to_string(),
+            path: "/p".to_string(),
+            status: "other".to_string(),
+            head: "1234567".to_string(),
+            sync: Some(SyncJson {
+                ahead: 0,
+                behind: 0,
+            }),
+            changes: Some(ChangesJson {
+                modified: 0,
+                added: 0,
+                deleted: 0,
+                untracked: 0,
+            }),
+            last_activity: Some("just now".to_string()),
+        };
+        let serialized = serde_json::to_string(&json).unwrap();
+        assert!(serialized.contains("\"ahead\":0"));
+        assert!(serialized.contains("\"modified\":0"));
+    }
+
+    #[test]
+    fn test_sync_json_zero_values() {
+        let sync = SyncJson {
+            ahead: 0,
+            behind: 0,
+        };
+        assert_eq!(sync.ahead, 0);
+        assert_eq!(sync.behind, 0);
+    }
+}

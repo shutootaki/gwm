@@ -62,6 +62,9 @@ fuzzy-matcher = "0.3"
 # Unicode width calculation
 unicode-width = "0.2"
 
+# Parallel iteration (1.8 supports Rust 1.63+)
+rayon = "1.8"
+
 [dev-dependencies]
 tempfile = "3"
 assert_cmd = "2.0"

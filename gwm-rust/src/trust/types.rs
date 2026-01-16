@@ -4,7 +4,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use crate::error::{GwmError, Result};
 
 /// Information about a trusted repository.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +41,38 @@ impl Default for TrustCache {
             repos: HashMap::new(),
         }
     }
+}
+
+/// Normalize a repository path for use as a cache key.
+///
+/// This function resolves symlinks and converts the path to an absolute path
+/// to ensure consistent cache lookups regardless of how the path is accessed.
+///
+/// # Arguments
+/// * `path` - The repository path to normalize
+///
+/// # Returns
+/// A normalized path string suitable for use as a cache key.
+///
+/// # Errors
+/// Returns `GwmError::Path` if the path cannot be canonicalized.
+pub fn normalize_repo_path(path: &Path) -> Result<String> {
+    let canonical = path.canonicalize().map_err(|e| {
+        GwmError::path(format!(
+            "Failed to canonicalize repository path '{}': {}",
+            path.display(),
+            e
+        ))
+    })?;
+
+    Ok(canonical.to_string_lossy().to_string())
+}
+
+/// Try to normalize a repository path, falling back to the display string on error.
+///
+/// This is useful when you want best-effort normalization without failing.
+pub fn normalize_repo_path_or_display(path: &Path) -> String {
+    normalize_repo_path(path).unwrap_or_else(|_| path.display().to_string())
 }
 
 /// Result of trust verification.

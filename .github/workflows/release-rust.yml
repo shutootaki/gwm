@@ -24,7 +24,6 @@ defaults:
 jobs:
   build:
     if: false  # [DISABLED] 有効化時に削除
-    name: Build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,7 +48,7 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: gwm.exe
-            asset_name: gwm-windows-x86_64.exe
+            asset_name: gwm-windows-x86_64
 
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +56,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # Install musl tools for Linux musl target
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
@@ -71,13 +69,13 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create tarball (Unix)
-        if: matrix.os != 'windows-latest'
+        if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
           tar czvf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
 
       - name: Create zip (Windows)
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Compress-Archive -Path "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" -DestinationPath "${{ matrix.asset_name }}.zip"
@@ -103,6 +101,16 @@ jobs:
         with:
           path: artifacts
 
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec sh -c '
+            for f; do
+              sha256sum "$f" | sed "s|  .*/|  |" >> checksums.txt
+            done
+          ' _ {} +
+          cat checksums.txt
+
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/rust-v}" >> $GITHUB_OUTPUT
@@ -110,29 +118,34 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: gwm (Rust) v${{ steps.version.outputs.version }}
+          name: gwm v${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
+            artifacts/checksums.txt
           body: |
-            ## gwm (Rust) v${{ steps.version.outputs.version }}
+            ## gwm v${{ steps.version.outputs.version }}
+
+            Git Worktree Manager - A CLI tool for managing Git worktrees with an interactive TUI.
 
             ### Installation
 
-            **Using cargo:**
+            **Homebrew (macOS):**
+            ```bash
+            brew install shutootaki/tap/gwm
+            ```
+
+            **Cargo:**
             ```bash
             cargo install gwm
             ```
 
-            **Manual installation:**
-            1. Download the appropriate binary for your platform
-            2. Extract and move to a directory in your PATH
-            3. Run `gwm --help` to verify installation
+            **Manual:** Download the appropriate binary below and add to your PATH.
 
             ### Checksums
-            See the attached files for SHA256 checksums.
+            See `checksums.txt` for SHA256 checksums.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

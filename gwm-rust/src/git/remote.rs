@@ -64,13 +64,12 @@ pub async fn get_remote_branches_with_info() -> Result<Vec<RemoteBranchInfo>> {
             let parts: Vec<&str> = line.split('|').collect();
             if parts.len() >= 4 {
                 let full_name = parts[0].to_string();
-                let name = full_name
-                    .strip_prefix("origin/")
-                    .unwrap_or(&full_name)
-                    .to_string();
+                // "origin" のようなリモート名のみのエントリを除外
+                // "origin/branch" のような形式のみ許可
+                let name = full_name.strip_prefix("origin/")?;
 
                 Some(RemoteBranchInfo {
-                    name,
+                    name: name.to_string(),
                     full_name,
                     last_commit_date: parts[1].to_string(),
                     last_committer_name: parts[2].to_string(),

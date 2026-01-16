@@ -60,9 +60,23 @@ impl<'a> TextInputWidget<'a> {
     }
 }
 
+/// Minimum terminal width required for TextInputWidget
+const MIN_WIDTH: u16 = 10;
+/// Minimum terminal height required for TextInputWidget
+const MIN_HEIGHT: u16 = 5;
+
 impl Widget for TextInputWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if area.width < 10 || area.height < 5 {
+        if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
+            // Display a helpful message instead of blank screen
+            let message = format!(
+                "Terminal too small ({}x{}). Need {}x{}",
+                area.width, area.height, MIN_WIDTH, MIN_HEIGHT
+            );
+            let truncated = &message[..message.len().min(area.width as usize)];
+            let style = Style::default().fg(Color::Yellow);
+            let y = area.y + area.height.saturating_sub(1) / 2;
+            buf.set_string(area.x, y, truncated, style);
             return;
         }
 

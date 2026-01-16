@@ -10,26 +10,20 @@ use crossterm::{
     event::{Event, KeyCode, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::Rect,
-    style::{Color, Style},
-    text::{Line, Span},
-    widgets::Paragraph,
-    Terminal, TerminalOptions, Viewport,
-};
+use ratatui::{backend::CrosstermBackend, Terminal, TerminalOptions, Viewport};
 
 use crate::cli::GoArgs;
 use crate::error::Result;
-use crate::git::get_worktrees;
+use crate::git::get_worktrees_with_details;
 use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
-use crate::ui::{SelectItem, TextInputState};
+use crate::ui::{SelectItem, SelectItemMetadata, TextInputState};
 use crate::utils::open_in_editor;
 
 /// TUI用インライン viewport の高さ
-const TUI_GO_INLINE_HEIGHT: u16 = 15;
+/// 内訳: title(2) + stats(2) + search(2) + items(8) + more_indicator(2) + blank(1) + preview(12) + help(1) + margin(2) = 32
+const TUI_GO_INLINE_HEIGHT: u16 = 32;
 
 /// ターミナル復元を保証するガード構造体
 struct TerminalGuard;
@@ -51,21 +45,27 @@ impl Drop for TerminalGuard {
 /// * 成功時: Ok(())
 /// * 失敗時: GwmError
 pub fn run_go(args: GoArgs) -> Result<()> {
-    let worktrees = get_worktrees()?;
+    let worktrees = get_worktrees_with_details()?;
 
     if worktrees.is_empty() {
         eprintln!("No worktrees found.");
         return Ok(());
     }
 
-    // Worktreeをアイテムに変換（ステータスアイコン付き）
+    // Worktreeをアイテムに変換（ステータスアイコン付き、プレビュー情報付き）
     let items: Vec<SelectItem> = worktrees
         .iter()
         .map(|wt| SelectItem {
             label: format!("[{}] {}", wt.status.icon(), wt.display_branch()),
             value: wt.path.display().to_string(),
             description: Some(wt.path.display().to_string()),
-            metadata: None,
+            metadata: Some(SelectItemMetadata {
+                last_commit_date: wt.commit_date.clone().unwrap_or_default(),
+                last_committer_name: wt.committer_name.clone().unwrap_or_default(),
+                last_commit_message: wt.commit_message.clone().unwrap_or_default(),
+                sync_status: wt.sync_status.clone(),
+                change_status: wt.change_status.clone(),
+            }),
         })
         .collect();
 
@@ -148,7 +148,7 @@ fn run_go_tui(
         None => TextInputState::new(),
     };
 
-    let mut state = SelectState::new(items.to_vec()).with_max_display(10);
+    let mut state = SelectState::new(items.to_vec()).with_max_display(8);
 
     // 初期フィルタリング（クエリがある場合）
     if !input.value.is_empty() {
@@ -159,12 +159,6 @@ fn run_go_tui(
         terminal.draw(|frame| {
             let area = frame.area();
 
-            // SelectListWidget用の領域（下1行を凡例用に確保）
-            let list_area = Rect {
-                height: area.height.saturating_sub(1),
-                ..area
-            };
-
             let widget = SelectListWidget::with_state(
                 "Go to worktree",
                 "Search worktrees...",
@@ -172,23 +166,7 @@ fn run_go_tui(
                 &state,
                 None,
             );
-            frame.render_widget(widget, list_area);
-
-            // 凡例表示
-            let legend_area = Rect {
-                y: area.y + area.height.saturating_sub(1),
-                height: 1,
-                ..area
-            };
-            let legend = Line::from(vec![
-                Span::styled("[*]", Style::default().fg(Color::Yellow)),
-                Span::raw(" Active  "),
-                Span::styled("[M]", Style::default().fg(Color::Cyan)),
-                Span::raw(" Main  "),
-                Span::styled("[-]", Style::default().fg(Color::White)),
-                Span::raw(" Other"),
-            ]);
-            frame.render_widget(Paragraph::new(legend), legend_area);
+            frame.render_widget(widget, area);
         })?;
 
         if let Some(Event::Key(key)) = poll_event(Duration::from_millis(100))? {

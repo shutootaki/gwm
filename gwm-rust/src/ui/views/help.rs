@@ -92,7 +92,6 @@ OPTIONS:
         --from <BRANCH>    Base branch for new worktree (default: main)
         --code             Open in VS Code after creation
         --cursor           Open in Cursor after creation
-        --cd               Output path only (default, for shell integration)
         --no-cd            Show success message instead of path output
         --skip-hooks       Skip post_create hook execution
 

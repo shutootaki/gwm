@@ -433,12 +433,9 @@ fn write_deferred_hooks_for_shell(
                 Some(ConfirmChoice::Trust) => {
                     // キャッシュに保存してhooksをファイルに書き出す
                     if let Some(ref repo_root) = config_source.repo_root {
-                        if let Err(e) = trust_repository(
-                            &repo_root.display().to_string(),
-                            config_path,
-                            config_hash,
-                            commands.clone(),
-                        ) {
+                        if let Err(e) =
+                            trust_repository(repo_root, config_path, config_hash, commands.clone())
+                        {
                             eprintln!(
                                 "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
                                 e
@@ -534,12 +531,9 @@ fn execute_hooks_direct_impl(
                 Some(ConfirmChoice::Trust) => {
                     // キャッシュに保存して hooks 実行
                     if let Some(ref repo_root) = config_source.repo_root {
-                        if let Err(e) = trust_repository(
-                            &repo_root.display().to_string(),
-                            config_path,
-                            config_hash,
-                            commands.clone(),
-                        ) {
+                        if let Err(e) =
+                            trust_repository(repo_root, config_path, config_hash, commands.clone())
+                        {
                             eprintln!(
                                 "\x1b[33m Warning: Could not save trust setting: {}\x1b[0m",
                                 e
@@ -982,7 +976,7 @@ async fn run_main_loop(
                                     if let Some(metadata) = app.get_confirm_metadata().cloned() {
                                         if let Some(ref repo_root) = metadata.repo_root {
                                             if let Err(e) = trust_repository(
-                                                &repo_root.display().to_string(),
+                                                repo_root,
                                                 metadata.config_path.clone(),
                                                 metadata.config_hash.clone(),
                                                 app.config

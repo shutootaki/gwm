@@ -77,9 +77,8 @@ pub fn verify_trust(
         }
     };
 
-    // Check trust cache
-    let repo_root_str = repo_root.display().to_string();
-    let trusted_info = get_trusted_info(&repo_root_str);
+    // Check trust cache (path is normalized internally)
+    let trusted_info = get_trusted_info(repo_root);
 
     match trusted_info {
         None => TrustStatus::NeedsConfirmation {
