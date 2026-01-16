@@ -275,6 +275,17 @@ impl SelectState {
         }
     }
 
+    /// 最大表示数を調整（画面サイズ変更時に呼び出す）
+    ///
+    /// 画面サイズが変わった場合に、カーソルが見えるようにスクロール位置を調整します。
+    pub fn adjust_max_display(&mut self, actual_available: usize) {
+        self.max_display = actual_available.max(1);
+        // スクロール位置を調整（カーソルが見えるように）
+        if self.cursor_index >= self.scroll_offset + self.max_display {
+            self.scroll_offset = self.cursor_index.saturating_sub(self.max_display - 1);
+        }
+    }
+
     /// フィルタリングを更新（fuzzy matching）
     ///
     /// 空のクエリの場合は全アイテムを表示（元の順序）。
@@ -595,43 +606,48 @@ impl Widget for SelectListWidget<'_> {
             y += 1;
 
             // プレビュー（Status/Sync/Recent changes 対応）
-            if !self.filtered_indices.is_empty() && y + 7 < area.y + area.height {
+            if !self.filtered_indices.is_empty() {
                 let selected_item_idx = self.filtered_indices[self.selected_index];
                 let selected_item = &self.items[selected_item_idx];
 
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::DarkGray))
-                    .title(Span::styled(
-                        " Preview ",
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    ));
-
-                // 動的プレビュー高さ計算
+                // 動的プレビュー高さ計算（先に計算して境界チェック）
                 let preview_height = calculate_preview_height(&selected_item.metadata);
                 let preview_width = area.width.min(PREVIEW_MAX_WIDTH);
-                let preview_area = Rect::new(area.x, y, preview_width, preview_height);
-                let inner = block.inner(preview_area);
-                block.render(preview_area, buf);
 
-                // ブランチ名（シアン色）
-                buf.set_string(
-                    inner.x,
-                    inner.y,
-                    &selected_item.label,
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                );
+                // プレビュー + ヘルプ行(1行) + マージン(1行) が収まるか確認
+                let required_height = preview_height + 2;
+                if y + required_height <= area.y + area.height {
+                    let block = Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::DarkGray))
+                        .title(Span::styled(
+                            " Preview ",
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD),
+                        ));
 
-                // メタデータの描画
-                if let Some(ref metadata) = selected_item.metadata {
-                    render_preview_metadata(buf, inner, metadata, preview_width);
+                    let preview_area = Rect::new(area.x, y, preview_width, preview_height);
+                    let inner = block.inner(preview_area);
+                    block.render(preview_area, buf);
+
+                    // ブランチ名（シアン色）
+                    buf.set_string(
+                        inner.x,
+                        inner.y,
+                        &selected_item.label,
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    );
+
+                    // メタデータの描画
+                    if let Some(ref metadata) = selected_item.metadata {
+                        render_preview_metadata(buf, inner, metadata, preview_width);
+                    }
+
+                    y += preview_height + 1;
                 }
-
-                y += preview_height + 1;
             }
         }
 

@@ -113,6 +113,9 @@ impl WorktreeBuilder {
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         }
     }
 }
@@ -201,7 +204,7 @@ pub fn get_main_worktree_path() -> Option<PathBuf> {
 
 /// Worktree一覧を詳細情報付きで取得
 ///
-/// 各worktreeの詳細情報（同期状態、変更状態、最終更新時間）を並列に取得することで
+/// 各worktreeの詳細情報（同期状態、変更状態、最終更新時間、コミット情報）を並列に取得することで
 /// パフォーマンスを向上させています。
 ///
 /// # Returns
@@ -217,16 +220,22 @@ pub fn get_worktrees_with_details() -> Result<Vec<Worktree>> {
             let sync = get_sync_status(&wt.path, wt.display_branch());
             let change = get_change_status(&wt.path);
             let activity = get_last_activity(&wt.path);
-            (sync, change, activity)
+            let commit = get_commit_info(&wt.path);
+            (sync, change, activity, commit)
         })
         .collect();
 
     // 結果をworktreesにマージ
     let mut worktrees = worktrees;
-    for (i, (sync, change, activity)) in details.into_iter().enumerate() {
+    for (i, (sync, change, activity, commit)) in details.into_iter().enumerate() {
         worktrees[i].sync_status = sync;
         worktrees[i].change_status = change;
         worktrees[i].last_activity = activity;
+        if let Some(commit_info) = commit {
+            worktrees[i].commit_date = Some(commit_info.date);
+            worktrees[i].committer_name = Some(commit_info.committer_name);
+            worktrees[i].commit_message = Some(commit_info.message);
+        }
     }
 
     Ok(worktrees)
@@ -392,6 +401,64 @@ fn get_last_activity(path: &Path) -> Option<String> {
     Some(format_relative_time(duration))
 }
 
+/// worktreeの最新コミット情報
+#[derive(Debug, Clone)]
+pub struct CommitInfo {
+    /// コミット日時（ISO8601形式）
+    pub date: String,
+    /// コミッター名
+    pub committer_name: String,
+    /// コミットメッセージ
+    pub message: String,
+}
+
+/// 最新コミット情報を取得
+///
+/// worktreeの最新コミットの日時、コミッター名、メッセージを取得します。
+/// コミット履歴がない場合や取得に失敗した場合は `None` を返す。
+fn get_commit_info(path: &Path) -> Option<CommitInfo> {
+    let output = match exec(
+        "git",
+        &[
+            "-C",
+            &path.display().to_string(),
+            "log",
+            "-1",
+            "--format=%cI|%cn|%s", // ISO8601日時|コミッター名|メッセージ
+        ],
+        None,
+    ) {
+        Ok(out) => out,
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("Debug: get_commit_info failed at {:?}: {}", path, e);
+            return None;
+        }
+    };
+
+    let output = output.trim();
+    if output.is_empty() {
+        return None;
+    }
+
+    // パイプで分割
+    let parts: Vec<&str> = output.splitn(3, '|').collect();
+    if parts.len() >= 3 {
+        Some(CommitInfo {
+            date: parts[0].to_string(),
+            committer_name: parts[1].to_string(),
+            message: parts[2].to_string(),
+        })
+    } else {
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "Debug: Unexpected commit info format at {:?}: {:?}",
+            path, output
+        );
+        None
+    }
+}
+
 /// 時間単位の定数（秒）
 const MINUTE: i64 = 60;
 const HOUR: i64 = 3600;
@@ -522,6 +589,9 @@ branch refs/heads/feature
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.display_branch(), "feature/test");
     }
@@ -537,6 +607,9 @@ branch refs/heads/feature
             sync_status: None,
             change_status: None,
             last_activity: None,
+            commit_date: None,
+            committer_name: None,
+            commit_message: None,
         };
         assert_eq!(worktree.short_head(), "abc1234");
     }
