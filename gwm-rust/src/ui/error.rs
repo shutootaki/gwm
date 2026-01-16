@@ -1,81 +1,64 @@
 //! 構造化エラー表示モジュール
 //!
 //! エラーメッセージを構造化して、原因・詳細・対処法を明確に表示します。
+//! NoticeWidgetを使用してratatuiでインライン描画します。
+
+use std::io::stderr;
+
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::Rect;
+use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crossterm::terminal;
 
 use crate::error::GwmError;
+use crate::ui::widgets::NoticeWidget;
 
 /// Minimum width for error display
-const MIN_ERROR_WIDTH: usize = 40;
+const MIN_ERROR_WIDTH: u16 = 40;
 /// Maximum width for error display
-const MAX_ERROR_WIDTH: usize = 100;
+const MAX_ERROR_WIDTH: u16 = 100;
 /// Default width when terminal size cannot be determined
-const DEFAULT_ERROR_WIDTH: usize = 60;
+const DEFAULT_ERROR_WIDTH: u16 = 60;
 
 /// Get the appropriate width for error display based on terminal size.
-fn get_error_display_width() -> usize {
+fn get_error_display_width() -> u16 {
     terminal::size()
         .map(|(w, _)| {
             // Leave some margin (4 chars) from terminal edge
-            let available = (w as usize).saturating_sub(4);
+            let available = w.saturating_sub(4);
             available.clamp(MIN_ERROR_WIDTH, MAX_ERROR_WIDTH)
         })
         .unwrap_or(DEFAULT_ERROR_WIDTH)
 }
 
-/// 構造化されたエラーをターミナルに表示
-pub fn print_structured_error(error: &GwmError) {
-    let title = error.title();
-    let width = get_error_display_width();
+/// エラー表示に必要な高さを計算
+fn calculate_error_height(error: &GwmError) -> u16 {
+    let mut height: u16 = 6; // border(2) + title(2) + message(1) + continue hint(1)
 
-    // タイトル部分の長さを計算
-    let title_prefix = "─ ";
-    let title_suffix_len = width.saturating_sub(title_prefix.len() + title.len() + 1);
-    let title_suffix = "─".repeat(title_suffix_len);
-
-    // ヘッダー
-    println!(
-        "\x1b[31m┌{}{} {}┐\x1b[0m",
-        title_prefix, title, title_suffix
-    );
-    println!("\x1b[31m│\x1b[0m");
-
-    // エラーメッセージ
-    println!("\x1b[31m│\x1b[0m  \x1b[1;31m{}\x1b[0m", error);
+    let details = error.details();
 
     // 詳細情報
-    let details = error.details();
     if details.path.is_some()
         || details.branch.is_some()
         || !details.files.is_empty()
         || !details.extra.is_empty()
     {
-        println!("\x1b[31m│\x1b[0m");
+        height += 1; // 空行
 
-        if let Some(ref path) = details.path {
-            println!("\x1b[31m│\x1b[0m  Path: \x1b[36m{}\x1b[0m", path.display());
+        if details.path.is_some() {
+            height += 1;
         }
-
-        if let Some(ref branch) = details.branch {
-            println!("\x1b[31m│\x1b[0m  Branch: \x1b[36m{}\x1b[0m", branch);
+        if details.branch.is_some() {
+            height += 1;
         }
-
-        for (key, value) in &details.extra {
-            println!("\x1b[31m│\x1b[0m  {}: \x1b[36m{}\x1b[0m", key, value);
-        }
+        height += details.extra.len().min(10) as u16;
 
         if !details.files.is_empty() {
-            println!("\x1b[31m│\x1b[0m");
-            println!("\x1b[31m│\x1b[0m  Modified files:");
-            for file in details.files.iter().take(5) {
-                println!("\x1b[31m│\x1b[0m    \x1b[33m{}\x1b[0m", file);
-            }
+            height += 2; // 空行 + "Modified files:"
+            height += details.files.len().min(5) as u16;
             if details.files.len() > 5 {
-                println!(
-                    "\x1b[31m│\x1b[0m    \x1b[90m... and {} more\x1b[0m",
-                    details.files.len() - 5
-                );
+                height += 1; // "... and N more"
             }
         }
     }
@@ -83,20 +66,83 @@ pub fn print_structured_error(error: &GwmError) {
     // Suggestions
     let suggestions = error.suggestions();
     if !suggestions.is_empty() {
-        println!("\x1b[31m│\x1b[0m");
-        println!("\x1b[31m│\x1b[0m  \x1b[1mSuggestions:\x1b[0m");
-        for (i, s) in suggestions.iter().enumerate() {
-            println!("\x1b[31m│\x1b[0m    {}. {}", i + 1, s.description);
-            if let Some(ref cmd) = s.command {
-                println!("\x1b[31m│\x1b[0m       \x1b[36m$ {}\x1b[0m", cmd);
+        height += 2; // 空行 + "Suggestions:"
+        for s in &suggestions {
+            height += 1; // suggestion line
+            if s.command.is_some() {
+                height += 1; // command line
             }
         }
     }
 
-    // フッター
-    println!("\x1b[31m│\x1b[0m");
-    let horizontal_line = "─".repeat(width);
-    println!("\x1b[31m└{}┘\x1b[0m", horizontal_line);
+    height
+}
+
+/// 構造化されたエラーをターミナルに表示（NoticeWidget使用）
+pub fn print_structured_error(error: &GwmError) {
+    // データをローカルに作成（ライフタイム管理）
+    let title = error.title();
+    let messages = vec![error.to_string()];
+
+    let error_details = error.details();
+    let mut details = Vec::new();
+
+    if let Some(ref path) = error_details.path {
+        details.push(("Path".to_string(), path.display().to_string()));
+    }
+    if let Some(ref branch) = error_details.branch {
+        details.push(("Branch".to_string(), branch.clone()));
+    }
+    for (key, value) in &error_details.extra {
+        details.push((key.clone(), value.clone()));
+    }
+
+    // ファイル一覧も詳細に追加
+    if !error_details.files.is_empty() {
+        details.push(("Modified files".to_string(), String::new()));
+        for file in error_details.files.iter().take(5) {
+            details.push((String::new(), file.clone()));
+        }
+        if error_details.files.len() > 5 {
+            details.push((
+                String::new(),
+                format!("... and {} more", error_details.files.len() - 5),
+            ));
+        }
+    }
+
+    let suggestions = error.suggestions();
+
+    // NoticeWidgetを構築
+    let widget = NoticeWidget::error(title, &messages)
+        .with_details(details)
+        .with_suggestions(suggestions);
+
+    // 高さを計算してインライン描画
+    let height = calculate_error_height(error);
+
+    let backend = CrosstermBackend::new(stderr());
+    let options = TerminalOptions {
+        viewport: Viewport::Inline(height),
+    };
+
+    match Terminal::with_options(backend, options) {
+        Ok(mut terminal) => {
+            let _ = terminal.draw(|frame| {
+                let area = frame.area();
+                // ターミナルサイズに基づいて動的に幅を決定
+                let max_width = get_error_display_width().min(area.width);
+                let limited_area = Rect::new(area.x, area.y, max_width, area.height);
+                frame.render_widget(widget, limited_area);
+            });
+            // 末尾に改行を追加（シェルの%表示を防ぐ）
+            eprintln!();
+        }
+        Err(_) => {
+            // フォールバック: 簡易エラー出力
+            eprintln!("\x1b[31m✗ {}: {}\x1b[0m", title, error);
+        }
+    }
 }
 
 #[cfg(test)]

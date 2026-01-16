@@ -24,6 +24,7 @@ use crate::trust::{trust_repository, verify_trust, ConfirmationReason, TrustStat
 use crate::ui::app::{
     App, AppState, ConfirmChoice, ConfirmMetadata, SelectItem, SelectItemMetadata,
 };
+use crate::ui::error::print_structured_error;
 use crate::ui::event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
     is_cancel_key, poll_event,
@@ -650,11 +651,8 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
             Ok(())
         }
         Err(e) => {
-            if output_path_only {
-                eprintln!();
-            } else {
-                println!();
-            }
+            eprintln!();
+            print_structured_error(&e);
             Err(e)
         }
     }
@@ -750,7 +748,7 @@ async fn run_main_loop(
                                 app.set_select_list("Select remote branch", "Search branches...", items);
                             }
                             Err(e) => {
-                                app.set_error("Failed to fetch remote branches", vec![e.to_string()]);
+                                return Err(e);
                             }
                         }
                         break;
@@ -865,10 +863,7 @@ async fn run_main_loop(
                                         // ループを続けてユーザー入力を待つ
                                     }
                                     Err(e) => {
-                                        app.set_error(
-                                            "Failed to create worktree",
-                                            vec![e.to_string()],
-                                        );
+                                        return Err(e);
                                     }
                                 }
                             }
@@ -964,7 +959,7 @@ async fn run_main_loop(
                                     // 確認ダイアログまたは成功表示、ループを続ける
                                 }
                                 Err(e) => {
-                                    app.set_error("Failed to create worktree", vec![e.to_string()]);
+                                    return Err(e);
                                 }
                             }
                         }
@@ -1219,10 +1214,9 @@ fn execute_hooks_and_finish(
         // プログラムを終了（TUIには戻らない）
         app.quit();
     } else {
-        app.set_error(
-            "Internal error",
-            vec!["No worktree path available".to_string()],
-        );
+        // このケースは通常到達しない内部エラー
+        eprintln!("\x1b[31m✗ Internal error: No worktree path available\x1b[0m");
+        app.quit();
     }
 }
 
