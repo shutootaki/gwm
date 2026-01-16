@@ -25,6 +25,8 @@ clap_complete = "4.5"
 # TUI framework
 ratatui = "0.29"
 crossterm = "0.28"
+# Pin instability to maintain MSRV 1.74 (transitive dep of ratatui)
+instability = "=0.3.6"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

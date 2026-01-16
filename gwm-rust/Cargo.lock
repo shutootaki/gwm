@@ -518,6 +518,7 @@ dependencies = [
  "fuzzy-matcher",
  "glob",
  "hex",
+ "instability",
  "predicates",
  "ratatui",
  "rayon",
