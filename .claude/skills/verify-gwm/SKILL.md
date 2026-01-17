@@ -129,7 +129,6 @@ $SKILL_DIR/tui-close.sh
 ```bash
 ./target/debug/gwm add --code          # VS Code起動
 ./target/debug/gwm add --cursor        # Cursor起動
-./target/debug/gwm add --cd            # パス出力のみ
 ./target/debug/gwm go --code           # VS Code起動
 ./target/debug/gwm go --cursor         # Cursor起動
 ```
@@ -165,7 +164,7 @@ cd /tmp && /path/to/gwm list
 cat ~/.config/gwm/config.toml
 
 # 設定が反映されているか確認（worktree_base_path等）
-./target/debug/gwm add --cd
+./target/debug/gwm add feature/test-config
 ```
 
 ## TUI表示確認ポイント（ユーザーへの案内事項）
