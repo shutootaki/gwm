@@ -51,6 +51,7 @@ pub enum Commands {
     /// Shell integration
     ///
     /// Print shell function to enable directory navigation for add/go.
+    #[command(hide = true)]
     Init(InitArgs),
 
     /// Clean up merged/deleted worktrees
@@ -75,6 +76,7 @@ pub enum Commands {
     ///
     /// Generate completion scripts for bash, zsh, fish, or powershell.
     /// Use --with-dynamic to enable dynamic completion for worktree names.
+    #[command(hide = true)]
     Completion(CompletionArgs),
 }
 
