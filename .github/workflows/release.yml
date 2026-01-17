@@ -1,67 +1,158 @@
+# TODO: リリース準備が整ったら以下を有効化する
+# 1. CARGO_REGISTRY_TOKEN を GitHub Secrets に設定
+# 2. トリガー条件のコメントアウトを解除
+# 3. Cargo.toml のメタデータ（description, license, repository等）を確認
 name: Release
 
-on:
-  push:
-    tags:
-      - 'v*.*.*'
+# [DISABLED] 有効化するには下記のコメントアウトを解除し、jobs 内の `if: false` を削除
+# on:
+#   push:
+#     tags:
+#       - 'v*.*.*'
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  release:
-    name: Release & Publish
-    runs-on: ubuntu-latest
+  build:
+    if: false  # [DISABLED] 有効化時に削除
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: gwm
+            asset_name: gwm-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: gwm
+            asset_name: gwm-linux-x86_64-musl
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact_name: gwm
+            asset_name: gwm-darwin-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: gwm
+            asset_name: gwm-darwin-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: gwm.exe
+            asset_name: gwm-windows-x86_64
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          version: 10.4.1
+          targets: ${{ matrix.target }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - uses: Swatinem/rust-cache@v2
         with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
+          key: ${{ matrix.target }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Run tests
-        run: pnpm test:run
+      - name: Create tarball (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czvf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
 
-      - name: Run linting
-        run: pnpm lint
+      - name: Create zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" -DestinationPath "${{ matrix.asset_name }}.zip"
 
-      - name: Build project
-        run: pnpm build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.tar.gz
+            ${{ matrix.asset_name }}.zip
+          if-no-files-found: ignore
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec sh -c '
+            for f; do
+              sha256sum "$f" | sed "s|  .*/|  |" >> checksums.txt
+            done
+          ' _ {} +
+          cat checksums.txt
 
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.version.outputs.version }}
+          name: gwm v${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/checksums.txt
           body: |
-            ## Changes in ${{ steps.version.outputs.version }}
+            ## gwm v${{ steps.version.outputs.version }}
 
-            See the full changelog at: https://github.com/${{ github.repository }}/compare/v${{ steps.version.outputs.version }}...main
+            Git Worktree Manager - A CLI tool for managing Git worktrees with an interactive TUI.
 
-      - name: Publish to npm
-        run: pnpm publish --no-git-checks
+            ### Installation
+
+            **Homebrew (macOS):**
+            ```bash
+            brew install shutootaki/tap/gwm
+            ```
+
+            **Cargo:**
+            ```bash
+            cargo install gwm
+            ```
+
+            **Manual:** Download the appropriate binary below and add to your PATH.
+
+            ### Checksums
+            See `checksums.txt` for SHA256 checksums.
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

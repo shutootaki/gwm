@@ -1,0 +1,129 @@
+name: CI (TypeScript)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'gwm-ts/**'
+      - '.github/workflows/ci-ts.yml'
+      - '.github/actions/setup/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'gwm-ts/**'
+      - '.github/workflows/ci-ts.yml'
+      - '.github/actions/setup/**'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: gwm-ts
+
+env:
+  PNPM_VERSION: 10.4.1
+  DEFAULT_NODE: 20
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Common setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.DEFAULT_NODE }}
+          working-directory: gwm-ts
+
+      - name: Run ESLint
+        run: pnpm lint
+
+  format:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Common setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.DEFAULT_NODE }}
+          working-directory: gwm-ts
+
+      - name: Check code formatting
+        run: pnpm format:check
+
+  test:
+    name: Unit Test & Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+
+    needs: [lint, format]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Common setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: ${{ matrix.node-version }}
+          working-directory: gwm-ts
+
+      - name: Run unit tests (no coverage)
+        if: matrix.node-version != '20'
+        run: pnpm test:run
+
+      - name: Run unit tests with coverage (Node 20)
+        if: matrix.node-version == '20'
+        run: pnpm test:coverage
+
+  build:
+    name: Build & TypeCheck
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Common setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: ${{ env.DEFAULT_NODE }}
+          working-directory: gwm-ts
+
+      - name: Type check (tsc --noEmit)
+        run: pnpm typecheck
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: gwm-ts/dist/
+          retention-days: 7

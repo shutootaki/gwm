@@ -8,10 +8,10 @@ Git worktree を使って、複数ブランチを同時に扱える CLI ツー�
 
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
+[![Crates.io](https://img.shields.io/crates/v/gwm?style=flat-square)](https://crates.io/crates/gwm)
 [![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![CI](https://github.com/shutootaki/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/shutootaki/gwm/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/npm/dm/@shutootaki/gwm?style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
+[![Downloads](https://img.shields.io/crates/d/gwm?style=flat-square)](https://crates.io/crates/gwm)
 
 </div>
 
@@ -31,29 +31,34 @@ gwm は Git 標準の `git worktree` コマンドを**インタラクティブ�
 
 ## コマンド一覧
 
-| コマンド                | 説明                                            |
-| ----------------------- | ----------------------------------------------- |
-| `gwm list` / `gwm ls`   | worktree を一覧表示                             |
-| `gwm add`               | 新しい worktree を作成                          |
-| `gwm go`                | worktree に移動、または VS Code / Cursor で開く |
-| `gwm remove` / `gwm rm` | worktree を削除                                 |
-| `gwm clean`             | マージ済み worktree を検出して削除              |
-| `gwm pull-main`         | main 系 worktree で `git pull` を実行           |
+| コマンド                | 説明                                             |
+| ----------------------- | ------------------------------------------------ |
+| `gwm list` / `gwm ls`   | worktree を一覧表示                              |
+| `gwm add`               | 新しい worktree を作成                           |
+| `gwm go`                | worktree に移動、またはエディタで開く            |
+| `gwm remove` / `gwm rm` | worktree を削除                                  |
+| `gwm clean`             | マージ済み worktree を検出して削除               |
+| `gwm sync`              | main 系 worktree で `git pull` を実行            |
 
 `gwm help <command>` で各コマンドの詳細を確認できます。
 
 ## インストール
 
-```bash
-npm install -g @shutootaki/gwm
+### Homebrew (macOS)
 
-# インストールせずに試す
-npx @shutootaki/gwm
+```bash
+brew install shutootaki/tap/gwm
+```
+
+### Cargo
+
+```bash
+cargo install gwm
 ```
 
 ## シェル統合（cdで移動）
 
-`gwm add` / `gwm go` 実行後に、**現在のシェルのディレクトリを自動で移動**したい場合は以下を設定します。
+`gwm add` / `gwm go` 実行後に、**現在のシェルのディレクトリを自動で移動**したい場合は以下を設定します。シェル補完も同時に有効化されます。
 
 ```bash
 # Bash (~/.bashrc などに追加)
@@ -73,13 +78,13 @@ gwm init fish | source
 **新しいブランチで作業を始める:**
 
 ```bash
-gwm add feature/new-login --code  # worktree を作成して、VS Code で開く
+gwm add feature/new-login -o code  # worktree を作成して、VS Code で開く
 ```
 
 **PR をレビューする:**
 
 ```bash
-gwm add fix-bug -r --code    # リモートブランチから worktree を作成し VS Code で開く
+gwm add fix-bug -r -o code   # リモートブランチから worktree を作成し VS Code で開く
 # レビュー後
 gwm remove fix-bug           # 削除
 ```
@@ -107,17 +112,29 @@ worktree は以下の場所に作成されます:
 現在のプロジェクトに存在する worktree を一覧表示します。
 
 ```text
-STATUS  BRANCH            PATH                              HEAD
-*       feature/new-ui    /Users/me/project                 a1b2c3d
-M       main              ~/git-worktrees/project/main      123abc4
--       hotfix/logfix     ~/git-worktrees/project/logfix    c7d8e9f
+    BRANCH           SYNC    CHANGES  PATH                     ACTIVITY
+[*] feature/new-ui   ↑2 ↓0  3M 1D    ${B}/project/feature...  2h ago
+[M] main             ✓      clean    ${B}/project/main        30m ago
+[-] hotfix/logfix    ↑0 ↓5  clean    ${B}/project/logfix      3d ago
 ```
 
 **STATUS の意味:**
 
-- `* ACTIVE`: 現在いる worktree
-- `M MAIN`: main や master などのメインブランチ
-- `- OTHER`: その他の worktree
+- `[*]`: 現在いる worktree
+- `[M]`: main や master などのメインブランチ
+- `[-]`: その他の worktree
+
+**カラムの意味:**
+
+- `SYNC`: リモートとの同期状態（↑=ahead, ↓=behind, ✓=synced）
+- `CHANGES`: ローカル変更（M=Modified, D=Deleted, A=Added, U=Untracked）
+- `ACTIVITY`: 最終更新からの経過時間
+
+**オプション:**
+
+| オプション         | 説明                                    |
+| ------------------ | --------------------------------------- |
+| `--format <type>`  | 出力形式（table/json/names）            |
 
 ---
 
@@ -138,15 +155,13 @@ M       main              ~/git-worktrees/project/main      123abc4
 
 **オプション:**
 
-| オプション        | 説明                                           |
-| ----------------- | ---------------------------------------------- |
-| `-r, --remote`    | リモートブランチから作成                       |
-| `--from <branch>` | 分岐元を指定（デフォルト: main または master） |
-| `--code`          | 作成後に VS Code で開く                        |
-| `--cursor`        | 作成後に Cursor で開く                         |
-| `--cd`            | パスのみを出力（デフォルト、シェル連携用）     |
-| `--no-cd`         | パス出力の代わりに成功メッセージを表示         |
-| `--skip-hooks`    | post_create hooks の実行をスキップ             |
+| オプション             | 説明                                           |
+| ---------------------- | ---------------------------------------------- |
+| `-r, --remote`         | リモートブランチから作成                       |
+| `--from <branch>`      | 分岐元を指定（デフォルト: main または master） |
+| `-o, --open <editor>`  | 作成後にエディタで開く（code/cursor/zed）      |
+| `--no-cd`              | パス出力の代わりに成功メッセージを表示         |
+| `--skip-hooks`         | post_create hooks の実行をスキップ             |
 
 **gitignore されたファイルの自動コピー:**
 
@@ -160,15 +175,15 @@ worktree を選択してそのディレクトリに移動します。
 
 シェル統合を有効にしている場合は、現在のシェルのディレクトリを変更します。無効の場合はサブシェルを起動します。
 
-- `gwm go`: 対話的に選択
+- `gwm go`: 対話的に選択（fuzzy検索対応）
 - `gwm go feat`: "feat" で絞り込んで選択
 
 **オプション:**
 
-| オプション   | 説明           |
-| ------------ | -------------- |
-| `-c, --code` | VS Code で開く |
-| `--cursor`   | Cursor で開く  |
+| オプション            | 説明                                      |
+| --------------------- | ----------------------------------------- |
+| `-o, --open <editor>` | エディタで開く（code/cursor/zed）         |
+| `--no-cd`             | パス出力の代わりに成功メッセージを表示    |
 
 ---
 
@@ -204,9 +219,11 @@ worktree を対話的に選択して削除します。複数選択可能。
 
 ---
 
-### `gwm pull-main`
+### `gwm sync` (エイリアス: `pull-main`)
 
 プロジェクトのメインブランチ（main, master など）の worktree を探し、`git pull` を実行して最新状態に更新します。現在地がどこであっても実行可能です。
+
+> **Note**: 後方互換性のため、旧コマンド名 `gwm pull-main` も引き続き使用可能です。
 
 ## ワークフロー比較
 
