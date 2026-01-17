@@ -15,16 +15,17 @@ use crate::cli::RemoveArgs;
 use crate::config::{load_config, CleanBranchMode};
 use crate::error::Result;
 use crate::git::{
-    delete_local_branch, get_worktrees, is_branch_merged, remove_worktree, WorktreeStatus,
+    delete_local_branch, get_worktrees_with_details, is_branch_merged, remove_worktree,
+    WorktreeStatus,
 };
 use crate::ui::colors::{GREEN, RED, RESET, YELLOW};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::summary::print_remove_summary;
 use crate::ui::widgets::{MultiSelectItem, MultiSelectListWidget, MultiSelectState};
-use crate::ui::TextInputState;
+use crate::ui::{SelectItemMetadata, TextInputState};
 
 /// TUI用インライン viewport の高さ
-const TUI_INLINE_HEIGHT: u16 = 23;
+const TUI_INLINE_HEIGHT: u16 = 35;
 
 /// ターミナル復元を保証するガード構造体
 struct TerminalGuard;
@@ -47,7 +48,7 @@ impl Drop for TerminalGuard {
 /// * 失敗時: GwmError
 pub fn run_remove(args: RemoveArgs) -> Result<()> {
     let config = load_config();
-    let worktrees = get_worktrees()?;
+    let worktrees = get_worktrees_with_details()?;
 
     // Worktreeをアイテムに変換（MAIN/ACTIVEはdisabled）
     let items: Vec<MultiSelectItem> = worktrees
@@ -55,8 +56,19 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
         .map(|wt| {
             let label = wt.display_branch().to_string();
             let value = wt.path.display().to_string();
-            let item =
-                MultiSelectItem::new(label, value).with_description(wt.path.display().to_string());
+
+            // メタデータを構築
+            let metadata = SelectItemMetadata {
+                last_commit_date: wt.commit_date.clone().unwrap_or_default(),
+                last_committer_name: wt.committer_name.clone().unwrap_or_default(),
+                last_commit_message: wt.commit_message.clone().unwrap_or_default(),
+                sync_status: wt.sync_status.clone(),
+                change_status: wt.change_status.clone(),
+            };
+
+            let item = MultiSelectItem::new(label, value)
+                .with_description(wt.path.display().to_string())
+                .with_metadata(metadata);
 
             match wt.status {
                 WorktreeStatus::Main => item.disabled("MAIN"),

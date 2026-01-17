@@ -14,6 +14,7 @@
 pub mod confirm;
 pub mod multi_select_list;
 pub mod notice;
+pub mod preview_helpers;
 pub mod progress;
 pub mod select_list;
 pub mod spinner;

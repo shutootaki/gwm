@@ -15,206 +15,10 @@ use ratatui::{
 use unicode_width::UnicodeWidthChar;
 
 use crate::ui::fuzzy::fuzzy_match;
-use crate::ui::{SelectItem, SelectItemMetadata, TextInputState};
-use crate::utils::format_relative_time;
-
-// =============================================================================
-// 定数定義
-// =============================================================================
-
-/// プレビュー領域のラベル幅（"Status:  "などのラベル部分）
-const PREVIEW_LABEL_WIDTH: u16 = 9;
-
-/// プレビュー領域の最大幅
-const PREVIEW_MAX_WIDTH: u16 = 60;
-
-/// プレビュー領域のファイルリストのインデント幅
-const PREVIEW_FILE_INDENT: u16 = 2;
-
-/// プレビュー領域のファイルステータス表示後のオフセット
-const PREVIEW_FILE_PATH_OFFSET: u16 = 4;
-
-/// 文字列切り詰め時のサフィックス
-const TRUNCATION_SUFFIX: &str = "...";
-
-/// 切り詰めサフィックスの長さ
-const TRUNCATION_SUFFIX_LEN: usize = 3;
-
-// =============================================================================
-// ヘルパー関数
-// =============================================================================
-
-/// 文字列を指定した最大長に切り詰める
-///
-/// 文字列が最大長を超える場合は、末尾を"..."で置き換えます。
-/// 最大長が切り詰めサフィックスの長さ以下の場合は、元の文字列を返します。
-fn truncate_string(s: &str, max_len: usize) -> String {
-    let char_count = s.chars().count();
-    if char_count <= max_len || max_len <= TRUNCATION_SUFFIX_LEN {
-        return s.to_string();
-    }
-
-    let truncated: String = s.chars().take(max_len - TRUNCATION_SUFFIX_LEN).collect();
-    format!("{}{}", truncated, TRUNCATION_SUFFIX)
-}
-
-/// ラベル付きの行を描画するヘルパー
-///
-/// "Status:  " や "Sync:    " のような固定幅ラベルと値を描画します。
-fn render_labeled_row(
-    buf: &mut Buffer,
-    x: u16,
-    y: u16,
-    label: &str,
-    value: &str,
-    value_color: Color,
-) {
-    buf.set_string(x, y, label, Style::default().fg(Color::DarkGray));
-    buf.set_string(
-        x + PREVIEW_LABEL_WIDTH,
-        y,
-        value,
-        Style::default().fg(value_color),
-    );
-}
-
-/// プレビューパネルのメタデータを描画
-///
-/// Status、Sync、コミット情報、変更ファイルリストを描画します。
-fn render_preview_metadata(
-    buf: &mut Buffer,
-    inner: Rect,
-    metadata: &SelectItemMetadata,
-    preview_width: u16,
-) {
-    let mut current_y = inner.y + 2;
-
-    // Status: Clean/Modified/Untracked
-    if let Some(ref change_status) = metadata.change_status {
-        render_labeled_row(
-            buf,
-            inner.x,
-            current_y,
-            "Status:  ",
-            change_status.status_label(),
-            change_status.status_color(),
-        );
-        current_y += 1;
-    }
-
-    // Sync: ↑N ↓M または ✓
-    if let Some(ref sync_status) = metadata.sync_status {
-        let sync_color = if sync_status.is_synced() {
-            Color::Green
-        } else {
-            Color::Yellow
-        };
-        render_labeled_row(
-            buf,
-            inner.x,
-            current_y,
-            "Sync:    ",
-            &sync_status.display(),
-            sync_color,
-        );
-        current_y += 1;
-    }
-
-    current_y += 1; // 空行
-
-    // Updated
-    let relative_time = format_relative_time(&metadata.last_commit_date);
-    buf.set_string(
-        inner.x,
-        current_y,
-        format!("Updated: {}", relative_time),
-        Style::default().fg(Color::DarkGray),
-    );
-    current_y += 1;
-
-    // By
-    buf.set_string(
-        inner.x,
-        current_y,
-        format!("By:      {}", metadata.last_committer_name),
-        Style::default().fg(Color::DarkGray),
-    );
-    current_y += 1;
-
-    // Commit message
-    let max_msg_len = (preview_width as usize).saturating_sub(18);
-    let commit_msg = truncate_string(&metadata.last_commit_message, max_msg_len);
-    buf.set_string(
-        inner.x,
-        current_y,
-        format!("Commit:  {}", commit_msg),
-        Style::default().fg(Color::DarkGray),
-    );
-    current_y += 1;
-
-    // Recent changes（変更がある場合のみ）
-    if let Some(ref change_status) = metadata.change_status {
-        if !change_status.changed_files.is_empty() {
-            current_y += 1; // 空行
-            buf.set_string(
-                inner.x,
-                current_y,
-                "Recent changes:",
-                Style::default().fg(Color::DarkGray),
-            );
-            current_y += 1;
-
-            let max_path_len = (preview_width as usize).saturating_sub(6);
-            for file in &change_status.changed_files {
-                buf.set_string(
-                    inner.x + PREVIEW_FILE_INDENT,
-                    current_y,
-                    format!("{} ", file.status),
-                    Style::default().fg(file.status_color()),
-                );
-                let display_path = truncate_string(&file.path, max_path_len);
-                buf.set_string(
-                    inner.x + PREVIEW_FILE_PATH_OFFSET,
-                    current_y,
-                    &display_path,
-                    Style::default().fg(Color::DarkGray),
-                );
-                current_y += 1;
-            }
-        }
-    }
-}
-
-/// プレビューパネルの高さを動的に計算
-///
-/// メタデータの内容に応じて適切な高さを返します。
-fn calculate_preview_height(metadata: &Option<SelectItemMetadata>) -> u16 {
-    let Some(metadata) = metadata else {
-        return 3; // メタデータなしの場合は最小高さ
-    };
-
-    let mut height = 4; // ブランチ名 + 空行 + 最小の余白
-
-    // Status/Sync がある場合
-    if metadata.change_status.is_some() {
-        height += 1; // Status行
-    }
-    if metadata.sync_status.is_some() {
-        height += 1; // Sync行
-    }
-
-    // コミット情報
-    height += 4; // 空行 + Updated + By + Commit
-
-    // Recent changes
-    if let Some(ref change_status) = metadata.change_status {
-        if !change_status.changed_files.is_empty() {
-            height += 2 + change_status.changed_files.len().min(5) as u16; // 空行 + ヘッダー + ファイル
-        }
-    }
-
-    height
-}
+use crate::ui::widgets::preview_helpers::{
+    calculate_preview_height, render_preview_metadata, PREVIEW_MAX_WIDTH,
+};
+use crate::ui::{SelectItem, TextInputState};
 
 /// 単一選択状態
 ///
@@ -444,6 +248,26 @@ fn render_label_with_highlight(
     }
 }
 
+fn adjust_scroll_offset(
+    desired_scroll_offset: usize,
+    cursor_index: usize,
+    max_display: usize,
+    total_items: usize,
+) -> usize {
+    if total_items == 0 {
+        return 0;
+    }
+
+    let max_display = max_display.max(1);
+    let mut scroll_offset = desired_scroll_offset.min(cursor_index);
+
+    if cursor_index >= scroll_offset + max_display {
+        scroll_offset = cursor_index.saturating_sub(max_display - 1);
+    }
+
+    scroll_offset.min(total_items.saturating_sub(max_display))
+}
+
 /// Minimum terminal width required for SelectListWidget
 const MIN_WIDTH: u16 = 20;
 /// Minimum terminal height required for SelectListWidget
@@ -463,6 +287,60 @@ impl Widget for SelectListWidget<'_> {
             buf.set_string(area.x, y, truncated, style);
             return;
         }
+
+        // ===== 事前高さ計算 =====
+        // レイアウト定数
+        const TITLE_HEIGHT: u16 = 2; // タイトル + マージン
+        const STATS_HEIGHT: u16 = 2; // 統計 + マージン
+        const INPUT_HEIGHT: u16 = 2; // プレースホルダー + 入力行
+        const LIST_HEADER_HEIGHT: u16 = 1; // リスト開始前のマージン
+        const HELP_HEIGHT: u16 = 2; // ヘルプ1行 + マージン
+        const MAX_PREVIEW_HEIGHT: u16 = 15;
+        const MIN_LIST_HEIGHT: u16 = 4; // リスト領域の最小高さ
+
+        // 理想的なプレビュー高さ（最大15行に制限）
+        let ideal_preview_height = if !self.filtered_indices.is_empty() {
+            let selected_item_idx = self.filtered_indices[self.selected_index];
+            let selected_item = &self.items[selected_item_idx];
+            calculate_preview_height(&selected_item.metadata).min(MAX_PREVIEW_HEIGHT)
+        } else {
+            0
+        };
+
+        // 固定高さの合計
+        let fixed_top_height = TITLE_HEIGHT + STATS_HEIGHT + INPUT_HEIGHT + LIST_HEADER_HEIGHT;
+
+        // 利用可能な高さを計算（固定部分を除く）
+        let available_height = area.height.saturating_sub(fixed_top_height + HELP_HEIGHT);
+
+        // リスト領域に最小高さを確保しつつ、プレビュー高さを調整
+        let preview_with_margin = if ideal_preview_height >= 3 {
+            ideal_preview_height + 1
+        } else {
+            0
+        };
+
+        // リスト領域とプレビュー領域の高さを計算
+        let (list_max_height, preview_height) =
+            if available_height >= MIN_LIST_HEIGHT + preview_with_margin {
+                // 十分な高さがある場合
+                (
+                    available_height.saturating_sub(preview_with_margin),
+                    ideal_preview_height,
+                )
+            } else if available_height >= MIN_LIST_HEIGHT {
+                // リスト最小高さを確保し、残りをプレビューに
+                let remaining = available_height.saturating_sub(MIN_LIST_HEIGHT);
+                let adjusted_preview = if remaining >= 4 {
+                    (remaining.saturating_sub(1)).max(3)
+                } else {
+                    0 // プレビューを表示しない
+                };
+                (MIN_LIST_HEIGHT, adjusted_preview)
+            } else {
+                // 画面が非常に小さい場合
+                (available_height, 0)
+            };
 
         let mut y = area.y;
 
@@ -533,6 +411,9 @@ impl Widget for SelectListWidget<'_> {
         y += 2;
 
         // 結果リスト
+        // リスト領域の終了位置を計算（事前計算したlist_max_heightを使用）
+        let list_end_y = y + list_max_height;
+
         if self.filtered_indices.is_empty() {
             buf.set_string(
                 area.x,
@@ -542,18 +423,95 @@ impl Widget for SelectListWidget<'_> {
             );
             y += 2;
         } else {
+            // ===== 実際のリスト表示可能行数に合わせてスクロール範囲を補正 =====
+            let list_height = list_max_height as usize;
+            let total_items = self.filtered_indices.len();
+            let cursor_index = self.selected_index.min(total_items.saturating_sub(1));
+            let desired_scroll_offset = self.scroll_offset.min(cursor_index);
+            let desired_max_display = self.max_display.max(1);
+
+            let min_visible_items = 3usize.min(list_height).max(1);
+            let mut show_top_more = false;
+            let mut show_bottom_more = false;
+            let mut effective_max_display = if list_height > 0 {
+                desired_max_display.min(list_height).max(1)
+            } else {
+                0
+            };
+            let mut effective_scroll_offset = desired_scroll_offset;
+
+            if effective_max_display > 0 {
+                for _ in 0..3 {
+                    let indicator_lines = (show_top_more as usize) + (show_bottom_more as usize);
+                    effective_max_display = desired_max_display
+                        .min(list_height.saturating_sub(indicator_lines))
+                        .max(1);
+                    effective_scroll_offset = adjust_scroll_offset(
+                        desired_scroll_offset,
+                        cursor_index,
+                        effective_max_display,
+                        total_items,
+                    );
+
+                    let visible_end =
+                        (effective_scroll_offset + effective_max_display).min(total_items);
+                    let hidden_above = effective_scroll_offset > 0;
+                    let hidden_below = visible_end < total_items;
+
+                    let mut next_show_top_more = hidden_above;
+                    let mut next_show_bottom_more = hidden_below;
+
+                    while (next_show_top_more as usize + next_show_bottom_more as usize) > 0
+                        && list_height.saturating_sub(
+                            next_show_top_more as usize + next_show_bottom_more as usize,
+                        ) < min_visible_items
+                    {
+                        if next_show_top_more && next_show_bottom_more {
+                            next_show_top_more = false;
+                        } else if next_show_top_more {
+                            next_show_top_more = false;
+                        } else {
+                            next_show_bottom_more = false;
+                        }
+                    }
+
+                    if next_show_top_more == show_top_more
+                        && next_show_bottom_more == show_bottom_more
+                    {
+                        show_top_more = next_show_top_more;
+                        show_bottom_more = next_show_bottom_more;
+                        break;
+                    }
+
+                    show_top_more = next_show_top_more;
+                    show_bottom_more = next_show_bottom_more;
+                }
+
+                let indicator_lines = (show_top_more as usize) + (show_bottom_more as usize);
+                effective_max_display = desired_max_display
+                    .min(list_height.saturating_sub(indicator_lines))
+                    .max(1);
+                effective_scroll_offset = adjust_scroll_offset(
+                    desired_scroll_offset,
+                    cursor_index,
+                    effective_max_display,
+                    total_items,
+                );
+            }
+
+            let visible_end = (effective_scroll_offset + effective_max_display).min(total_items);
+
             // 上に隠れた要素数
-            if self.scroll_offset > 0 {
-                let msg = format!("↑ {} more", self.scroll_offset);
+            if show_top_more && y < list_end_y {
+                let msg = format!("↑ {} more", effective_scroll_offset);
                 buf.set_string(area.x, y, &msg, Style::default().fg(Color::Yellow));
                 y += 1;
             }
 
             // 表示アイテム
-            let visible_end =
-                (self.scroll_offset + self.max_display).min(self.filtered_indices.len());
-            for display_idx in self.scroll_offset..visible_end {
-                if y >= area.y + area.height - 2 {
+            for display_idx in effective_scroll_offset..visible_end {
+                // 事前計算したリスト領域の終了位置でチェック
+                if y >= list_end_y {
                     break;
                 }
 
@@ -597,7 +555,7 @@ impl Widget for SelectListWidget<'_> {
 
             // 下に隠れた要素数
             let hidden_below = self.filtered_indices.len().saturating_sub(visible_end);
-            if hidden_below > 0 {
+            if show_bottom_more && hidden_below > 0 && y < list_end_y {
                 let msg = format!("↓ {} more", hidden_below);
                 buf.set_string(area.x, y, &msg, Style::default().fg(Color::Yellow));
                 y += 1;
@@ -606,48 +564,42 @@ impl Widget for SelectListWidget<'_> {
             y += 1;
 
             // プレビュー（Status/Sync/Recent changes 対応）
-            if !self.filtered_indices.is_empty() {
+            // 事前計算したpreview_heightを使用
+            if !self.filtered_indices.is_empty() && preview_height >= 3 {
                 let selected_item_idx = self.filtered_indices[self.selected_index];
                 let selected_item = &self.items[selected_item_idx];
-
-                // 動的プレビュー高さ計算（先に計算して境界チェック）
-                let preview_height = calculate_preview_height(&selected_item.metadata);
                 let preview_width = area.width.min(PREVIEW_MAX_WIDTH);
 
-                // プレビュー + ヘルプ行(1行) + マージン(1行) が収まるか確認
-                let required_height = preview_height + 2;
-                if y + required_height <= area.y + area.height {
-                    let block = Block::default()
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(Color::DarkGray))
-                        .title(Span::styled(
-                            " Preview ",
-                            Style::default()
-                                .fg(Color::Yellow)
-                                .add_modifier(Modifier::BOLD),
-                        ));
-
-                    let preview_area = Rect::new(area.x, y, preview_width, preview_height);
-                    let inner = block.inner(preview_area);
-                    block.render(preview_area, buf);
-
-                    // ブランチ名（シアン色）
-                    buf.set_string(
-                        inner.x,
-                        inner.y,
-                        &selected_item.label,
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::DarkGray))
+                    .title(Span::styled(
+                        " Preview ",
                         Style::default()
-                            .fg(Color::Cyan)
+                            .fg(Color::Yellow)
                             .add_modifier(Modifier::BOLD),
-                    );
+                    ));
 
-                    // メタデータの描画
-                    if let Some(ref metadata) = selected_item.metadata {
-                        render_preview_metadata(buf, inner, metadata, preview_width);
-                    }
+                let preview_area = Rect::new(area.x, y, preview_width, preview_height);
+                let inner = block.inner(preview_area);
+                block.render(preview_area, buf);
 
-                    y += preview_height + 1;
+                // ブランチ名（シアン色）
+                buf.set_string(
+                    inner.x,
+                    inner.y,
+                    &selected_item.label,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                );
+
+                // メタデータの描画
+                if let Some(ref metadata) = selected_item.metadata {
+                    render_preview_metadata(buf, inner, metadata, preview_width);
                 }
+
+                y += preview_height + 1;
             }
         }
 
@@ -851,41 +803,49 @@ mod tests {
     }
 
     #[test]
-    fn test_truncate_string_short() {
-        // 最大長より短い文字列はそのまま
-        let result = truncate_string("hello", 10);
-        assert_eq!(result, "hello");
-    }
+    fn test_render_keeps_cursor_visible_when_list_height_is_small() {
+        use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-    #[test]
-    fn test_truncate_string_exact() {
-        // 最大長と同じ文字列はそのまま
-        let result = truncate_string("hello", 5);
-        assert_eq!(result, "hello");
-    }
+        let input = TextInputState::new();
+        let items: Vec<SelectItem> = (0..20)
+            .map(|i| SelectItem {
+                label: format!("item-{i:02}"),
+                value: format!("/path/{i:02}"),
+                description: None,
+                metadata: None,
+            })
+            .collect();
+        let filtered_indices: Vec<usize> = (0..items.len()).collect();
 
-    #[test]
-    fn test_truncate_string_long() {
-        // 最大長より長い文字列は切り詰め
-        let result = truncate_string("hello world", 8);
-        assert_eq!(result, "hello...");
-    }
+        let widget = SelectListWidget::new(
+            "Title",
+            "Search...",
+            &input,
+            &items,
+            &filtered_indices,
+            6,
+            0,
+            10,
+            None,
+        );
 
-    #[test]
-    fn test_truncate_string_min_length() {
-        // 最大長が切り詰めサフィックス以下の場合はそのまま
-        let result = truncate_string("hello", 3);
-        assert_eq!(result, "hello");
-    }
+        // プレビュー領域を含めるとリスト領域が最小に近くなる高さ
+        let area = Rect::new(0, 0, 80, 16);
+        let mut buf = Buffer::empty(area);
+        widget.render(area, &mut buf);
 
-    #[test]
-    fn test_truncate_string_unicode() {
-        // Unicode文字を含む文字列（6文字なので切り詰めなし）
-        let result = truncate_string("日本語テスト", 6);
-        assert_eq!(result, "日本語テスト");
+        let mut cursor_line = None;
+        for y in 0..area.height {
+            let line: String = (0..area.width)
+                .map(|x| buf.cell((x, y)).unwrap().symbol().to_string())
+                .collect();
+            if line.contains("▶") {
+                cursor_line = Some(line);
+                break;
+            }
+        }
 
-        // 切り詰めが必要なケース（最大5文字）
-        let result = truncate_string("日本語テスト", 5);
-        assert_eq!(result, "日本...");
+        let cursor_line = cursor_line.expect("cursor line should be rendered");
+        assert!(cursor_line.contains("item-06"));
     }
 }
