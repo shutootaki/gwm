@@ -26,8 +26,17 @@ fn cleanup_stale_entries(cache: &mut TrustCache) -> usize {
 
     cache.repos.retain(|repo_path, _| {
         // Check if the path exists.
-        // On error, keep the entry to be safe.
-        Path::new(repo_path).try_exists().unwrap_or(true)
+        // On error, log a warning and keep the entry to be safe.
+        match Path::new(repo_path).try_exists() {
+            Ok(exists) => exists,
+            Err(e) => {
+                eprintln!(
+                    "\x1b[33mWarning: Could not check '{}': {}. Keeping entry.\x1b[0m",
+                    repo_path, e
+                );
+                true
+            }
+        }
     });
 
     original_count - cache.repos.len()
@@ -53,8 +62,15 @@ pub fn load_cache() -> TrustCache {
                         removed,
                         if removed == 1 { "entry" } else { "entries" }
                     );
-                    // Save the cleaned cache, ignore errors (this is a side effect)
-                    let _ = save_cache(&cache);
+                    // Save the cleaned cache, log warning on failure
+                    if let Err(e) = save_cache(&cache) {
+                        eprintln!(
+                            "\x1b[33mWarning: Removed {} stale {} but failed to save cache: {}\x1b[0m",
+                            removed,
+                            if removed == 1 { "entry" } else { "entries" },
+                            e
+                        );
+                    }
                 }
                 cache
             }

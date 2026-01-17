@@ -279,6 +279,14 @@ fn execute_remove(
     }
 
     print_remove_summary(removed, failed, start.elapsed());
+
+    // Return error only if all removals failed
+    if failed > 0 && removed == 0 {
+        return Err(crate::error::GwmError::git_command(format!(
+            "Failed to remove all {} worktree(s)",
+            failed
+        )));
+    }
     Ok(())
 }
 
