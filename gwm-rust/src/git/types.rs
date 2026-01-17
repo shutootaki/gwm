@@ -1,10 +1,20 @@
 //! Git関連の型定義
 //!
-//! Worktreeの状態やメタデータを表現する型を提供します。
+//! Worktreeの状態やメタデータを表現する型を提供します.
 
 use std::path::PathBuf;
 
 use ratatui::style::Color;
+
+/// ステータスアイコンの凡例（TUI/CLI共通）
+///
+/// 表示例: `Status: [*]=Active, [M]=Main, [-]=Other`
+pub const STATUS_LEGEND: &str = "Status: [*]=Active, [M]=Main, [-]=Other";
+
+/// 変更インジケータの凡例（detailed表示用）
+///
+/// 表示例: `Changes: M=Modified, D=Deleted, A=Added, U=Untracked`
+pub const CHANGES_LEGEND: &str = "Changes: M=Modified, D=Deleted, A=Added, U=Untracked";
 
 /// Worktreeのステータス
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +39,20 @@ impl WorktreeStatus {
             Self::Active => "*",
             Self::Main => "M",
             Self::Other => "-",
+        }
+    }
+
+    /// 括弧付きステータスアイコンを取得
+    ///
+    /// # Returns
+    /// * Active: `[*]`
+    /// * Main: `[M]`
+    /// * Other: `[-]`
+    pub fn bracketed_icon(&self) -> &'static str {
+        match self {
+            Self::Active => "[*]",
+            Self::Main => "[M]",
+            Self::Other => "[-]",
         }
     }
 
@@ -374,6 +398,13 @@ mod tests {
         assert_eq!(WorktreeStatus::Active.icon(), "*");
         assert_eq!(WorktreeStatus::Main.icon(), "M");
         assert_eq!(WorktreeStatus::Other.icon(), "-");
+    }
+
+    #[test]
+    fn test_worktree_status_bracketed_icon() {
+        assert_eq!(WorktreeStatus::Active.bracketed_icon(), "[*]");
+        assert_eq!(WorktreeStatus::Main.bracketed_icon(), "[M]");
+        assert_eq!(WorktreeStatus::Other.bracketed_icon(), "[-]");
     }
 
     #[test]

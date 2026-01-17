@@ -7,7 +7,9 @@ use serde::Serialize;
 use crate::cli::{ListArgs, OutputFormat};
 use crate::config::load_config;
 use crate::error::Result;
-use crate::git::{get_worktrees, get_worktrees_with_details, Worktree};
+use crate::git::{
+    get_worktrees, get_worktrees_with_details, Worktree, CHANGES_LEGEND, STATUS_LEGEND,
+};
 use crate::ui::widgets::{calculate_column_widths, truncate_and_pad, truncate_start, ColumnWidths};
 
 /// デフォルトターミナルサイズ（幅, 高さ）
@@ -143,7 +145,8 @@ fn run_list_detailed() -> Result<()> {
     println!();
 
     // 凡例
-    println!("\x1b[90mLegend: M=Modified, D=Deleted, A=Added, U=Untracked\x1b[0m");
+    println!("\x1b[90m{STATUS_LEGEND}\x1b[0m");
+    println!("\x1b[90m{CHANGES_LEGEND}\x1b[0m");
 
     Ok(())
 }
@@ -205,7 +208,7 @@ fn print_worktree_row_detailed(worktree: &Worktree, base_path: &str, widths: &Co
     println!(
         "{}{}\x1b[0m {} {}{}\x1b[0m {}{}\x1b[0m \x1b[90m{}\x1b[0m \x1b[90m{}\x1b[0m",
         status.ansi_color(),
-        status.icon(),
+        status.bracketed_icon(),
         branch_display,
         sync_color,
         sync_display,
@@ -270,7 +273,8 @@ fn run_list_compact() -> Result<()> {
 
     println!();
 
-    // フッター
+    // 凡例
+    println!("\x1b[90m{STATUS_LEGEND}\x1b[0m");
     println!(
         "\x1b[90mUse \x1b[36mgwm go [query]\x1b[90m to navigate, \x1b[36mgwm remove\x1b[90m to delete\x1b[0m"
     );
@@ -302,7 +306,7 @@ fn print_worktree_row_compact(worktree: &Worktree, base_path: &str, widths: &Col
     println!(
         "{}{}\x1b[0m {} \x1b[90m{}\x1b[0m \x1b[36m{}\x1b[0m",
         status.ansi_color(),
-        status.icon(),
+        status.bracketed_icon(),
         branch_display,
         path,
         head,

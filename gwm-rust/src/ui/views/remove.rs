@@ -91,12 +91,29 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
         return Ok(());
     }
 
-    // 強制モードの場合は確認なしで削除
-    if args.force {
-        return execute_remove_force(&args, &items, &config.main_branches, args.clean_branch);
+    // 完全一致検索
+    if let Some(ref query) = args.query {
+        if let Some(item) = find_exact_match(&items, query) {
+            if item.disabled {
+                let reason = item.disabled_reason.as_deref().unwrap_or("This");
+                return Err(crate::error::GwmError::invalid_argument(format!(
+                    "Cannot remove '{}': {} worktree cannot be removed",
+                    item.label, reason
+                )));
+            }
+
+            // 直接削除を実行
+            let clean_branch_mode = args.clean_branch.unwrap_or(config.clean_branch);
+            return execute_remove(
+                &[item.clone()],
+                &config.main_branches,
+                clean_branch_mode,
+                args.force,
+            );
+        }
     }
 
-    // TUIモードで選択
+    // 完全一致なし → TUIモードで選択（既存動作）
     let selected_items = run_remove_tui(&items, args.query.as_deref())?;
 
     if selected_items.is_empty() {
@@ -107,7 +124,12 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
     // 削除実行
     let clean_branch_mode = args.clean_branch.unwrap_or(config.clean_branch);
 
-    execute_remove(&selected_items, &config.main_branches, clean_branch_mode)
+    execute_remove(
+        &selected_items,
+        &config.main_branches,
+        clean_branch_mode,
+        args.force,
+    )
 }
 
 /// TUIモードで複数選択
@@ -243,6 +265,7 @@ fn execute_remove(
     items: &[MultiSelectItem],
     main_branches: &[String],
     clean_branch_mode: CleanBranchMode,
+    force: bool,
 ) -> Result<()> {
     let start = Instant::now();
     let mut removed = 0;
@@ -254,7 +277,7 @@ fn execute_remove(
         let path = std::path::Path::new(&item.value);
         let branch = &item.label;
 
-        match remove_worktree(path, false) {
+        match remove_worktree(path, force) {
             Ok(()) => {
                 println!("{GREEN}✓ Removed worktree: {branch}{RESET}");
                 handle_branch_cleanup(branch, main_branches, clean_branch_mode);
@@ -268,61 +291,14 @@ fn execute_remove(
     }
 
     print_remove_summary(removed, failed, start.elapsed());
-    Ok(())
-}
 
-/// 強制モードで削除を実行
-fn execute_remove_force(
-    args: &RemoveArgs,
-    items: &[MultiSelectItem],
-    main_branches: &[String],
-    clean_branch_mode: Option<CleanBranchMode>,
-) -> Result<()> {
-    let start = Instant::now();
-    let mut removed = 0;
-    let mut failed = 0;
-
-    // クエリでフィルタリング
-    let targets: Vec<_> = if let Some(ref query) = args.query {
-        let query_lower = query.to_lowercase();
-        items
-            .iter()
-            .filter(|item| !item.disabled && item.label.to_lowercase().contains(&query_lower))
-            .collect()
-    } else {
-        items.iter().filter(|item| !item.disabled).collect()
-    };
-
-    if targets.is_empty() {
-        println!("No worktrees matching the query.");
-        return Ok(());
+    // Return error only if all removals failed
+    if failed > 0 && removed == 0 {
+        return Err(crate::error::GwmError::git_command(format!(
+            "Failed to remove all {} worktree(s)",
+            failed
+        )));
     }
-
-    println!("Force removing {} worktree(s)...\n", targets.len());
-
-    let mode = clean_branch_mode.unwrap_or(CleanBranchMode::Never);
-
-    for item in targets {
-        let path = std::path::Path::new(&item.value);
-        let branch = &item.label;
-
-        match remove_worktree(path, true) {
-            Ok(()) => {
-                println!("{GREEN}✓ Removed: {branch}{RESET}");
-                // 強制モードではautoのみブランチ削除
-                if mode == CleanBranchMode::Auto {
-                    handle_branch_cleanup(branch, main_branches, mode);
-                }
-                removed += 1;
-            }
-            Err(e) => {
-                println!("{RED}✗ Failed: {branch} - {e}{RESET}");
-                failed += 1;
-            }
-        }
-    }
-
-    print_remove_summary(removed, failed, start.elapsed());
     Ok(())
 }
 
@@ -349,17 +325,26 @@ fn handle_branch_cleanup(
             let _ = io::stdout().flush();
 
             let mut input = String::new();
-            if io::stdin().read_line(&mut input).is_ok() {
-                let answer = input.trim().to_lowercase();
-                if answer == "y" || answer == "yes" {
-                    match delete_local_branch(branch, !is_merged) {
-                        Ok(()) => println!("  {GREEN}✓ Deleted local branch: {branch}{RESET}"),
-                        Err(e) => {
-                            println!("  {YELLOW}Warning: Failed to delete branch: {e}{RESET}")
+            match io::stdin().read_line(&mut input) {
+                Ok(_) => {
+                    let answer = input.trim().to_lowercase();
+                    if answer == "y" || answer == "yes" {
+                        match delete_local_branch(branch, !is_merged) {
+                            Ok(()) => {
+                                println!("  {GREEN}✓ Deleted local branch: {branch}{RESET}")
+                            }
+                            Err(e) => {
+                                println!("  {YELLOW}Warning: Failed to delete branch: {e}{RESET}")
+                            }
                         }
+                    } else {
+                        println!("  Skipped branch deletion");
                     }
-                } else {
-                    println!("  Skipped branch deletion");
+                }
+                Err(e) => {
+                    println!(
+                        "  {YELLOW}Warning: Could not read input: {e}. Skipping branch deletion.{RESET}"
+                    );
                 }
             }
         }
@@ -367,7 +352,73 @@ fn handle_branch_cleanup(
     }
 }
 
+/// クエリで完全一致するアイテムを検索
+///
+/// 大文字小文字を区別せずに完全一致するアイテムを返す
+fn find_exact_match<'a>(items: &'a [MultiSelectItem], query: &str) -> Option<&'a MultiSelectItem> {
+    let query_lower = query.to_lowercase();
+    items
+        .iter()
+        .find(|item| item.label.to_lowercase() == query_lower)
+}
+
 #[cfg(test)]
 mod tests {
-    // TUIテストは手動で行う
+    use super::*;
+
+    fn create_test_item(label: &str, disabled: bool) -> MultiSelectItem {
+        let item = MultiSelectItem::new(label.to_string(), format!("/path/to/{}", label));
+        if disabled {
+            item.disabled("MAIN")
+        } else {
+            item
+        }
+    }
+
+    #[test]
+    fn test_find_exact_match_case_insensitive() {
+        let items = vec![
+            create_test_item("feature/test", false),
+            create_test_item("main", true),
+            create_test_item("develop", false),
+        ];
+
+        // 完全一致（大文字小文字無視）
+        assert!(find_exact_match(&items, "main").is_some());
+        assert!(find_exact_match(&items, "MAIN").is_some());
+        assert!(find_exact_match(&items, "Main").is_some());
+        assert!(find_exact_match(&items, "feature/test").is_some());
+        assert!(find_exact_match(&items, "FEATURE/TEST").is_some());
+    }
+
+    #[test]
+    fn test_find_exact_match_partial_no_match() {
+        let items = vec![
+            create_test_item("feature/test", false),
+            create_test_item("feature/test-2", false),
+        ];
+
+        // 部分一致では一致しない
+        assert!(find_exact_match(&items, "feature").is_none());
+        assert!(find_exact_match(&items, "test").is_none());
+
+        // 完全一致のみ成功
+        assert!(find_exact_match(&items, "feature/test").is_some());
+    }
+
+    #[test]
+    fn test_find_exact_match_empty_query() {
+        let items = vec![create_test_item("feature/test", false)];
+
+        // 空クエリは一致しない
+        assert!(find_exact_match(&items, "").is_none());
+    }
+
+    #[test]
+    fn test_find_exact_match_nonexistent() {
+        let items = vec![create_test_item("feature/test", false)];
+
+        // 存在しないブランチ
+        assert!(find_exact_match(&items, "nonexistent").is_none());
+    }
 }

@@ -18,10 +18,35 @@ pub fn get_cache_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".config").join("gwm").join(CACHE_FILENAME))
 }
 
+/// Remove entries for repositories that no longer exist.
+///
+/// Returns the number of entries removed.
+fn cleanup_stale_entries(cache: &mut TrustCache) -> usize {
+    let original_count = cache.repos.len();
+
+    cache.repos.retain(|repo_path, _| {
+        // Check if the path exists.
+        // On error, log a warning and keep the entry to be safe.
+        match Path::new(repo_path).try_exists() {
+            Ok(exists) => exists,
+            Err(e) => {
+                eprintln!(
+                    "\x1b[33mWarning: Could not check '{}': {}. Keeping entry.\x1b[0m",
+                    repo_path, e
+                );
+                true
+            }
+        }
+    });
+
+    original_count - cache.repos.len()
+}
+
 /// Load the trust cache from disk.
 ///
 /// Returns the default cache if the file doesn't exist.
 /// Logs a warning if the file exists but cannot be read or parsed.
+/// Automatically removes entries for non-existent repository paths.
 pub fn load_cache() -> TrustCache {
     let Some(path) = get_cache_path() else {
         return TrustCache::default();
@@ -29,7 +54,26 @@ pub fn load_cache() -> TrustCache {
 
     match fs::read_to_string(&path) {
         Ok(content) => match serde_json::from_str(&content) {
-            Ok(cache) => cache,
+            Ok(mut cache) => {
+                let removed = cleanup_stale_entries(&mut cache);
+                if removed > 0 {
+                    eprintln!(
+                        "\x1b[90mInfo: Removed {} stale trust cache {} (repositories no longer exist)\x1b[0m",
+                        removed,
+                        if removed == 1 { "entry" } else { "entries" }
+                    );
+                    // Save the cleaned cache, log warning on failure
+                    if let Err(e) = save_cache(&cache) {
+                        eprintln!(
+                            "\x1b[33mWarning: Removed {} stale {} but failed to save cache: {}\x1b[0m",
+                            removed,
+                            if removed == 1 { "entry" } else { "entries" },
+                            e
+                        );
+                    }
+                }
+                cache
+            }
             Err(e) => {
                 eprintln!(
                     "\x1b[33mWarning: Failed to parse trust cache {:?}: {}\x1b[0m",
@@ -226,5 +270,94 @@ mod tests {
             ],
         };
         assert_eq!(repo.trusted_commands.len(), 3);
+    }
+
+    #[test]
+    fn test_cleanup_stale_entries_removes_nonexistent() {
+        let mut cache = TrustCache::default();
+        cache.repos.insert(
+            "/nonexistent/path/12345".to_string(),
+            TrustedRepo {
+                config_path: PathBuf::from("/nonexistent/path/12345/config.toml"),
+                config_hash: "hash1".to_string(),
+                trusted_at: "2025-01-15T00:00:00Z".to_string(),
+                trusted_commands: vec![],
+            },
+        );
+        cache.repos.insert(
+            "/another/nonexistent/67890".to_string(),
+            TrustedRepo {
+                config_path: PathBuf::from("/another/nonexistent/67890/config.toml"),
+                config_hash: "hash2".to_string(),
+                trusted_at: "2025-01-15T00:00:00Z".to_string(),
+                trusted_commands: vec![],
+            },
+        );
+
+        let removed = cleanup_stale_entries(&mut cache);
+
+        assert_eq!(removed, 2);
+        assert!(cache.repos.is_empty());
+    }
+
+    #[test]
+    fn test_cleanup_stale_entries_keeps_existing() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let existing_path = temp_dir.path().to_string_lossy().to_string();
+
+        let mut cache = TrustCache::default();
+        cache.repos.insert(
+            existing_path.clone(),
+            TrustedRepo {
+                config_path: PathBuf::from(format!("{}/config.toml", existing_path)),
+                config_hash: "hash".to_string(),
+                trusted_at: "2025-01-15T00:00:00Z".to_string(),
+                trusted_commands: vec![],
+            },
+        );
+
+        let removed = cleanup_stale_entries(&mut cache);
+
+        assert_eq!(removed, 0);
+        assert_eq!(cache.repos.len(), 1);
+        assert!(cache.repos.contains_key(&existing_path));
+    }
+
+    #[test]
+    fn test_cleanup_stale_entries_mixed() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let existing_path = temp_dir.path().to_string_lossy().to_string();
+        let nonexistent_path = "/nonexistent/path/mixed/12345".to_string();
+
+        let mut cache = TrustCache::default();
+        cache.repos.insert(
+            existing_path.clone(),
+            TrustedRepo {
+                config_path: PathBuf::from(format!("{}/config.toml", existing_path)),
+                config_hash: "hash1".to_string(),
+                trusted_at: "2025-01-15T00:00:00Z".to_string(),
+                trusted_commands: vec![],
+            },
+        );
+        cache.repos.insert(
+            nonexistent_path.clone(),
+            TrustedRepo {
+                config_path: PathBuf::from(format!("{}/config.toml", nonexistent_path)),
+                config_hash: "hash2".to_string(),
+                trusted_at: "2025-01-15T00:00:00Z".to_string(),
+                trusted_commands: vec![],
+            },
+        );
+
+        let removed = cleanup_stale_entries(&mut cache);
+
+        assert_eq!(removed, 1);
+        assert_eq!(cache.repos.len(), 1);
+        assert!(cache.repos.contains_key(&existing_path));
+        assert!(!cache.repos.contains_key(&nonexistent_path));
     }
 }
