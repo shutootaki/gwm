@@ -14,7 +14,7 @@ use ratatui::{backend::CrosstermBackend, Terminal, TerminalOptions, Viewport};
 
 use crate::cli::GoArgs;
 use crate::error::Result;
-use crate::git::get_worktrees_with_details;
+use crate::git::{get_worktrees_with_details, STATUS_LEGEND};
 use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
@@ -56,7 +56,7 @@ pub fn run_go(args: GoArgs) -> Result<()> {
     let items: Vec<SelectItem> = worktrees
         .iter()
         .map(|wt| SelectItem {
-            label: format!("[{}] {}", wt.status.icon(), wt.display_branch()),
+            label: format!("{} {}", wt.status.bracketed_icon(), wt.display_branch()),
             value: wt.path.display().to_string(),
             description: Some(wt.path.display().to_string()),
             metadata: Some(SelectItemMetadata {
@@ -176,7 +176,8 @@ fn run_go_tui(
                 &input,
                 &state,
                 None,
-            );
+            )
+            .with_legend(STATUS_LEGEND);
             frame.render_widget(widget, area);
         })?;
 

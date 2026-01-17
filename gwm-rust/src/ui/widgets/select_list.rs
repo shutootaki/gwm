@@ -362,6 +362,8 @@ pub struct SelectListWidget<'a> {
     preview: Option<&'a str>,
     /// アイテムインデックス -> マッチ位置のマップ（ハイライト用）
     match_indices: Option<&'a HashMap<usize, Vec<usize>>>,
+    /// 凡例テキスト（ヘルプ行の上に表示）
+    legend: Option<&'a str>,
 }
 
 impl<'a> SelectListWidget<'a> {
@@ -389,6 +391,7 @@ impl<'a> SelectListWidget<'a> {
             max_display,
             preview,
             match_indices: None,
+            legend: None,
         }
     }
 
@@ -411,7 +414,14 @@ impl<'a> SelectListWidget<'a> {
             max_display: state.max_display,
             preview,
             match_indices: Some(&state.match_indices),
+            legend: None,
         }
+    }
+
+    /// 凡例を設定
+    pub fn with_legend(mut self, legend: &'a str) -> Self {
+        self.legend = Some(legend);
+        self
     }
 }
 
@@ -648,6 +658,14 @@ impl Widget for SelectListWidget<'_> {
 
                     y += preview_height + 1;
                 }
+            }
+        }
+
+        // 凡例（設定されている場合）
+        if let Some(legend) = self.legend {
+            if y < area.y + area.height {
+                buf.set_string(area.x, y, legend, Style::default().fg(Color::DarkGray));
+                y += 1;
             }
         }
 
