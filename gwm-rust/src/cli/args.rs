@@ -117,12 +117,6 @@ pub struct AddArgs {
     #[arg(long = "cursor", hide = true)]
     pub open_cursor: bool,
 
-    /// Output path only (for shell integration)
-    ///
-    /// This is the default behavior. Use --no-cd to show success message instead.
-    #[arg(long = "cd")]
-    pub output_path: bool,
-
     /// Show success message instead of path output
     ///
     /// Disable the default path-only output and show interactive success message.

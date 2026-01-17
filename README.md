@@ -145,7 +145,6 @@ Create a new worktree.
 | `--from <branch>` | Base branch (default: main or master)             |
 | `--code`          | Open in VS Code after creation                    |
 | `--cursor`        | Open in Cursor after creation                     |
-| `--cd`            | Output path only (default, for shell integration) |
 | `--no-cd`         | Show success message instead of path output       |
 | `--skip-hooks`    | Skip post_create hooks execution                  |
 

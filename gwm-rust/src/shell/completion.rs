@@ -139,7 +139,7 @@ _gwm() {{
                     ;;
                 *)
                     if [[ "$cur" == -* ]]; then
-                        COMPREPLY=($(compgen -W "-f --from -o --open" -- "$cur"))
+                        COMPREPLY=($(compgen -W "-r --remote --from -o --open --no-cd --skip-hooks" -- "$cur"))
                     fi
                     return 0
                     ;;
@@ -272,8 +272,11 @@ _gwm() {{
                     ;;
                 add)
                     _arguments \
-                        '(-f --from)'{{-f,--from}}'[Base branch]:branch:_gwm_branches' \
+                        '(-r --remote)'{{-r,--remote}}'[Use a remote branch]' \
+                        '--from[Base branch to create from]:branch:_gwm_branches' \
                         '(-o --open)'{{-o,--open}}'[Open in editor after creation]:editor:_gwm_editors' \
+                        '--no-cd[Show success message instead of path output]' \
+                        '--skip-hooks[Skip post_create hooks]' \
                         '1:branch name:'
                     ;;
                 list|ls)
