@@ -15,7 +15,8 @@ A CLI tool for managing Git worktrees, allowing you to work on multiple branches
 
 </div>
 
-<img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/13c87aed-83ec-421f-97af-7a1f5992066e" />
+<img width="925" height="603" alt="image" src="https://github.com/user-attachments/assets/06ca02c7-61b1-4bee-a763-d4cee53023b4" />
+
 
 ## What problem does gwm solve?
 
