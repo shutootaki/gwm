@@ -69,9 +69,20 @@ pub fn run_go(args: GoArgs) -> Result<()> {
         })
         .collect();
 
-    // クエリで1件に絞れる場合は直接移動
+    // クエリで検索
     if let Some(ref query) = args.query {
         let query_lower = query.to_lowercase();
+
+        // 1. 完全一致を優先検索（ステータスアイコン除去後のブランチ名で比較）
+        let exact_match = items
+            .iter()
+            .find(|item| extract_branch_name(&item.label).to_lowercase() == query_lower);
+
+        if let Some(item) = exact_match {
+            return handle_selection(item, &args);
+        }
+
+        // 2. 部分一致にフォールバック（既存ロジック）
         let matches: Vec<_> = items
             .iter()
             .filter(|item| item.label.to_lowercase().contains(&query_lower))
@@ -247,7 +258,27 @@ fn run_go_tui(
     Ok(result)
 }
 
+/// ラベルからブランチ名を抽出（ステータスアイコンを除去）
+/// "[*] main" -> "main", "[M] develop" -> "develop"
+fn extract_branch_name(label: &str) -> &str {
+    if label.len() > 4 && label.starts_with('[') && label.chars().nth(2) == Some(']') {
+        label.get(4..).unwrap_or(label)
+    } else {
+        label
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    // TUIテストは手動で行う
+    use super::*;
+
+    #[test]
+    fn test_extract_branch_name() {
+        assert_eq!(extract_branch_name("[*] main"), "main");
+        assert_eq!(extract_branch_name("[M] develop"), "develop");
+        assert_eq!(extract_branch_name("[ ] feature/test"), "feature/test");
+        assert_eq!(extract_branch_name("plain-label"), "plain-label");
+        assert_eq!(extract_branch_name(""), "");
+        assert_eq!(extract_branch_name("[ab"), "[ab");
+    }
 }

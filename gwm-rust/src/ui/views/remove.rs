@@ -79,12 +79,36 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
         return Ok(());
     }
 
-    // 強制モードの場合は確認なしで削除
-    if args.force {
-        return execute_remove_force(&args, &items, &config.main_branches, args.clean_branch);
+    // 完全一致検索
+    if let Some(ref query) = args.query {
+        let query_lower = query.to_lowercase();
+
+        let exact_match = items
+            .iter()
+            .find(|item| item.label.to_lowercase() == query_lower);
+
+        if let Some(item) = exact_match {
+            if item.disabled {
+                eprintln!(
+                    "Cannot remove '{}': {} worktree cannot be removed.",
+                    item.label,
+                    item.disabled_reason.as_deref().unwrap_or("This")
+                );
+                return Ok(());
+            }
+
+            // 直接削除を実行
+            let clean_branch_mode = args.clean_branch.unwrap_or(config.clean_branch);
+            return execute_remove(
+                &[item.clone()],
+                &config.main_branches,
+                clean_branch_mode,
+                args.force,
+            );
+        }
     }
 
-    // TUIモードで選択
+    // 完全一致なし → TUIモードで選択（既存動作）
     let selected_items = run_remove_tui(&items, args.query.as_deref())?;
 
     if selected_items.is_empty() {
@@ -95,7 +119,12 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
     // 削除実行
     let clean_branch_mode = args.clean_branch.unwrap_or(config.clean_branch);
 
-    execute_remove(&selected_items, &config.main_branches, clean_branch_mode)
+    execute_remove(
+        &selected_items,
+        &config.main_branches,
+        clean_branch_mode,
+        args.force,
+    )
 }
 
 /// TUIモードで複数選択
@@ -231,6 +260,7 @@ fn execute_remove(
     items: &[MultiSelectItem],
     main_branches: &[String],
     clean_branch_mode: CleanBranchMode,
+    force: bool,
 ) -> Result<()> {
     let start = Instant::now();
     let mut removed = 0;
@@ -242,7 +272,7 @@ fn execute_remove(
         let path = std::path::Path::new(&item.value);
         let branch = &item.label;
 
-        match remove_worktree(path, false) {
+        match remove_worktree(path, force) {
             Ok(()) => {
                 println!("{GREEN}✓ Removed worktree: {branch}{RESET}");
                 handle_branch_cleanup(branch, main_branches, clean_branch_mode);
@@ -250,61 +280,6 @@ fn execute_remove(
             }
             Err(e) => {
                 println!("{RED}✗ Failed to remove {branch}: {e}{RESET}");
-                failed += 1;
-            }
-        }
-    }
-
-    print_remove_summary(removed, failed, start.elapsed());
-    Ok(())
-}
-
-/// 強制モードで削除を実行
-fn execute_remove_force(
-    args: &RemoveArgs,
-    items: &[MultiSelectItem],
-    main_branches: &[String],
-    clean_branch_mode: Option<CleanBranchMode>,
-) -> Result<()> {
-    let start = Instant::now();
-    let mut removed = 0;
-    let mut failed = 0;
-
-    // クエリでフィルタリング
-    let targets: Vec<_> = if let Some(ref query) = args.query {
-        let query_lower = query.to_lowercase();
-        items
-            .iter()
-            .filter(|item| !item.disabled && item.label.to_lowercase().contains(&query_lower))
-            .collect()
-    } else {
-        items.iter().filter(|item| !item.disabled).collect()
-    };
-
-    if targets.is_empty() {
-        println!("No worktrees matching the query.");
-        return Ok(());
-    }
-
-    println!("Force removing {} worktree(s)...\n", targets.len());
-
-    let mode = clean_branch_mode.unwrap_or(CleanBranchMode::Never);
-
-    for item in targets {
-        let path = std::path::Path::new(&item.value);
-        let branch = &item.label;
-
-        match remove_worktree(path, true) {
-            Ok(()) => {
-                println!("{GREEN}✓ Removed: {branch}{RESET}");
-                // 強制モードではautoのみブランチ削除
-                if mode == CleanBranchMode::Auto {
-                    handle_branch_cleanup(branch, main_branches, mode);
-                }
-                removed += 1;
-            }
-            Err(e) => {
-                println!("{RED}✗ Failed: {branch} - {e}{RESET}");
                 failed += 1;
             }
         }
