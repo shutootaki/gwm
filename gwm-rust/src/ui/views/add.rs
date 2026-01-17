@@ -24,7 +24,6 @@ use crate::trust::{trust_repository, verify_trust, ConfirmationReason, TrustStat
 use crate::ui::app::{
     App, AppState, ConfirmChoice, ConfirmMetadata, SelectItem, SelectItemMetadata,
 };
-use crate::ui::error::print_structured_error;
 use crate::ui::event::{
     get_confirm_choice, get_input_value, get_selected_item, get_validation_error, handle_key_event,
     is_cancel_key, poll_event,
@@ -141,9 +140,23 @@ fn run_confirm_loop<W: io::Write>(
                 return Ok(None);
             }
 
+            // Ctrl+N/Ctrl+P で選択肢を移動
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                match key.code {
+                    KeyCode::Char('n') => {
+                        selected = selected.next();
+                    }
+                    KeyCode::Char('p') => {
+                        selected = selected.prev();
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
             match key.code {
                 KeyCode::Esc => {
-                    return Ok(Some(ConfirmChoice::Cancel));
+                    return Ok(Some(ConfirmChoice::SkipHooks));
                 }
                 KeyCode::Enter => {
                     return Ok(Some(selected));
@@ -161,7 +174,7 @@ fn run_confirm_loop<W: io::Write>(
                     selected = ConfirmChoice::Once;
                 }
                 KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Char('3') => {
-                    selected = ConfirmChoice::Cancel;
+                    selected = ConfirmChoice::SkipHooks;
                 }
                 _ => {}
             }
@@ -475,7 +488,7 @@ fn write_deferred_hooks_for_shell(
                         }
                     }
                 }
-                Some(ConfirmChoice::Cancel) | None => {
+                Some(ConfirmChoice::SkipHooks) | None => {
                     // スキップ: hooksファイルは書き出さない
                     eprintln!("\x1b[33mHooks skipped.\x1b[0m");
                 }
@@ -547,7 +560,7 @@ fn execute_hooks_direct_impl(
                     // 一度だけ hooks 実行（キャッシュに保存しない）
                     run_hooks_impl(config_source, branch, worktree_path)?;
                 }
-                Some(ConfirmChoice::Cancel) | None => {
+                Some(ConfirmChoice::SkipHooks) | None => {
                     // スキップ
                     let msg = "\x1b[33mHooks skipped.\x1b[0m";
                     if use_stderr {
@@ -652,7 +665,6 @@ async fn run_add_tui(config_source: ConfigWithSource, args: AddArgs) -> Result<(
         }
         Err(e) => {
             eprintln!();
-            print_structured_error(&e);
             Err(e)
         }
     }
@@ -1066,14 +1078,14 @@ async fn run_main_loop(
                                         args,
                                     );
                                 }
-                                ConfirmChoice::Cancel => {
+                                ConfirmChoice::SkipHooks => {
                                     if args.should_output_path_only() {
                                         // パス出力モード: hooksスキップしてパスを返す
                                         if let Some((path, branch_name)) = &created_worktree {
                                             return Ok(Some(MainLoopResult {
                                                 path: path.clone(),
                                                 branch_name: branch_name.clone(),
-                                                hooks_written: false, // hooksはスキップ
+                                                hooks_written: true, // キャンセルされたので再度hooksを呼ばない
                                             }));
                                         }
                                     }
@@ -1434,12 +1446,30 @@ fn render_app(buf: &mut ratatui::buffer::Buffer, area: Rect, app: &App, frame_co
 
         AppState::Success { title, messages } => {
             let widget = NoticeWidget::success(title, messages);
-            widget.render(area, buf);
+            let required_height = widget.required_height(area.width);
+
+            let render_area = if required_height < area.height {
+                let y_offset = (area.height - required_height) / 2;
+                Rect::new(area.x, area.y + y_offset, area.width, required_height)
+            } else {
+                area
+            };
+
+            widget.render(render_area, buf);
         }
 
         AppState::Error { title, messages } => {
             let widget = NoticeWidget::error(title, messages);
-            widget.render(area, buf);
+            let required_height = widget.required_height(area.width);
+
+            let render_area = if required_height < area.height {
+                let y_offset = (area.height - required_height) / 2;
+                Rect::new(area.x, area.y + y_offset, area.width, required_height)
+            } else {
+                area
+            };
+
+            widget.render(render_area, buf);
         }
 
         AppState::TextInput {
