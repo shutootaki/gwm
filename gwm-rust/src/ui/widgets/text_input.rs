@@ -143,29 +143,37 @@ impl Widget for TextInputWidget<'_> {
 
         y += 2;
 
-        // バリデーションエラー
+        // ヘルプ行の高さを確保した上で利用可能な高さを計算
+        let help_height: u16 = 1;
+        let available_height = (area.y + area.height).saturating_sub(y + help_height);
+
+        // バリデーションエラー（4行必要 + マージン1行）
         if let Some(error) = self.validation_error {
-            if y + 4 < area.y + area.height {
+            let error_box_height: u16 = 4;
+            if available_height >= error_box_height {
                 let block = Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Red))
                     .title("Invalid input");
 
                 let error_width = area.width.min(60);
-                let error_area = Rect::new(area.x, y, error_width, 4);
+                let error_area = Rect::new(area.x, y, error_width, error_box_height);
                 let inner = block.inner(error_area);
                 block.render(error_area, buf);
 
                 buf.set_string(inner.x, inner.y, error, Style::default().fg(Color::Red));
-                y += 5;
+                y += error_box_height + 1;
             }
         }
 
-        // プレビュー
+        // プレビュー（5行必要 + マージン1行）
+        // ヘルプ行を確保した残りの高さで再計算
+        let remaining_height = (area.y + area.height).saturating_sub(y + help_height);
         if let Some(preview) = self.preview {
+            let preview_box_height: u16 = 5;
             if self.validation_error.is_none()
                 && !self.state.value.trim().is_empty()
-                && y + 5 < area.y + area.height
+                && remaining_height >= preview_box_height
             {
                 let block = Block::default()
                     .borders(Borders::ALL)
@@ -173,7 +181,7 @@ impl Widget for TextInputWidget<'_> {
                     .title("Preview");
 
                 let preview_width = area.width.min(60);
-                let preview_area = Rect::new(area.x, y, preview_width, 5);
+                let preview_area = Rect::new(area.x, y, preview_width, preview_box_height);
                 let inner = block.inner(preview_area);
                 block.render(preview_area, buf);
 
@@ -189,7 +197,7 @@ impl Widget for TextInputWidget<'_> {
                     preview,
                     Style::default().fg(Color::Cyan),
                 );
-                y += 6;
+                y += preview_box_height + 1;
             }
         }
 

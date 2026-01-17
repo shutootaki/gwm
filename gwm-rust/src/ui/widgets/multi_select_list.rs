@@ -16,7 +16,10 @@ use ratatui::{
 use unicode_width::UnicodeWidthChar;
 
 use crate::ui::fuzzy::fuzzy_match;
-use crate::ui::TextInputState;
+use crate::ui::widgets::preview_helpers::{
+    calculate_preview_height, render_preview_metadata, PREVIEW_MAX_WIDTH,
+};
+use crate::ui::{SelectItemMetadata, TextInputState};
 
 /// 複数選択可能なアイテム
 #[derive(Debug, Clone)]
@@ -31,6 +34,8 @@ pub struct MultiSelectItem {
     pub disabled: bool,
     /// 選択不可の理由
     pub disabled_reason: Option<String>,
+    /// メタデータ（詳細情報表示用）
+    pub metadata: Option<SelectItemMetadata>,
 }
 
 impl MultiSelectItem {
@@ -42,6 +47,7 @@ impl MultiSelectItem {
             description: None,
             disabled: false,
             disabled_reason: None,
+            metadata: None,
         }
     }
 
@@ -55,6 +61,12 @@ impl MultiSelectItem {
     pub fn disabled(mut self, reason: impl Into<String>) -> Self {
         self.disabled = true;
         self.disabled_reason = Some(reason.into());
+        self
+    }
+
+    /// メタデータを設定
+    pub fn with_metadata(mut self, metadata: SelectItemMetadata) -> Self {
+        self.metadata = Some(metadata);
         self
     }
 }
@@ -285,11 +297,97 @@ fn render_label_with_highlight(
     }
 }
 
+fn adjust_scroll_offset(
+    desired_scroll_offset: usize,
+    cursor_index: usize,
+    max_display: usize,
+    total_items: usize,
+) -> usize {
+    if total_items == 0 {
+        return 0;
+    }
+
+    let max_display = max_display.max(1);
+    let mut scroll_offset = desired_scroll_offset.min(cursor_index);
+
+    // カーソルが表示範囲の下にある場合、スクロールして見えるようにする
+    if cursor_index >= scroll_offset + max_display {
+        scroll_offset = cursor_index.saturating_sub(max_display - 1);
+    }
+
+    // 末尾側でのオーバースクロールを防ぐ
+    scroll_offset.min(total_items.saturating_sub(max_display))
+}
+
 impl Widget for MultiSelectListWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.width < 20 || area.height < 10 {
             return;
         }
+
+        // ===== 事前高さ計算 =====
+        // レイアウト定数
+        const TITLE_HEIGHT: u16 = 2; // タイトル + マージン
+        const STATS_HEIGHT: u16 = 2; // 統計 + マージン
+        const INPUT_HEIGHT: u16 = 2; // プレースホルダー + 入力行
+        const LIST_HEADER_HEIGHT: u16 = 1; // リスト開始前のマージン
+        const HELP_HEIGHT: u16 = 3; // ヘルプ2行 + マージン
+        const MAX_PREVIEW_HEIGHT: u16 = 15;
+        const MIN_LIST_HEIGHT: u16 = 4; // リスト領域の最小高さ
+
+        // 選択数
+        let selected_count = self.state.selected_indices.len();
+
+        // 理想的なプレビュー高さ（最大15行に制限）
+        let ideal_preview_height = if !self.state.filtered_indices.is_empty() {
+            let cursor_item_idx = self.state.filtered_indices[self.state.cursor_index];
+            let cursor_item = &self.state.items[cursor_item_idx];
+            calculate_preview_height(&cursor_item.metadata).min(MAX_PREVIEW_HEIGHT)
+        } else {
+            0
+        };
+
+        // 選択済みパネル高さ
+        let selected_panel_height: u16 = if selected_count > 0 {
+            (selected_count.min(5) as u16) + 3 // パネル高さ + マージン
+        } else {
+            0
+        };
+
+        // 固定高さの合計
+        let fixed_top_height = TITLE_HEIGHT + STATS_HEIGHT + INPUT_HEIGHT + LIST_HEADER_HEIGHT;
+
+        // 利用可能な高さを計算（固定部分を除く）
+        let available_height = area.height.saturating_sub(fixed_top_height + HELP_HEIGHT);
+
+        // リスト領域に最小高さを確保しつつ、プレビュー高さを調整
+        let preview_and_selected = if ideal_preview_height >= 3 {
+            ideal_preview_height + 1 + selected_panel_height
+        } else {
+            selected_panel_height
+        };
+
+        // リスト領域とプレビュー領域の高さを計算
+        let (list_max_height, preview_height) =
+            if available_height >= MIN_LIST_HEIGHT + preview_and_selected {
+                // 十分な高さがある場合
+                (
+                    available_height.saturating_sub(preview_and_selected),
+                    ideal_preview_height,
+                )
+            } else if available_height >= MIN_LIST_HEIGHT {
+                // リスト最小高さを確保し、残りをプレビューに
+                let remaining = available_height.saturating_sub(MIN_LIST_HEIGHT);
+                let adjusted_preview = if remaining >= 3 + selected_panel_height {
+                    (remaining.saturating_sub(selected_panel_height + 1)).max(3)
+                } else {
+                    0 // プレビューを表示しない
+                };
+                (MIN_LIST_HEIGHT, adjusted_preview)
+            } else {
+                // 画面が非常に小さい場合
+                (available_height, 0)
+            };
 
         let mut y = area.y;
 
@@ -375,6 +473,9 @@ impl Widget for MultiSelectListWidget<'_> {
         y += 2;
 
         // 結果リスト
+        // リスト領域の終了位置を計算（事前計算したlist_max_heightを使用）
+        let list_end_y = y + list_max_height;
+
         if self.state.filtered_indices.is_empty() {
             buf.set_string(
                 area.x,
@@ -384,19 +485,103 @@ impl Widget for MultiSelectListWidget<'_> {
             );
             y += 2;
         } else {
+            // ===== 実際のリスト表示可能行数に合わせてスクロール範囲を補正 =====
+            // NOTE: プレビュー領域が大きいと list_max_height が小さくなるが、
+            // state.max_display(デフォルト10) のままだとカーソルが画面外に出ても
+            // scroll_offset が更新されず、選択中アイテムが見えなくなる。
+            let list_height = list_max_height as usize;
+            let total_items = self.state.filtered_indices.len();
+            let cursor_index = self.state.cursor_index.min(total_items.saturating_sub(1));
+            let desired_scroll_offset = self.state.scroll_offset.min(cursor_index);
+            let desired_max_display = self.state.max_display.max(1);
+
+            let min_visible_items = 3usize.min(list_height).max(1);
+            let mut show_top_more = false;
+            let mut show_bottom_more = false;
+            let mut effective_max_display = if list_height > 0 {
+                desired_max_display.min(list_height).max(1)
+            } else {
+                0
+            };
+            let mut effective_scroll_offset = desired_scroll_offset;
+
+            if effective_max_display > 0 {
+                // 表示領域に収まるように、↑/↓ more の行数も考慮して安定するまで反復
+                for _ in 0..3 {
+                    let indicator_lines = (show_top_more as usize) + (show_bottom_more as usize);
+                    effective_max_display = desired_max_display
+                        .min(list_height.saturating_sub(indicator_lines))
+                        .max(1);
+
+                    effective_scroll_offset = adjust_scroll_offset(
+                        desired_scroll_offset,
+                        cursor_index,
+                        effective_max_display,
+                        total_items,
+                    );
+
+                    let visible_end =
+                        (effective_scroll_offset + effective_max_display).min(total_items);
+                    let hidden_above = effective_scroll_offset > 0;
+                    let hidden_below = visible_end < total_items;
+
+                    let mut next_show_top_more = hidden_above;
+                    let mut next_show_bottom_more = hidden_below;
+
+                    // リストが狭いときは more 表示よりアイテム表示を優先
+                    while (next_show_top_more as usize + next_show_bottom_more as usize) > 0
+                        && list_height.saturating_sub(
+                            next_show_top_more as usize + next_show_bottom_more as usize,
+                        ) < min_visible_items
+                    {
+                        // 両方必要な場合は、上側を優先して省略（下側の方が操作上目に入りやすい）
+                        if next_show_top_more && next_show_bottom_more {
+                            next_show_top_more = false;
+                        } else if next_show_top_more {
+                            next_show_top_more = false;
+                        } else {
+                            next_show_bottom_more = false;
+                        }
+                    }
+
+                    if next_show_top_more == show_top_more
+                        && next_show_bottom_more == show_bottom_more
+                    {
+                        show_top_more = next_show_top_more;
+                        show_bottom_more = next_show_bottom_more;
+                        break;
+                    }
+
+                    show_top_more = next_show_top_more;
+                    show_bottom_more = next_show_bottom_more;
+                }
+
+                // 最終値を確定
+                let indicator_lines = (show_top_more as usize) + (show_bottom_more as usize);
+                effective_max_display = desired_max_display
+                    .min(list_height.saturating_sub(indicator_lines))
+                    .max(1);
+                effective_scroll_offset = adjust_scroll_offset(
+                    desired_scroll_offset,
+                    cursor_index,
+                    effective_max_display,
+                    total_items,
+                );
+            }
+
+            let visible_end = (effective_scroll_offset + effective_max_display).min(total_items);
+
             // 上に隠れた要素数
-            if self.state.scroll_offset > 0 {
-                let msg = format!("↑ {} more", self.state.scroll_offset);
+            if show_top_more && y < list_end_y {
+                let msg = format!("↑ {} more", effective_scroll_offset);
                 buf.set_string(area.x, y, &msg, Style::default().fg(Color::Yellow));
                 y += 1;
             }
 
             // 表示アイテム
-            let visible_end = (self.state.scroll_offset + self.state.max_display)
-                .min(self.state.filtered_indices.len());
-
-            for display_idx in self.state.scroll_offset..visible_end {
-                if y >= area.y + area.height - 2 {
+            for display_idx in effective_scroll_offset..visible_end {
+                // 事前計算したリスト領域の終了位置でチェック
+                if y >= list_end_y {
                     break;
                 }
 
@@ -486,7 +671,7 @@ impl Widget for MultiSelectListWidget<'_> {
                 .filtered_indices
                 .len()
                 .saturating_sub(visible_end);
-            if hidden_below > 0 {
+            if show_bottom_more && hidden_below > 0 && y < list_end_y {
                 let msg = format!("↓ {} more", hidden_below);
                 buf.set_string(area.x, y, &msg, Style::default().fg(Color::Yellow));
                 y += 1;
@@ -494,9 +679,49 @@ impl Widget for MultiSelectListWidget<'_> {
 
             y += 1;
 
+            // カーソル位置のworktree詳細情報プレビュー
+            // 事前計算したpreview_heightを使用
+            if !self.state.filtered_indices.is_empty() && preview_height >= 3 {
+                let cursor_item_idx = self.state.filtered_indices[self.state.cursor_index];
+                let cursor_item = &self.state.items[cursor_item_idx];
+                let preview_width = area.width.min(PREVIEW_MAX_WIDTH);
+
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::DarkGray))
+                    .title(Span::styled(
+                        " Preview ",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+
+                let preview_area = Rect::new(area.x, y, preview_width, preview_height);
+                let inner = block.inner(preview_area);
+                block.render(preview_area, buf);
+
+                // ブランチ名（シアン色）
+                buf.set_string(
+                    inner.x,
+                    inner.y,
+                    &cursor_item.label,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                );
+
+                // メタデータの描画
+                if let Some(ref metadata) = cursor_item.metadata {
+                    render_preview_metadata(buf, inner, metadata, preview_width);
+                }
+
+                y += preview_height + 1;
+            }
+
             // 選択済みプレビュー
-            if !self.state.selected_indices.is_empty() && y + 7 < area.y + area.height {
-                let selected_items: Vec<_> = self.state.selected_items();
+            let selected_items: Vec<_> = self.state.selected_items();
+            let selected_panel_height = (selected_items.len().min(5) + 2) as u16;
+            if !selected_items.is_empty() && y + selected_panel_height < area.y + area.height {
                 let title = format!("Selected ({} items)", selected_items.len());
                 let block = Block::default()
                     .borders(Borders::ALL)
@@ -508,11 +733,12 @@ impl Widget for MultiSelectListWidget<'_> {
                             .add_modifier(Modifier::BOLD),
                     ));
 
-                let preview_height = (selected_items.len().min(5) + 2) as u16;
-                let preview_width = area.width.min(50);
-                let preview_area = Rect::new(area.x, y, preview_width, preview_height);
-                let inner = block.inner(preview_area);
-                block.render(preview_area, buf);
+                let selected_preview_height = (selected_items.len().min(5) + 2) as u16;
+                let selected_preview_width = area.width.min(50);
+                let selected_preview_area =
+                    Rect::new(area.x, y, selected_preview_width, selected_preview_height);
+                let inner = block.inner(selected_preview_area);
+                block.render(selected_preview_area, buf);
 
                 for (i, item) in selected_items.iter().take(5).enumerate() {
                     buf.set_string(
@@ -532,7 +758,7 @@ impl Widget for MultiSelectListWidget<'_> {
                     );
                 }
 
-                y += preview_height + 1;
+                y += selected_preview_height + 1;
             }
         }
 
@@ -735,5 +961,39 @@ mod tests {
 
         // 4アイテム中、1つがdisabled
         assert_eq!(state.selectable_count(), 3);
+    }
+
+    #[test]
+    fn test_render_keeps_cursor_visible_when_list_height_is_small() {
+        use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+
+        let input = TextInputState::new();
+        let items: Vec<_> = (0..20)
+            .map(|i| MultiSelectItem::new(format!("item-{i:02}"), format!("/path/{i:02}")))
+            .collect();
+
+        let mut state = MultiSelectState::new(items);
+        state.cursor_index = 6;
+        state.scroll_offset = 0;
+        state.max_display = 10;
+
+        // プレビュー領域を含めるとリスト領域が最小に近くなる高さ
+        let area = Rect::new(0, 0, 80, 17);
+        let mut buf = Buffer::empty(area);
+        MultiSelectListWidget::new("Title", "Search...", &input, &state).render(area, &mut buf);
+
+        let mut cursor_line = None;
+        for y in 0..area.height {
+            let line: String = (0..area.width)
+                .map(|x| buf.cell((x, y)).unwrap().symbol().to_string())
+                .collect();
+            if line.contains("▶") {
+                cursor_line = Some(line);
+                break;
+            }
+        }
+
+        let cursor_line = cursor_line.expect("cursor line should be rendered");
+        assert!(cursor_line.contains("item-06"));
     }
 }
