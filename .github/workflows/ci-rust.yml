@@ -70,7 +70,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: gwm
-          - os: mmacos-15-intel
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             artifact_name: gwm
           - os: macos-latest
