@@ -187,14 +187,45 @@ fn run_go_tui(
                 (_, KeyCode::Down) | (KeyModifiers::CONTROL, KeyCode::Char('n')) => {
                     state.move_down();
                 }
-                (_, KeyCode::Backspace) => {
-                    input.delete_backward();
-                    state.update_filter(&input.value);
-                }
+
+                // 全削除（Ctrl+U）
                 (KeyModifiers::CONTROL, KeyCode::Char('u')) => {
                     input.clear();
                     state.update_filter(&input.value);
                 }
+
+                // 単語削除（Ctrl+W / Alt+Backspace）
+                (KeyModifiers::CONTROL, KeyCode::Char('w'))
+                | (KeyModifiers::ALT, KeyCode::Backspace) => {
+                    input.delete_word_backward();
+                    state.update_filter(&input.value);
+                }
+
+                // 削除
+                (_, KeyCode::Backspace) => {
+                    input.delete_backward();
+                    state.update_filter(&input.value);
+                }
+                (_, KeyCode::Delete) => {
+                    input.delete_forward();
+                    state.update_filter(&input.value);
+                }
+
+                // カーソル移動
+                (_, KeyCode::Left) | (KeyModifiers::CONTROL, KeyCode::Char('b')) => {
+                    input.move_left();
+                }
+                (_, KeyCode::Right) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
+                    input.move_right();
+                }
+                (KeyModifiers::CONTROL, KeyCode::Char('a')) | (_, KeyCode::Home) => {
+                    input.move_start();
+                }
+                (KeyModifiers::CONTROL, KeyCode::Char('e')) | (_, KeyCode::End) => {
+                    input.move_end();
+                }
+
+                // 文字入力
                 (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(c)) => {
                     input.insert(c);
                     state.update_filter(&input.value);

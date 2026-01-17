@@ -22,12 +22,10 @@ fn show_welcome() {
     println!("\x1b[1mAVAILABLE COMMANDS:\x1b[0m");
     println!("  add           Create a new worktree");
     println!("  go            Go to a worktree directory or open it in an editor");
-    println!("  init          Print shell integration script");
     println!("  list (ls)     List all worktrees for the current project");
     println!("  sync          Update the main branch worktrees");
     println!("  remove (rm)   Remove one or more worktrees");
     println!("  clean         Clean up safe-to-delete worktrees");
-    println!("  completion    Generate shell completion scripts");
     println!("  help          Show help for gwm or a specific command");
     println!();
     println!("Use \"gwm help <command>\" for more information about a specific command.");
