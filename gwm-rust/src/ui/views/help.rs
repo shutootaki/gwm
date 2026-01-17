@@ -20,10 +20,8 @@ COMMANDS:
     add             Add a new worktree
     remove (rm)     Remove worktree(s)
     go              Navigate to a worktree
-    init            Shell integration script
     clean           Clean up merged/deleted worktrees
     sync            Sync main branch worktrees
-    completion      Generate shell completion scripts
     help            Show this help message
 
 EXAMPLES:
@@ -33,7 +31,6 @@ EXAMPLES:
     gwm add -r              Create from remote branch
     gwm remove              Remove worktrees (multi-select)
     gwm go feature          Navigate to worktree matching "feature"
-    eval "$(gwm init bash)" Install shell integration (bash/zsh)
     gwm clean -n            Show cleanable worktrees (dry-run)
 
 For more information about a command, run:

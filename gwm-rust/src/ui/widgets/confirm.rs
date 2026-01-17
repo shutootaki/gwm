@@ -92,7 +92,7 @@ impl Widget for ConfirmWidget<'_> {
         let choices = [
             ConfirmChoice::Trust,
             ConfirmChoice::Once,
-            ConfirmChoice::Cancel,
+            ConfirmChoice::SkipHooks,
         ];
 
         for choice in &choices {
@@ -178,11 +178,11 @@ mod tests {
             "Confirm",
             "No commands to execute",
             &commands,
-            ConfirmChoice::Cancel,
+            ConfirmChoice::SkipHooks,
         );
 
         assert_eq!(widget.commands.len(), 0);
-        assert_eq!(widget.selected, ConfirmChoice::Cancel);
+        assert_eq!(widget.selected, ConfirmChoice::SkipHooks);
     }
 
     #[test]
@@ -197,8 +197,8 @@ mod tests {
         assert_eq!(widget_once.selected, ConfirmChoice::Once);
 
         let widget_cancel =
-            ConfirmWidget::new("Title", "Message", &commands, ConfirmChoice::Cancel);
-        assert_eq!(widget_cancel.selected, ConfirmChoice::Cancel);
+            ConfirmWidget::new("Title", "Message", &commands, ConfirmChoice::SkipHooks);
+        assert_eq!(widget_cancel.selected, ConfirmChoice::SkipHooks);
     }
 
     #[test]

@@ -108,10 +108,10 @@ fn handle_text_input_key(app: &mut App, key: KeyEvent) {
             }
 
             // カーソル移動
-            (_, KeyCode::Left) => {
+            (_, KeyCode::Left) | (KeyModifiers::CONTROL, KeyCode::Char('b')) => {
                 input.move_left();
             }
-            (_, KeyCode::Right) => {
+            (_, KeyCode::Right) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
                 input.move_right();
             }
             (KeyModifiers::CONTROL, KeyCode::Char('a')) | (_, KeyCode::Home) => {
@@ -186,11 +186,45 @@ fn handle_select_list_key(app: &mut App, key: KeyEvent) {
                 needs_preview_update = true;
             }
 
+            // 全削除（Ctrl+U）
+            (KeyModifiers::CONTROL, KeyCode::Char('u')) => {
+                input.clear();
+                state.update_filter(&input.value);
+                needs_preview_update = true;
+            }
+
+            // 単語削除（Ctrl+W / Alt+Backspace）
+            (KeyModifiers::CONTROL, KeyCode::Char('w'))
+            | (KeyModifiers::ALT, KeyCode::Backspace) => {
+                input.delete_word_backward();
+                state.update_filter(&input.value);
+                needs_preview_update = true;
+            }
+
             // 削除
             (_, KeyCode::Backspace) => {
                 input.delete_backward();
                 state.update_filter(&input.value);
                 needs_preview_update = true;
+            }
+            (_, KeyCode::Delete) => {
+                input.delete_forward();
+                state.update_filter(&input.value);
+                needs_preview_update = true;
+            }
+
+            // カーソル移動
+            (_, KeyCode::Left) | (KeyModifiers::CONTROL, KeyCode::Char('b')) => {
+                input.move_left();
+            }
+            (_, KeyCode::Right) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
+                input.move_right();
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('a')) | (_, KeyCode::Home) => {
+                input.move_start();
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('e')) | (_, KeyCode::End) => {
+                input.move_end();
             }
 
             // 文字入力
@@ -231,9 +265,23 @@ fn handle_confirm_key(app: &mut App, key: KeyEvent) {
     }
 
     if let AppState::Confirm { selected, .. } = &mut app.state {
+        // Ctrl+N/Ctrl+P で選択肢を移動
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('n') => {
+                    *selected = selected.next();
+                }
+                KeyCode::Char('p') => {
+                    *selected = selected.prev();
+                }
+                _ => {}
+            }
+            return;
+        }
+
         match key.code {
             KeyCode::Esc => {
-                *selected = ConfirmChoice::Cancel;
+                *selected = ConfirmChoice::SkipHooks;
                 // Enterで確定されるまで待つ
             }
             KeyCode::Enter => {
@@ -252,7 +300,7 @@ fn handle_confirm_key(app: &mut App, key: KeyEvent) {
                 *selected = ConfirmChoice::Once;
             }
             KeyCode::Char('c') | KeyCode::Char('C') => {
-                *selected = ConfirmChoice::Cancel;
+                *selected = ConfirmChoice::SkipHooks;
             }
             _ => {}
         }

@@ -78,8 +78,8 @@ pub enum ConfirmChoice {
     Trust,
     /// 一度だけ実行
     Once,
-    /// キャンセル
-    Cancel,
+    /// フックをスキップ
+    SkipHooks,
 }
 
 /// 確認ダイアログ用メタデータ（フック実行時に使用）
@@ -102,17 +102,17 @@ impl ConfirmChoice {
     pub fn next(&self) -> Self {
         match self {
             Self::Trust => Self::Once,
-            Self::Once => Self::Cancel,
-            Self::Cancel => Self::Trust,
+            Self::Once => Self::SkipHooks,
+            Self::SkipHooks => Self::Trust,
         }
     }
 
     /// 前の選択肢に移動
     pub fn prev(&self) -> Self {
         match self {
-            Self::Trust => Self::Cancel,
+            Self::Trust => Self::SkipHooks,
             Self::Once => Self::Trust,
-            Self::Cancel => Self::Once,
+            Self::SkipHooks => Self::Once,
         }
     }
 
@@ -121,7 +121,7 @@ impl ConfirmChoice {
         match self {
             Self::Trust => "Trust",
             Self::Once => "Once",
-            Self::Cancel => "Cancel",
+            Self::SkipHooks => "Skip Hooks",
         }
     }
 
@@ -130,7 +130,7 @@ impl ConfirmChoice {
         match self {
             Self::Trust => "Save to trust cache and run",
             Self::Once => "Run this time only",
-            Self::Cancel => "Cancel operation",
+            Self::SkipHooks => "Don't run hooks",
         }
     }
 }
@@ -497,9 +497,9 @@ mod tests {
     fn test_confirm_choice_navigation() {
         let choice = ConfirmChoice::Trust;
         assert_eq!(choice.next(), ConfirmChoice::Once);
-        assert_eq!(choice.prev(), ConfirmChoice::Cancel);
+        assert_eq!(choice.prev(), ConfirmChoice::SkipHooks);
 
-        let choice = ConfirmChoice::Cancel;
+        let choice = ConfirmChoice::SkipHooks;
         assert_eq!(choice.next(), ConfirmChoice::Trust);
     }
 
