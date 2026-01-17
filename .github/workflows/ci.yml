@@ -3,116 +3,98 @@ name: CI
 on:
   push:
     branches: [main, develop]
-    tags:
-      - 'v*.*.*'
+    paths-ignore:
+      - 'gwm-ts/**'
+      - '*.md'
   pull_request:
     branches: [main, develop]
-
-permissions:
-  contents: read
-  actions: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-defaults:
-  run:
-    shell: bash
+    paths-ignore:
+      - 'gwm-ts/**'
+      - '*.md'
 
 env:
-  PNPM_VERSION: 10.4.1
-  DEFAULT_NODE: 20
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  lint:
-    name: ESLint
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          fetch-depth: 1
-      - name: Common setup
-        uses: ./.github/actions/setup
-        with:
-          node-version: ${{ env.DEFAULT_NODE }}
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
 
-      - name: Run ESLint
-        run: pnpm lint
-
-  format:
-    name: Prettier
+  clippy:
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          fetch-depth: 1
-      - name: Common setup
-        uses: ./.github/actions/setup
-        with:
-          node-version: ${{ env.DEFAULT_NODE }}
-
-      - name: Check code formatting
-        run: pnpm format:check
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
-    name: Unit Test & Coverage
+    name: Test
     runs-on: ubuntu-latest
+    needs: [fmt, clippy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --verbose
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    needs: [test]
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18, 20, 22]
-
-    needs: [lint, format]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: Common setup
-        uses: ./.github/actions/setup
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Run unit tests (no coverage)
-        if: matrix.node-version != '20'
-        run: pnpm test:run
-
-      - name: Run unit tests with coverage (Node 20)
-        if: matrix.node-version == '20'
-        run: pnpm test:coverage
-
-  build:
-    name: Build & TypeCheck
-    runs-on: ubuntu-latest
-    needs: [test]
-
-    permissions:
-      actions: write
-      contents: read
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: gwm
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            artifact_name: gwm
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: gwm
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: gwm.exe
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          fetch-depth: 1
-      - name: Common setup
-        uses: ./.github/actions/setup
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
         with:
-          node-version: ${{ env.DEFAULT_NODE }}
-
-      - name: Type check (tsc --noEmit)
-        run: pnpm typecheck
-
-      - name: Build project
-        run: pnpm build
-
-      - name: Upload build artifacts
+          key: ${{ matrix.target }}
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist/
+          name: gwm-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
           retention-days: 7
+
+  msrv:
+    name: MSRV Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.74.0
+      - uses: Swatinem/rust-cache@v2
+      - name: Check MSRV
+        run: cargo check --all-features

@@ -6,35 +6,32 @@ AI coding agents向けのプロジェクトガイドライン。
 
 `gwm` (Git Worktree Manager) - Git worktreeをインタラクティブTUIで管理するCLIツール。
 
-| 実装       | ディレクトリ | フレームワーク | 状態   |
-| ---------- | ------------ | -------------- | ------ |
-| TypeScript | ルート       | React + Ink    | 安定版 |
-| Rust       | `gwm-rust/`  | ratatui        | 開発中 |
-
-Rust版の開発ガイドラインは [gwm-rust/AGENTS.md](./gwm-rust/AGENTS.md) を参照。
+| 実装       | ディレクトリ | フレームワーク | 状態       |
+| ---------- | ------------ | -------------- | ---------- |
+| Rust       | ルート       | ratatui        | メイン     |
+| TypeScript | `gwm-ts/`    | React + Ink    | deprecated |
 
 ## 必須要件
 
-- **Node.js**: 18以上
-- **pnpm**: 10以上
+- **Rust**: 1.74以上
 
 ---
 
 ## 開発コマンド
 
 ```bash
-pnpm build       # ビルド
-pnpm test        # テスト（ウォッチモード）
-pnpm test:run    # テスト（1回）
-pnpm lint        # リント
-pnpm fix         # フォーマット + リント修正
+cargo build            # ビルド
+cargo test             # テスト
+cargo clippy           # リント
+cargo fmt              # フォーマット
+make check             # CI相当のチェック
 ```
 
 ## ローカル検証
 
 ```bash
-pnpm install && pnpm build
-node dist/index.js {command}
+cargo build
+./target/debug/gwm {command}
 ```
 
 ---
@@ -43,12 +40,14 @@ node dist/index.js {command}
 
 ```
 src/
-├── index.tsx      # エントリポイント
-├── components/    # 各コマンドのReactコンポーネント
-├── utils/         # ユーティリティ
-├── types/         # 型定義
-└── config.ts      # 設定管理
-test/              # ユニットテスト
+├── main.rs        # エントリポイント
+├── cli/           # CLIコマンド定義
+├── config/        # 設定管理
+├── git/           # Git操作
+├── ui/            # TUIコンポーネント
+├── hooks/         # フック実行
+└── trust/         # 信頼検証
+gwm-ts/            # TypeScript版（deprecated）
 ```
 
 ---
@@ -62,7 +61,7 @@ test/              # ユニットテスト
 | `remove`    | `rm`       | 削除             |
 | `go`        | -          | 移動（パス出力） |
 | `clean`     | -          | マージ済み整理   |
-| `pull-main` | -          | main更新         |
+| `sync`      | `pull-main`| main更新         |
 
 ---
 
@@ -80,28 +79,28 @@ test/              # ユニットテスト
 
 - **未読のコード変更禁止**: 読んでいないファイルを変更しない
 - **過剰な抽象化禁止**: 必要最小限の実装に留める
-- **機密情報禁止**: `.env`ファイルや認証情報をコミットしない
+- **機密情報禁止**: `.env`や認証情報をコミットしない
 - **破壊的変更禁止**: 既存のCLIインターフェースを壊さない
 
 ---
 
 ## コーディング規約
 
-- ESLint + Prettier設定に従う
-- 型は明示的に定義（`any`禁止）
-- React Hooksのルールを遵守
+- `cargo clippy`の警告をすべて解消
+- `cargo fmt`でフォーマット
+- `unwrap()`は避け、適切なエラーハンドリング
+- `unsafe`は使用禁止
+- `thiserror`/`anyhow`でエラーハンドリング
 
 ---
 
 ## テスト
 
 ```bash
-pnpm test:run              # 全テスト
-pnpm test src/utils        # 特定ディレクトリ
+cargo test                 # 全テスト
+cargo test git::           # 特定モジュール
+cargo test -- --nocapture  # 出力表示
 ```
-
-- テストファイル: `test/**/*.test.ts`
-- カバレッジ: `pnpm test:coverage`
 
 ---
 
@@ -118,7 +117,7 @@ docs: ドキュメント
 chore: その他
 ```
 
-スコープ例: `feat(gwm-rust): add clean command`
+スコープ例: `feat(gwm): add clean command`
 
 ---
 
@@ -144,7 +143,25 @@ commands = ["npm install"]
 
 ## トラブルシューティング
 
-| 問題                | 解決策                        |
-| ------------------- | ----------------------------- |
-| 型エラー            | `pnpm typecheck`で確認        |
-| Inkレンダリング問題 | `ink-testing-library`でテスト |
+| 問題               | 解決策                            |
+| ------------------ | --------------------------------- |
+| ビルドエラー       | `cargo clean && cargo build`      |
+| クリップボード警告 | `cargo clippy --fix`              |
+| TUI表示崩れ        | `crossterm`のターミナル互換性確認 |
+
+---
+
+## TypeScript版（deprecated）
+
+TypeScript版は `gwm-ts/` ディレクトリにあり、deprecated です。
+新機能の追加は行わず、重大なバグ修正のみ対応します。
+
+### TypeScript版の開発コマンド
+
+```bash
+cd gwm-ts
+pnpm install
+pnpm build       # ビルド
+pnpm test:run    # テスト
+pnpm lint        # リント
+```

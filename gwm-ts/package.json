@@ -65,7 +65,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/shutootaki/gwm.git"
+    "url": "https://github.com/shutootaki/gwm.git",
+    "directory": "gwm-ts"
   },
   "license": "MIT",
   "publishConfig": {

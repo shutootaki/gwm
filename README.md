@@ -8,14 +8,15 @@ A CLI tool for managing Git worktrees, allowing you to work on multiple branches
 
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/@shutootaki/gwm?color=blue&style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
+[![Crates.io](https://img.shields.io/crates/v/gwm?style=flat-square)](https://crates.io/crates/gwm)
 [![license MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![CI](https://github.com/shutootaki/gwm/actions/workflows/ci.yml/badge.svg)](https://github.com/shutootaki/gwm/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/npm/dm/@shutootaki/gwm?style=flat-square)](https://www.npmjs.com/package/@shutootaki/gwm)
+[![Downloads](https://img.shields.io/crates/d/gwm?style=flat-square)](https://crates.io/crates/gwm)
 
 </div>
 
-<img width="1198" height="517" alt="image" src="https://github.com/user-attachments/assets/2b14f573-9e71-436d-b2d6-656231199c83" />
+<img width="925" height="603" alt="image" src="https://github.com/user-attachments/assets/06ca02c7-61b1-4bee-a763-d4cee53023b4" />
+
 
 ## What problem does gwm solve?
 
@@ -31,41 +32,45 @@ gwm wraps Git's built-in `git worktree` command with an **interactive TUI**, **i
 
 ## Commands
 
-| Command                 | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `gwm list` / `gwm ls`   | List worktrees                               |
-| `gwm add`               | Create a new worktree                        |
-| `gwm go`                | Jump to a worktree or open in VS Code/Cursor |
-| `gwm remove` / `gwm rm` | Remove worktrees                             |
-| `gwm clean`             | Detect and remove merged worktrees           |
-| `gwm pull-main`         | Run `git pull` in main worktrees             |
+| Command                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `gwm list` / `gwm ls`   | List worktrees                       |
+| `gwm add`               | Create a new worktree                |
+| `gwm go`                | Jump to a worktree or open in editor |
+| `gwm remove` / `gwm rm` | Remove worktrees                     |
+| `gwm clean`             | Detect and remove merged worktrees   |
+| `gwm sync`              | Run `git pull` in main worktrees     |
 
 Run `gwm help <command>` for details on each command.
 
 ## Installation
 
-```bash
-npm install -g @shutootaki/gwm
+### Homebrew (macOS)
 
-# Try without installing
-npx @shutootaki/gwm
+```bash
+brew install shutootaki/tap/gwm
+```
+
+### Cargo
+
+```bash
+cargo install gwm
 ```
 
 ## Shell integration (cd)
 
-To automatically change your current shell directory after `gwm add` / `gwm go`,
-add the following to your shell config:
+To automatically change your current shell directory after `gwm add` / `gwm go`, add the following to your shell config. This also enables shell completions.
 
 ```bash
-# Bash
+# Bash (~/.bashrc)
 eval "$(gwm init bash)"
 
-# Zsh
+# Zsh (~/.zshrc)
 eval "$(gwm init zsh)"
 ```
 
 ```fish
-# Fish
+# Fish (~/.config/fish/config.fish)
 gwm init fish | source
 ```
 
@@ -74,13 +79,13 @@ gwm init fish | source
 **Start working on a new branch:**
 
 ```bash
-gwm add feature/new-login --code    # Create worktree and open in VS Code
+gwm add feature/new-login -o code  # Create worktree and open in VS Code
 ```
 
 **Review a PR:**
 
 ```bash
-gwm add fix-bug -r --code    # Create worktree from remote branch and open in VS Code
+gwm add fix-bug -r -o code   # Create worktree from remote branch and open in VS Code
 # After review
 gwm remove fix-bug           # Remove it
 ```
@@ -108,17 +113,29 @@ Example: `~/git-worktrees/my-app/feature-login/`
 List worktrees in the current project.
 
 ```text
-STATUS  BRANCH            PATH                              HEAD
-*       feature/new-ui    /Users/me/project                 a1b2c3d
-M       main              ~/git-worktrees/project/main      123abc4
--       hotfix/logfix     ~/git-worktrees/project/logfix    c7d8e9f
+    BRANCH           SYNC    CHANGES  PATH                     ACTIVITY
+[*] feature/new-ui   ↑2 ↓0  3M 1D    ${B}/project/feature...  2h ago
+[M] main             ✓      clean    ${B}/project/main        30m ago
+[-] hotfix/logfix    ↑0 ↓5  clean    ${B}/project/logfix      3d ago
 ```
 
 **STATUS meanings:**
 
-- `* ACTIVE`: Current worktree
-- `M MAIN`: Main branches (main, master, etc.)
-- `- OTHER`: Other worktrees
+- `[*]`: Current worktree
+- `[M]`: Main branches (main, master, etc.)
+- `[-]`: Other worktrees
+
+**Column meanings:**
+
+- `SYNC`: Sync status with remote (↑=ahead, ↓=behind, ✓=synced)
+- `CHANGES`: Local changes (M=Modified, D=Deleted, A=Added, U=Untracked)
+- `ACTIVITY`: Time since last update
+
+**Options:**
+
+| Option            | Description                      |
+| ----------------- | -------------------------------- |
+| `--format <type>` | Output format (table/json/names) |
 
 ---
 
@@ -139,14 +156,13 @@ Create a new worktree.
 
 **Options:**
 
-| Option            | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| `-r, --remote`    | Create from remote branch                         |
-| `--from <branch>` | Base branch (default: main or master)             |
-| `--code`          | Open in VS Code after creation                    |
-| `--cursor`        | Open in Cursor after creation                     |
-| `--no-cd`         | Show success message instead of path output       |
-| `--skip-hooks`    | Skip post_create hooks execution                  |
+| Option                | Description                                     |
+| --------------------- | ----------------------------------------------- |
+| `-r, --remote`        | Create from remote branch                       |
+| `--from <branch>`     | Base branch (default: main or master)           |
+| `-o, --open <editor>` | Open in editor after creation (code/cursor/zed) |
+| `--no-cd`             | Show success message instead of path output     |
+| `--skip-hooks`        | Skip post_create hooks execution                |
 
 **Automatic file copying:**
 
@@ -158,18 +174,17 @@ When `copy_ignored_files` is enabled, `.env` files are automatically copied from
 
 Select a worktree and jump to it.
 
-With shell integration enabled (see "Shell integration (cd)"), it changes the
-current shell directory. Otherwise, it launches a subshell.
+With shell integration enabled (see "Shell integration (cd)"), it changes the current shell directory. Otherwise, it launches a subshell.
 
-- `gwm go`: Interactive selection
+- `gwm go`: Interactive selection (fuzzy search supported)
 - `gwm go feat`: Filter by "feat" and select
 
 **Options:**
 
-| Option       | Description     |
-| ------------ | --------------- |
-| `-c, --code` | Open in VS Code |
-| `--cursor`   | Open in Cursor  |
+| Option                | Description                          |
+| --------------------- | ------------------------------------ |
+| `-o, --open <editor>` | Open in editor (code/cursor/zed)     |
+| `--no-cd`             | Show success message instead of path |
 
 ---
 
@@ -205,9 +220,11 @@ Auto-detect and remove worktrees that are safe to delete.
 
 ---
 
-### `gwm pull-main`
+### `gwm sync` (alias: `pull-main`)
 
 Find main branch worktrees (main, master, etc.) and run `git pull` to update them. Works from any directory.
+
+> **Note**: For backward compatibility, the legacy command name `gwm pull-main` is still available.
 
 ## Workflow Comparison
 

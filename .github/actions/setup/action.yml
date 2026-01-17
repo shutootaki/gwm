@@ -6,6 +6,10 @@ inputs:
     description: 'Node.js version to use'
     required: false
     default: '20'
+  working-directory:
+    description: 'Working directory for pnpm install'
+    required: false
+    default: 'gwm-ts'
 
 runs:
   using: 'composite'
@@ -14,14 +18,15 @@ runs:
       uses: pnpm/action-setup@v4
       with:
         version: 10.4.1
-        cache: true
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '${{ inputs.node-version }}'
         cache: 'pnpm'
+        cache-dependency-path: '${{ inputs.working-directory }}/pnpm-lock.yaml'
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
