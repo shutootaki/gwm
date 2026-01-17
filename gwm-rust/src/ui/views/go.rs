@@ -14,7 +14,7 @@ use ratatui::{backend::CrosstermBackend, Terminal, TerminalOptions, Viewport};
 
 use crate::cli::GoArgs;
 use crate::error::Result;
-use crate::git::get_worktrees_with_details;
+use crate::git::{get_worktrees_with_details, STATUS_LEGEND};
 use crate::shell::cwd_file::{try_write_cwd_file, CwdWriteResult};
 use crate::ui::event::{is_cancel_key, poll_event};
 use crate::ui::widgets::{SelectListWidget, SelectState};
@@ -56,7 +56,7 @@ pub fn run_go(args: GoArgs) -> Result<()> {
     let items: Vec<SelectItem> = worktrees
         .iter()
         .map(|wt| SelectItem {
-            label: format!("[{}] {}", wt.status.icon(), wt.display_branch()),
+            label: format!("{} {}", wt.status.bracketed_icon(), wt.display_branch()),
             value: wt.path.display().to_string(),
             description: Some(wt.path.display().to_string()),
             metadata: Some(SelectItemMetadata {
@@ -69,9 +69,20 @@ pub fn run_go(args: GoArgs) -> Result<()> {
         })
         .collect();
 
-    // クエリで1件に絞れる場合は直接移動
+    // クエリで検索
     if let Some(ref query) = args.query {
         let query_lower = query.to_lowercase();
+
+        // 1. 完全一致を優先検索（ステータスアイコン除去後のブランチ名で比較）
+        let exact_match = items
+            .iter()
+            .find(|item| extract_branch_name(&item.label).to_lowercase() == query_lower);
+
+        if let Some(item) = exact_match {
+            return handle_selection(item, &args);
+        }
+
+        // 2. 部分一致にフォールバック（既存ロジック）
         let matches: Vec<_> = items
             .iter()
             .filter(|item| item.label.to_lowercase().contains(&query_lower))
@@ -165,7 +176,8 @@ fn run_go_tui(
                 &input,
                 &state,
                 None,
-            );
+            )
+            .with_legend(STATUS_LEGEND);
             frame.render_widget(widget, area);
         })?;
 
@@ -247,7 +259,39 @@ fn run_go_tui(
     Ok(result)
 }
 
+/// ラベルからブランチ名を抽出（ステータスアイコンを除去）
+///
+/// # Examples
+/// - `"[*] main"` -> `"main"` (ACTIVE worktree)
+/// - `"[M] develop"` -> `"develop"` (MAIN worktree)
+/// - `"[-] feature/test"` -> `"feature/test"` (Other worktree)
+fn extract_branch_name(label: &str) -> &str {
+    // "[X] " 形式のプレフィックス（4文字: `[` + アイコン + `]` + 空白）を除去
+    if label.len() > 4 && label.starts_with('[') && label.chars().nth(2) == Some(']') {
+        label.get(4..).unwrap_or(label)
+    } else {
+        label
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    // TUIテストは手動で行う
+    use super::*;
+
+    #[test]
+    fn test_extract_branch_name() {
+        assert_eq!(extract_branch_name("[*] main"), "main");
+        assert_eq!(extract_branch_name("[M] develop"), "develop");
+        assert_eq!(extract_branch_name("[-] feature/test"), "feature/test");
+        assert_eq!(extract_branch_name("plain-label"), "plain-label");
+        assert_eq!(extract_branch_name(""), "");
+        assert_eq!(extract_branch_name("[ab"), "[ab");
+    }
+
+    #[test]
+    fn test_extract_branch_name_unicode() {
+        assert_eq!(extract_branch_name("[*] feat/日本語"), "feat/日本語");
+        assert_eq!(extract_branch_name("[M] 機能/テスト"), "機能/テスト");
+        assert_eq!(extract_branch_name("[-] fix/émoji-🚀"), "fix/émoji-🚀");
+    }
 }
