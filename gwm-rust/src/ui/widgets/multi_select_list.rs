@@ -535,9 +535,7 @@ impl Widget for MultiSelectListWidget<'_> {
                         ) < min_visible_items
                     {
                         // 両方必要な場合は、上側を優先して省略（下側の方が操作上目に入りやすい）
-                        if next_show_top_more && next_show_bottom_more {
-                            next_show_top_more = false;
-                        } else if next_show_top_more {
+                        if next_show_top_more {
                             next_show_top_more = false;
                         } else {
                             next_show_bottom_more = false;
@@ -987,7 +985,7 @@ mod tests {
             let line: String = (0..area.width)
                 .map(|x| buf.cell((x, y)).unwrap().symbol().to_string())
                 .collect();
-            if line.contains("▶") {
+            if line.contains('▶') {
                 cursor_line = Some(line);
                 break;
             }
