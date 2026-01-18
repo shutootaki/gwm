@@ -45,12 +45,6 @@ Run `gwm help <command>` for details on each command.
 
 ## Installation
 
-### Homebrew (macOS)
-
-```bash
-brew install shutootaki/tap/gwm
-```
-
 ### Cargo
 
 ```bash
