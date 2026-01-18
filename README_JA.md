@@ -44,12 +44,6 @@ gwm は Git 標準の `git worktree` コマンドを**インタラクティブ�
 
 ## インストール
 
-### Homebrew (macOS)
-
-```bash
-brew install shutootaki/tap/gwm
-```
-
 ### Cargo
 
 ```bash
