@@ -105,7 +105,7 @@ pub fn run_remove(args: RemoveArgs) -> Result<()> {
             // 直接削除を実行
             let clean_branch_mode = args.clean_branch.unwrap_or(config.clean_branch);
             return execute_remove(
-                &[item.clone()],
+                std::slice::from_ref(item),
                 &config.main_branches,
                 clean_branch_mode,
                 args.force,

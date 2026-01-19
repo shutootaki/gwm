@@ -152,7 +152,7 @@ impl Widget for StepProgressWidget<'_> {
                         buf.set_string(
                             bar_start + bar_width as u16 + 1,
                             y,
-                            &format!("{}% {}", (p * 100.0) as usize, label),
+                            format!("{}% {}", (p * 100.0) as usize, label),
                             Style::default().fg(color),
                         );
                     } else {
@@ -161,7 +161,7 @@ impl Widget for StepProgressWidget<'_> {
                         buf.set_string(
                             bar_start,
                             y,
-                            &format!("{} {}", spinner, label),
+                            format!("{} {}", spinner, label),
                             Style::default().fg(color),
                         );
                     }
