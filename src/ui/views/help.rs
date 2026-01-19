@@ -58,8 +58,12 @@ CONFIGURATION:
 gwm list - List all worktrees
 
 USAGE:
-    gwm list
-    gwm ls
+    gwm list [OPTIONS]
+    gwm ls [OPTIONS]
+
+OPTIONS:
+        --compact            Use compact format (legacy layout)
+        --format <FORMAT>    Output format: table (default), json, names
 
 DESCRIPTION:
     Display a table of all Git worktrees with their status, branch, path,
@@ -71,8 +75,10 @@ STATUS INDICATORS:
     [-] OTHER   - Other worktrees (white)
 
 EXAMPLES:
-    gwm list            Show all worktrees
-    gwm ls              Same as above (alias)
+    gwm list                 Show all worktrees
+    gwm ls                   Same as above (alias)
+    gwm list --compact       Use compact format
+    gwm list --format json   Output as JSON (for scripting)
 "#;
 
     pub const ADD: &str = r#"
@@ -87,8 +93,7 @@ ARGUMENTS:
 OPTIONS:
     -r, --remote           Select from remote branches
         --from <BRANCH>    Base branch for new worktree (default: main)
-        --code             Open in VS Code after creation
-        --cursor           Open in Cursor after creation
+    -o, --open <EDITOR>    Open in editor after creation (code, cursor, zed)
         --no-cd            Show success message instead of path output
         --skip-hooks       Skip post_create hook execution
 
@@ -103,11 +108,12 @@ DESCRIPTION:
     Branch names are sanitized: feature/auth → feature-auth
 
 EXAMPLES:
-    gwm add                     Interactive new branch input
-    gwm add feature/auth        Create worktree for "feature/auth"
-    gwm add -r                  Select from remote branches
-    gwm add --from develop      Branch from "develop" instead of main
-    gwm add feature --code      Create and open in VS Code
+    gwm add                       Interactive new branch input
+    gwm add feature/auth          Create worktree for "feature/auth"
+    gwm add -r                    Select from remote branches
+    gwm add --from develop        Branch from "develop" instead of main
+    gwm add feature -o code       Create and open in VS Code
+    gwm add feature -o cursor     Create and open in Cursor
     gwm add feature --skip-hooks  Create without running hooks
 "#;
 
@@ -152,56 +158,21 @@ ARGUMENTS:
     [QUERY]    Filter worktrees by name (optional)
 
 OPTIONS:
-    -c, --code     Open in VS Code
-        --cursor   Open in Cursor
+    -o, --open <EDITOR>    Open in editor (code, cursor, zed)
+        --no-cd            Show success message instead of path output
 
 DESCRIPTION:
     Navigate to a worktree by outputting its path. Designed to work with
     a shell function for directory navigation.
 
     Without options, prints the worktree path to stdout.
-    With --code or --cursor, opens the worktree in the editor.
+    With --open, opens the worktree in the specified editor.
 
 EXAMPLES:
     gwm go                  Interactive selection
     gwm go feature          Select matching "feature"
-    gwm go main --code      Open main worktree in VS Code
-"#;
-
-    pub const INIT: &str = r#"
-gwm init - Print shell integration script
-
-USAGE:
-    gwm init <SHELL>
-
-ARGUMENTS:
-    <SHELL>    Shell type (bash, zsh, fish)
-
-DESCRIPTION:
-    Output a shell script that:
-    1. Defines a `gwm` wrapper function for `cd` integration
-    2. Sets up shell completion with dynamic worktree name completion
-
-    Add the output to your shell configuration file.
-
-INSTALLATION:
-    Bash (~/.bashrc):
-        eval "$(gwm init bash)"
-
-    Zsh (~/.zshrc):
-        eval "$(gwm init zsh)"
-
-    Fish (~/.config/fish/config.fish):
-        gwm init fish | source
-
-NOTE:
-    The `gwm completion` command is still available if you need:
-    - Static completion only (without dynamic worktree names)
-    - Completion script saved to a file instead of eval
-
-EXAMPLES:
-    eval "$(gwm init zsh)"    Full setup (recommended)
-    gwm init fish | source    Fish shell setup
+    gwm go main -o code     Open main worktree in VS Code
+    gwm go main -o cursor   Open main worktree in Cursor
 "#;
 
     pub const CLEAN: &str = r#"
@@ -268,45 +239,6 @@ EXAMPLES:
     gwm help add     Show help for 'add' command
     gwm help remove  Show help for 'remove' command
 "#;
-
-    pub const COMPLETION: &str = r#"
-gwm completion - Generate shell completion scripts
-
-USAGE:
-    gwm completion <SHELL> [OPTIONS]
-
-ARGUMENTS:
-    <SHELL>    Shell type (bash, zsh, fish)
-
-OPTIONS:
-    --with-dynamic    Enable dynamic completion for worktree names
-
-DESCRIPTION:
-    Generate shell completion scripts for command and option completion.
-    With --with-dynamic, the script will also provide real-time completion
-    for worktree names when using commands like 'go' and 'remove'.
-
-INSTALLATION:
-
-    Bash:
-        gwm completion bash --with-dynamic > ~/.local/share/bash-completion/completions/gwm
-        # or add to ~/.bashrc:
-        eval "$(gwm completion bash --with-dynamic)"
-
-    Zsh:
-        gwm completion zsh --with-dynamic > ~/.zfunc/_gwm
-        # Add to ~/.zshrc:
-        fpath=(~/.zfunc $fpath)
-        autoload -Uz compinit && compinit
-
-    Fish:
-        gwm completion fish --with-dynamic > ~/.config/fish/completions/gwm.fish
-
-EXAMPLES:
-    gwm completion bash              Generate basic Bash completion
-    gwm completion zsh --with-dynamic  Generate Zsh completion with worktree names
-    gwm completion fish --with-dynamic Generate Fish completion with worktree names
-"#;
 }
 
 /// helpコマンドを実行
@@ -317,10 +249,8 @@ pub fn run_help(args: HelpArgs) -> Result<()> {
         Some("add") => help_text::ADD,
         Some("remove") | Some("rm") => help_text::REMOVE,
         Some("go") => help_text::GO,
-        Some("init") => help_text::INIT,
         Some("clean") => help_text::CLEAN,
         Some("sync") | Some("pull-main") => help_text::SYNC,
-        Some("completion") => help_text::COMPLETION,
         Some("help") => help_text::HELP,
         Some(cmd) => {
             eprintln!("Unknown command: {}", cmd);
@@ -349,11 +279,9 @@ mod tests {
             ("remove", Some("remove")),
             ("remove_alias_rm", Some("rm")),
             ("go", Some("go")),
-            ("init", Some("init")),
             ("clean", Some("clean")),
             ("sync", Some("sync")),
             ("sync_alias_pull_main", Some("pull-main")),
-            ("completion", Some("completion")),
             ("help", Some("help")),
             ("unknown", Some("unknown")),
         ];
@@ -381,10 +309,8 @@ mod tests {
             ("ADD", help_text::ADD),
             ("REMOVE", help_text::REMOVE),
             ("GO", help_text::GO),
-            ("INIT", help_text::INIT),
             ("CLEAN", help_text::CLEAN),
             ("SYNC", help_text::SYNC),
-            ("COMPLETION", help_text::COMPLETION),
             ("HELP", help_text::HELP),
         ];
 
