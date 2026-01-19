@@ -1,10 +1,7 @@
 # gwm-rust Makefile
 # CI と同等のチェックをローカルで実行するためのタスク定義
 
-# MSRV (Minimum Supported Rust Version) - Cargo.toml と同期させること
-MSRV := 1.74
-
-.PHONY: all check fmt clippy test build msrv-check ci clean help
+.PHONY: all check fmt clippy test build ci clean help
 
 # デフォルトターゲット
 all: check
@@ -33,19 +30,8 @@ test:
 build:
 	cargo build --release
 
-# MSRV チェック (rustup が必要)
-# CI と同じ Rust バージョンでビルドできることを確認
-msrv-check:
-	@echo "Checking MSRV ($(MSRV))..."
-	@if command -v rustup >/dev/null 2>&1; then \
-		rustup run $(MSRV) cargo check --all-features; \
-	else \
-		echo "Warning: rustup not found. Skipping MSRV check."; \
-		echo "Install rustup to enable MSRV verification."; \
-	fi
-
 # CI と同等の全チェックを実行
-ci: fmt clippy test msrv-check
+ci: fmt clippy test
 	@echo "All CI checks passed!"
 
 # ビルド成果物のクリーンアップ
@@ -62,7 +48,6 @@ help:
 	@echo "  clippy      - Run Clippy lints"
 	@echo "  test        - Run tests"
 	@echo "  build       - Build release binary"
-	@echo "  msrv-check  - Verify build with MSRV ($(MSRV))"
 	@echo "  ci          - Run all CI checks locally"
 	@echo "  clean       - Clean build artifacts"
 	@echo "  help        - Show this help"

@@ -11,7 +11,7 @@ documentation = "https://docs.rs/gwm"
 readme = "README.md"
 keywords = ["git", "worktree", "cli", "terminal", "tui"]
 categories = ["command-line-utilities", "development-tools"]
-rust-version = "1.74"
+rust-version = "1.80"
 
 [[bin]]
 name = "gwm"
@@ -25,8 +25,6 @@ clap_complete = "4.5"
 # TUI framework
 ratatui = "0.29"
 crossterm = "0.28"
-# Pin instability to maintain MSRV 1.74 (transitive dep of ratatui)
-instability = "=0.3.6"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
